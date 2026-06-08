@@ -1,0 +1,19 @@
+# Fly.io configuration for the Telegram bot (long-polling worker).
+# Change `app` to a unique name, or let `fly launch` generate one.
+
+app = "iios-store-bot"
+primary_region = "waw"  # Warsaw — close to Ukraine; change if you like
+
+[build]
+
+[env]
+  CURRENCY = "UAH"
+
+# Long-polling bot: a single always-on machine, no public HTTP service.
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  cpus = 1
+
+[processes]
+  app = "python -m store"
