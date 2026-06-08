@@ -58,6 +58,7 @@ async def send_photo_or_text(
     text: str,
     keyboard: InlineKeyboardMarkup | None = None,
     photo=None,
+    parse_mode: str = ParseMode.MARKDOWN,
 ) -> None:
     """Replace the current callback message with a photo card (caption=text).
 
@@ -76,7 +77,7 @@ async def send_photo_or_text(
                 chat_id=chat_id,
                 photo=photo,
                 caption=text,
-                parse_mode=ParseMode.MARKDOWN,
+                parse_mode=parse_mode,
                 reply_markup=keyboard,
             )
             return
@@ -86,7 +87,7 @@ async def send_photo_or_text(
     await context.bot.send_message(
         chat_id=chat_id,
         text=text,
-        parse_mode=ParseMode.MARKDOWN,
+        parse_mode=parse_mode,
         reply_markup=keyboard,
     )
 

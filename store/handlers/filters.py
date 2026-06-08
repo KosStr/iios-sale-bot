@@ -14,6 +14,7 @@ from store.keyboards import (
     booking_results_keyboard,
     catalog_results_keyboard,
     filter_keyboard,
+    group_variants_keyboard,
 )
 from store.services.catalog_filter import (
     PRICE_RANGES,
@@ -21,6 +22,8 @@ from store.services.catalog_filter import (
     filter_summary,
     get_filter,
 )
+from store.services.grouping import build_groups, find_group
+from store.utils.tg import edit_or_resend
 
 _FILTER_TITLE = "🔍 *Фільтр товарів*"
 
@@ -104,13 +107,34 @@ async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         )
         return
 
+    groups = build_groups(products)
     if flt.get("mode") == "booking":
         text = "📅 *Оберіть модель для бронювання:*"
-        keyboard = booking_results_keyboard(products, currency)
+        keyboard = booking_results_keyboard(groups, currency)
     else:
-        text = f"🛍 *Знайдено товарів: {len(products)}*\n\nОберіть товар, щоб переглянути деталі:"
-        keyboard = catalog_results_keyboard(products, currency)
+        text = f"🛍 *Знайдено моделей: {len(groups)}*\n\nОберіть модель, щоб переглянути деталі:"
+        keyboard = catalog_results_keyboard(groups, currency)
 
     await query.edit_message_text(
         text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard
+    )
+
+
+async def show_group(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Expand a multi-variant model into its variant list."""
+    query = update.callback_query
+    flt = get_filter(context)
+    currency = flt.get("currency", "UAH")
+    key = query.data.split(":", 1)[1]
+    group = find_group(key, filter_products(flt))
+
+    if group is None:
+        await query.answer()
+        await show_results(update, context)
+        return
+
+    action = "book" if flt.get("mode") == "booking" else "product"
+    text = f"📦 *{group.label}*\n\nОберіть варіант:"
+    await edit_or_resend(
+        update, context, text, group_variants_keyboard(group, currency, action)
     )

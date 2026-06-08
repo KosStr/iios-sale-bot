@@ -32,6 +32,9 @@ class Product:
     description: str
     category: str = CATEGORY_PHONE
     image: str = ""
+    # Products sharing the same non-empty `group` are variants of one model
+    # (e.g. "iPhone 13" in 128GB/256GB). Empty means a standalone product.
+    group: str = ""
     # Time-limited discount: special price (USD) active until `sale_until`.
     sale_price: int | None = None
     sale_until: datetime | None = None
@@ -85,6 +88,52 @@ PRODUCTS: list[Product] = [
         description=(
             "Google Tensor G3, 6.7\" дисплей Super Actua та найкращі "
             "можливості Google AI у камері."
+        ),
+    ),
+    # --- iPhone 13 (grouped model with several variants) ---------------------
+    Product(
+        id="iphone-13-128-midnight",
+        brand="Apple",
+        name="iPhone 13",
+        price=599,
+        storage="128GB",
+        color="Midnight",
+        stock=10,
+        category=CATEGORY_PHONE,
+        group="iPhone 13",
+        description=(
+            "Чип A15 Bionic, 6.1\" Super Retina XDR, подвійна камера "
+            "та надійна автономність."
+        ),
+    ),
+    Product(
+        id="iphone-13-128-blue",
+        brand="Apple",
+        name="iPhone 13",
+        price=599,
+        storage="128GB",
+        color="Blue",
+        stock=4,
+        category=CATEGORY_PHONE,
+        group="iPhone 13",
+        description=(
+            "Чип A15 Bionic, 6.1\" Super Retina XDR, подвійна камера "
+            "та надійна автономність."
+        ),
+    ),
+    Product(
+        id="iphone-13-256-starlight",
+        brand="Apple",
+        name="iPhone 13",
+        price=699,
+        storage="256GB",
+        color="Starlight",
+        stock=7,
+        category=CATEGORY_PHONE,
+        group="iPhone 13",
+        description=(
+            "Чип A15 Bionic, 6.1\" Super Retina XDR, подвійна камера "
+            "та надійна автономність."
         ),
     ),
     Product(

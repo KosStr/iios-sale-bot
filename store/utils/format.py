@@ -1,8 +1,13 @@
-"""Text and price formatting helpers (Markdown), currency-aware."""
+"""Text and price formatting helpers, currency-aware.
+
+`product_summary` renders HTML (so it can show a struck-through old price);
+`cart_summary` renders legacy Markdown (used by the cart/checkout screens).
+"""
 
 from __future__ import annotations
 
 from datetime import timedelta
+from html import escape
 
 from store.data.products import Product, is_on_sale, sale_time_left
 from store.services.cart import Cart
@@ -25,26 +30,29 @@ def format_timeleft(delta: timedelta) -> str:
 
 
 def _price_block(product: Product, currency: str) -> list[str]:
+    """HTML price lines. On sale: old price struck through, new price after it."""
     if is_on_sale(product):
         left = sale_time_left(product)
         until = product.sale_until.strftime("%d.%m %H:%M")
+        old = escape(format_price(product.price, currency))
+        new = escape(format_price(product.sale_price, currency))
         return [
-            "🔥 *АКЦІЯ*",
-            f"Стара ціна: {format_price(product.price, currency)}",
-            f"Ціна за акцією: *{format_price(product.sale_price, currency)}*",
-            f"⏳ Діє до {until} (залишилось {format_timeleft(left)})",
+            "🔥 <b>АКЦІЯ</b>",
+            f"💰 Ціна: <s>{old}</s> → <b>{new}</b>",
+            f"⏳ Діє до {escape(until)} (залишилось {escape(format_timeleft(left))})",
         ]
-    return [f"Ціна: *{format_price(product.price, currency)}*"]
+    return [f"💰 Ціна: <b>{escape(format_price(product.price, currency))}</b>"]
 
 
 def product_summary(product: Product, currency: str = "UAH") -> str:
+    """HTML product card text."""
     stock = f"В наявності: {product.stock}" if product.stock > 0 else "Немає в наявності"
     return "\n".join(
         [
-            f"*{product.name}*",
-            f"{product.brand} • {product.storage} • {product.color}",
+            f"<b>{escape(product.name)}</b>",
+            f"{escape(product.brand)} • {escape(product.storage)} • {escape(product.color)}",
             "",
-            product.description,
+            escape(product.description),
             "",
             *_price_block(product, currency),
             stock,

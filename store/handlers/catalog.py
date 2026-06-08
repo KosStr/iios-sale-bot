@@ -9,6 +9,7 @@ from telegram.ext import ContextTypes
 from store.data.products import get_product_by_id
 from store.keyboards import catalog_results_keyboard, product_keyboard
 from store.services.catalog_filter import filter_products, get_filter
+from store.services.grouping import build_groups
 from store.services.images import photo_source
 from store.utils.format import product_summary
 from store.utils.tg import edit_or_resend, send_photo_or_text
@@ -18,13 +19,13 @@ async def show_catalog(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     """Render the filtered catalog list (used by the 'back to catalog' button)."""
     flt = get_filter(context)
     currency = flt.get("currency", "UAH")
-    products = filter_products(flt)
+    groups = build_groups(filter_products(flt))
 
-    if not products:
+    if not groups:
         text = "😕 За вашим фільтром нічого не знайдено.\nЗмініть параметри фільтра."
     else:
-        text = f"🛍 *Знайдено товарів: {len(products)}*\n\nОберіть товар, щоб переглянути деталі:"
-    keyboard = catalog_results_keyboard(products, currency)
+        text = f"🛍 *Знайдено моделей: {len(groups)}*\n\nОберіть модель, щоб переглянути деталі:"
+    keyboard = catalog_results_keyboard(groups, currency)
 
     if update.callback_query:
         await edit_or_resend(update, context, text, keyboard)
@@ -46,4 +47,11 @@ async def show_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     currency = get_filter(context).get("currency", "UAH")
     text = product_summary(product, currency)
     keyboard = product_keyboard(product)
-    await send_photo_or_text(update, context, text, keyboard, photo=photo_source(product))
+    await send_photo_or_text(
+        update,
+        context,
+        text,
+        keyboard,
+        photo=photo_source(product),
+        parse_mode=ParseMode.HTML,
+    )

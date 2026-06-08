@@ -27,6 +27,7 @@ from store.handlers.filters import (
     open_filter_for_catalog,
     reopen_filter,
     set_filter_value,
+    show_group,
     show_results,
 )
 from store.handlers.info import show_contacts, show_location
@@ -111,6 +112,7 @@ def create_application(config: Config) -> Application:
     app.add_handler(CallbackQueryHandler(set_filter_value, pattern=r"^flt:(cat|cur|price):"))
     app.add_handler(CallbackQueryHandler(show_results, pattern=r"^flt:show$"))
     app.add_handler(CallbackQueryHandler(reopen_filter, pattern=r"^flt:open$"))
+    app.add_handler(CallbackQueryHandler(show_group, pattern=r"^group:"))
 
     # Inline button callbacks
     app.add_handler(CallbackQueryHandler(show_catalog, pattern=r"^catalog:view$"))

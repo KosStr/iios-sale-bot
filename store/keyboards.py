@@ -20,7 +20,9 @@ from store.services.catalog_filter import (
     CURRENCIES,
     PRICE_RANGES,
     button_price,
+    format_price,
 )
+from store.services.grouping import Group
 
 # Reply-keyboard button labels (also used as router patterns in bot.py)
 BTN_CATALOG = "🛍 Каталог"
@@ -89,18 +91,32 @@ def filter_keyboard(flt: dict) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(rows)
 
 
-def catalog_results_keyboard(
-    products: list[Product], currency: str
-) -> InlineKeyboardMarkup:
-    rows = [
-        [
+def _group_row(group: "Group", currency: str, action: str) -> list[InlineKeyboardButton]:
+    """One list row for a model group.
+
+    Single-variant groups go straight to the product/booking action; multi-
+    variant groups expand to a variant list via the `group:` callback.
+    """
+    if group.is_single:
+        product = group.only
+        return [
             InlineKeyboardButton(
                 f"{product.name} — {button_price(product, currency)}",
-                callback_data=f"product:{product.id}",
+                callback_data=f"{action}:{product.id}",
             )
         ]
-        for product in products
-    ]
+    fire = " 🔥" if group.on_sale else ""
+    label = (
+        f"{group.label} ({len(group.variants)}) — "
+        f"від {format_price(group.min_price, currency)}{fire}"
+    )
+    return [InlineKeyboardButton(label, callback_data=f"group:{group.key}")]
+
+
+def catalog_results_keyboard(
+    groups: list["Group"], currency: str
+) -> InlineKeyboardMarkup:
+    rows = [_group_row(group, currency, "product") for group in groups]
     rows.append(
         [
             InlineKeyboardButton("🔍 Фільтр", callback_data="flt:open"),
@@ -111,18 +127,27 @@ def catalog_results_keyboard(
 
 
 def booking_results_keyboard(
-    products: list[Product], currency: str
+    groups: list["Group"], currency: str
 ) -> InlineKeyboardMarkup:
+    rows = [_group_row(group, currency, "book") for group in groups]
+    rows.append([InlineKeyboardButton("🔍 Фільтр", callback_data="flt:open")])
+    return InlineKeyboardMarkup(rows)
+
+
+def group_variants_keyboard(
+    group: "Group", currency: str, action: str
+) -> InlineKeyboardMarkup:
+    """List the variants of a model. `action` is 'product' or 'book'."""
     rows = [
         [
             InlineKeyboardButton(
-                f"{product.name} — {button_price(product, currency)}",
-                callback_data=f"book:{product.id}",
+                f"{variant.storage} • {variant.color} — {button_price(variant, currency)}",
+                callback_data=f"{action}:{variant.id}",
             )
         ]
-        for product in products
+        for variant in group.variants
     ]
-    rows.append([InlineKeyboardButton("🔍 Фільтр", callback_data="flt:open")])
+    rows.append([InlineKeyboardButton("⬅️ Назад", callback_data="flt:show")])
     return InlineKeyboardMarkup(rows)
 
 
