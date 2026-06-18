@@ -9,7 +9,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY store/ store/
+COPY scripts/ scripts/
 
-# The bot uses long polling, so no port needs to be exposed.
+EXPOSE 8080
+
 CMD ["python", "-m", "store"]

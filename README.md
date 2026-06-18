@@ -32,9 +32,20 @@ store/
 │   ├── filters.py        # Category / currency / price filter UI
 │   └── info.py           # Contacts & location
 ├── services/
-│   ├── cart.py           # In-memory cart store
+│   ├── cart.py           # Cart service (SQLite-backed)
 │   ├── catalog_filter.py # Filtering, currency conversion, pricing
+│   ├── grouping.py       # Product variant grouping
 │   └── images.py         # Cloudflare R2 image resolution
+├── db/
+│   ├── connection.py     # SQLite pool (WAL, configurable path)
+│   ├── schema.py         # Tables and indexes
+│   ├── init_db.py        # Startup initialization
+│   ├── seed.py           # Seed catalog on first run
+│   ├── products_repo.py  # Product queries
+│   ├── cart_repo.py      # Cart persistence
+│   └── orders_repo.py    # Orders and bookings
+├── models/
+│   └── cart.py           # Cart domain models
 └── utils/
     ├── format.py         # Text/price/discount formatting
     └── tg.py             # Message edit/resend helpers (text ↔ photo)
@@ -68,7 +79,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Fill in at least `BOT_TOKEN`. R2 variables are optional — without them, products simply show without photos.
+Fill in at least `BOT_TOKEN`. Optional: `DATABASE_PATH` (defaults to `data/store.db`). R2 variables are optional — without them, products simply show without photos.
 
 > Tip: get your Telegram user ID from [@userinfobot](https://t.me/userinfobot) to use in `ADMIN_CHAT_IDS`.
 
@@ -102,6 +113,10 @@ python -m scripts.upload_images ./pics    # or a custom folder
 
 ## Deploy to Fly.io
 
+**Full step-by-step guide:** see **[DEPLOY.md](DEPLOY.md)** (volume, secrets, R2, troubleshooting).
+
+Quick summary:
+
 ### 1. Install & sign in
 
 ```bash
@@ -119,7 +134,17 @@ fly launch --no-deploy
 
 Accept reusing the existing `fly.toml`. Pick a unique app name and a region (e.g. `waw`). Decline databases — this bot doesn't need them.
 
-### 3. Set secrets
+### 3. Create a persistent volume (SQLite)
+
+The bot stores products, carts, orders and bookings in **SQLite** on a Fly Volume so data survives restarts:
+
+```bash
+fly volumes create store_data --size 1 --region waw
+```
+
+`fly.toml` already mounts it at `/data` and sets `DATABASE_PATH=/data/store.db`.
+
+### 4. Set secrets
 
 Never put secrets in `fly.toml`. Set them with `fly secrets`:
 
@@ -134,30 +159,54 @@ fly secrets set R2_ACCOUNT_ID=xxxx R2_ACCESS_KEY_ID=xxxx \
                 R2_SECRET_ACCESS_KEY=xxxx R2_BUCKET=iios-store-images
 ```
 
-### 4. Deploy & keep exactly one machine
-
-This bot uses **long polling**, so Telegram allows only **one** running instance. Ensure Fly runs a single machine:
+### 5. Deploy
 
 ```bash
 fly deploy
-fly scale count 1
+fly logs
 ```
 
-> Running 2+ machines causes a `409 Conflict` (two pollers). Keep the count at 1. (If you later switch to webhooks, you can scale out.)
+This bot uses **webhooks** on Fly.io (Telegram POSTs updates to `https://<app>.fly.dev/webhook`). Local dev uses **polling** when `USE_WEBHOOK=false` in `.env`.
 
-### 5. Logs & status
+> Do not run local polling with the same bot token while Fly is live — it removes the production webhook. Redeploy with `fly deploy` to restore it.
+
+### 6. Logs & status
 
 ```bash
 fly logs
 fly status
 ```
 
+## Database (SQLite)
+
+Persistent storage uses **SQLite** with WAL mode and a small connection pool.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_PATH` | `data/store.db` | Path to the SQLite file |
+| `DATABASE_POOL_SIZE` | `5` | Connection pool size |
+
+**Locally:** the file is created under `data/store.db` on first run.
+
+**On Fly.io:** mount a volume at `/data` and set `DATABASE_PATH=/data/store.db` (already in `fly.toml`).
+
+On startup the bot:
+1. Creates the connection pool and ensures the parent directory exists
+2. Applies schema, indexes, and foreign keys
+3. Seeds the catalog from `store/data/products.py` if the products table is empty
+
+**Tables:** `products`, `cart_items`, `orders`, `order_items`, `bookings`
+
+**Indexes:** category, product group, cart user id, order/booking user id and created_at, etc.
+
+Carts survive restarts; confirmed orders and bookings are persisted.
+
 ## How it works
 
-- **Catalog/discounts** live in `store/data/products.py`. Each product can carry a `sale_price` + `sale_until` for a time-limited discount; the sale price is used everywhere until it expires. Swap this module for a DB later (keep the helper functions).
+- **Catalog** is seeded into SQLite from `store/data/products.py` on first run, then read from the database. Edit products in code and re-seed, or add admin tooling later.
 - **Filtering & pricing** is in `store/services/catalog_filter.py` (USD→UAH rate is configurable there).
 - **Images** are resolved in `store/services/images.py`; the bot falls back to text if an image is missing.
-- **Cart** is in memory (`store/services/cart.py`) keyed by user id — back it with Redis/DB for production.
+- **Cart / orders / bookings** are stored in SQLite (`store/db/`).
 
 ## License
 

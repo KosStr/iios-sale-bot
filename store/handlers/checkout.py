@@ -18,6 +18,7 @@ from telegram.ext import (
     filters,
 )
 
+from store.db.orders_repo import save_order
 from store.services import cart as cart_service
 from store.services.catalog_filter import format_price, get_filter
 from store.utils.format import cart_summary
@@ -124,6 +125,16 @@ async def confirm_order(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     )
 
     await _notify_admins(update, context, order_id, order, cart)
+
+    save_order(
+        order_id=order_id,
+        user_id=user_id,
+        customer_name=order.get("name", ""),
+        phone=order.get("phone", ""),
+        address=order.get("address", ""),
+        cart=cart,
+        currency=currency,
+    )
 
     cart_service.clear_cart(user_id)
     context.user_data.pop("order", None)

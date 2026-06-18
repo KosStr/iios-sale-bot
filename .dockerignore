@@ -5,13 +5,14 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .git/
-.gitignore
 .env
 *.log
 .DS_Store
 .pytest_cache/
 images/
-README.md
+data/
+*.db
+*.db-wal
+*.db-shm
 setup.ps1
 *.ps1
-fly.toml

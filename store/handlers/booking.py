@@ -22,6 +22,7 @@ from telegram.ext import (
 )
 
 from store.data.products import get_product_by_id
+from store.db.orders_repo import save_booking
 
 NAME, PHONE, CONFIRM = range(3)
 
@@ -106,6 +107,15 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     )
 
     await _notify_admins(update, context, booking_id, booking)
+
+    save_booking(
+        booking_id=booking_id,
+        user_id=update.effective_user.id,
+        product_id=booking.get("product_id", ""),
+        customer_name=booking.get("name", ""),
+        phone=booking.get("phone", ""),
+    )
+
     context.user_data.pop("booking", None)
     return ConversationHandler.END
 

@@ -264,15 +264,16 @@ PRODUCTS: list[Product] = [
     ),
 ]
 
-_BY_ID = {product.id: product for product in PRODUCTS}
-
-
 def get_all_products() -> list[Product]:
-    return PRODUCTS
+    from store.db.products_repo import fetch_all
+
+    return fetch_all()
 
 
 def get_product_by_id(product_id: str) -> Product | None:
-    return _BY_ID.get(product_id)
+    from store.db.products_repo import fetch_by_id
+
+    return fetch_by_id(product_id)
 
 
 def is_in_stock(product: Product | None) -> bool:
