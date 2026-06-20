@@ -23,7 +23,6 @@ from store.handlers.cart import add_to_cart, clear_cart, remove_from_cart, show_
 from store.handlers.catalog import show_catalog, show_product
 from store.handlers.checkout import build_checkout_handler
 from store.handlers.filters import (
-    open_filter_for_booking,
     open_filter_for_catalog,
     reopen_filter,
     set_filter_value,
@@ -32,7 +31,6 @@ from store.handlers.filters import (
 )
 from store.handlers.info import show_contacts, show_location
 from store.keyboards import (
-    BTN_BOOK,
     BTN_CART,
     BTN_CATALOG,
     BTN_CONTACTS,
@@ -47,7 +45,7 @@ WELCOME = "\n".join(
     [
         "👋 *Ласкаво просимо до IIOS Store!*",
         "",
-        "Переглядайте найновіші смартфони, додавайте їх у кошик і замовляйте у кілька дотиків.",
+        "Переглядайте каталог, додавайте товари у кошик і замовляйте у кілька дотиків.",
         "",
         "Скористайтеся меню нижче або кнопками у повідомленнях.",
     ]
@@ -57,9 +55,9 @@ HELP = "\n".join(
     [
         "*Довідка IIOS Store*",
         "",
-        "🛍 *Каталог* — перегляд доступних телефонів",
+        "🛍 *Каталог* — перегляд доступних товарів",
         "🛒 *Кошик* — перегляд товарів та оформлення",
-        "📅 *Забронювати* — зарезервувати телефон",
+        "📅 *Забронювати* — кнопка на картці товару",
         "📞 *Контакти* — наші контакти",
         "📍 *Локація* — де нас знайти",
         "",
@@ -100,16 +98,15 @@ def create_application(config: Config) -> Application:
     app.add_handler(build_booking_handler())
     app.add_handler(build_checkout_handler())
 
-    # Reply-keyboard buttons (plain text) — Каталог & Забронювати open the filter
+    # Reply-keyboard buttons (plain text)
     app.add_handler(MessageHandler(filters.Regex(rf"^{re.escape(BTN_CATALOG)}$"), open_filter_for_catalog))
-    app.add_handler(MessageHandler(filters.Regex(rf"^{re.escape(BTN_BOOK)}$"), open_filter_for_booking))
     app.add_handler(MessageHandler(filters.Regex(rf"^{re.escape(BTN_CART)}$"), show_cart))
     app.add_handler(MessageHandler(filters.Regex(rf"^{re.escape(BTN_CONTACTS)}$"), show_contacts))
     app.add_handler(MessageHandler(filters.Regex(rf"^{re.escape(BTN_LOCATION)}$"), show_location))
     app.add_handler(MessageHandler(filters.Regex(rf"^{re.escape(BTN_HELP)}$"), help_command))
 
     # Filter callbacks
-    app.add_handler(CallbackQueryHandler(set_filter_value, pattern=r"^flt:(cat|cur|price):"))
+    app.add_handler(CallbackQueryHandler(set_filter_value, pattern=r"^flt:(cat|sub|cur|price):"))
     app.add_handler(CallbackQueryHandler(show_results, pattern=r"^flt:show$"))
     app.add_handler(CallbackQueryHandler(reopen_filter, pattern=r"^flt:open$"))
     app.add_handler(CallbackQueryHandler(show_group, pattern=r"^group:"))

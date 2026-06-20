@@ -1,7 +1,7 @@
-"""Filter screen shown after tapping «Каталог» or «Забронювати».
+"""Filter screen shown after tapping «Каталог».
 
-Lets the user pick a category, currency (UAH/USD) and price range, then
-renders the matching products as a catalog list or a booking list.
+Lets the user pick a category, subcategory, currency (UAH/USD) and price range,
+then renders the matching products as a catalog list.
 """
 
 from __future__ import annotations
@@ -11,7 +11,6 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 from store.keyboards import (
-    booking_results_keyboard,
     catalog_results_keyboard,
     filter_keyboard,
     group_variants_keyboard,
@@ -35,17 +34,7 @@ def _filter_text(flt: dict) -> str:
 async def open_filter_for_catalog(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
-    flt = get_filter(context)
-    flt["mode"] = "catalog"
-    await _send_filter(update, flt)
-
-
-async def open_filter_for_booking(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> None:
-    flt = get_filter(context)
-    flt["mode"] = "booking"
-    await _send_filter(update, flt)
+    await _send_filter(update, get_filter(context))
 
 
 async def _send_filter(update: Update, flt: dict) -> None:
@@ -67,16 +56,18 @@ async def reopen_filter(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 async def set_filter_value(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle flt:cat:* / flt:cur:* / flt:price:* toggles and re-render."""
+    """Handle flt:cat/sub/cur/price toggles and re-render."""
     query = update.callback_query
     _, field, value = query.data.split(":", 2)
     flt = get_filter(context)
 
     if field == "cat":
         flt["category"] = value
+        flt["subcategory"] = "all"
+    elif field == "sub":
+        flt["subcategory"] = value
     elif field == "cur":
         flt["currency"] = value
-        # Price-range keys are shared across currencies, but reset to be safe.
         valid_keys = {key for key, *_ in PRICE_RANGES[value]}
         if flt.get("price") not in valid_keys:
             flt["price"] = "any"
@@ -108,12 +99,8 @@ async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
 
     groups = build_groups(products)
-    if flt.get("mode") == "booking":
-        text = "📅 *Оберіть модель для бронювання:*"
-        keyboard = booking_results_keyboard(groups, currency)
-    else:
-        text = f"🛍 *Знайдено моделей: {len(groups)}*\n\nОберіть модель, щоб переглянути деталі:"
-        keyboard = catalog_results_keyboard(groups, currency)
+    text = f"🛍 *Знайдено моделей: {len(groups)}*\n\nОберіть модель, щоб переглянути деталі:"
+    keyboard = catalog_results_keyboard(groups, currency)
 
     await query.edit_message_text(
         text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard
@@ -129,12 +116,10 @@ async def show_group(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     group = find_group(key, filter_products(flt))
 
     if group is None:
-        await query.answer()
         await show_results(update, context)
         return
 
-    action = "book" if flt.get("mode") == "booking" else "product"
     text = f"📦 *{group.label}*\n\nОберіть варіант:"
     await edit_or_resend(
-        update, context, text, group_variants_keyboard(group, currency, action)
+        update, context, text, group_variants_keyboard(group, currency)
     )

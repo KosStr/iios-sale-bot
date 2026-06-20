@@ -19,6 +19,17 @@ CATEGORY_HEADPHONES = "headphones"
 CATEGORY_LAPTOP = "laptop"
 CATEGORY_ACCESSORIES = "accessories"
 
+# Phone subcategory keys (iPhone models).
+SUBCATEGORY_IPHONE_13 = "iphone_13"
+SUBCATEGORY_IPHONE_15_PRO = "iphone_15_pro"
+
+# Accessory subcategory keys (labels live in catalog_filter.SUBCATEGORIES).
+SUBCATEGORY_POWERBANK = "powerbank"
+SUBCATEGORY_CASE = "case"
+SUBCATEGORY_CABLE = "cable"
+SUBCATEGORY_SCREEN_GUARD = "screen_guard"
+SUBCATEGORY_CHARGER = "charger"
+
 
 @dataclass(frozen=True)
 class Product:
@@ -31,6 +42,7 @@ class Product:
     stock: int
     description: str
     category: str = CATEGORY_PHONE
+    subcategory: str = ""
     image: str = ""
     # Products sharing the same non-empty `group` are variants of one model
     # (e.g. "iPhone 13" in 128GB/256GB). Empty means a standalone product.
@@ -55,39 +67,10 @@ PRODUCTS: list[Product] = [
         color="Natural Titanium",
         stock=12,
         category=CATEGORY_PHONE,
+        subcategory=SUBCATEGORY_IPHONE_15_PRO,
         description=(
             "Чип A17 Pro, 6.1\" дисплей Super Retina XDR, титановий корпус "
             "та професійна система камер."
-        ),
-    ),
-    Product(
-        id="samsung-s24-ultra",
-        brand="Samsung",
-        name="Galaxy S24 Ultra",
-        price=1199,
-        storage="512GB",
-        color="Titanium Black",
-        stock=8,
-        category=CATEGORY_PHONE,
-        description=(
-            "Snapdragon 8 Gen 3, 6.8\" Dynamic AMOLED 2X, вбудований S Pen "
-            "та камера на 200 Мп."
-        ),
-        sale_price=1099,
-        sale_until=_NOW + timedelta(days=2),
-    ),
-    Product(
-        id="pixel-8-pro",
-        brand="Google",
-        name="Pixel 8 Pro",
-        price=899,
-        storage="128GB",
-        color="Obsidian",
-        stock=5,
-        category=CATEGORY_PHONE,
-        description=(
-            "Google Tensor G3, 6.7\" дисплей Super Actua та найкращі "
-            "можливості Google AI у камері."
         ),
     ),
     # --- iPhone 13 (grouped model with several variants) ---------------------
@@ -100,6 +83,7 @@ PRODUCTS: list[Product] = [
         color="Midnight",
         stock=10,
         category=CATEGORY_PHONE,
+        subcategory=SUBCATEGORY_IPHONE_13,
         group="iPhone 13",
         description=(
             "Чип A15 Bionic, 6.1\" Super Retina XDR, подвійна камера "
@@ -115,6 +99,7 @@ PRODUCTS: list[Product] = [
         color="Blue",
         stock=4,
         category=CATEGORY_PHONE,
+        subcategory=SUBCATEGORY_IPHONE_13,
         group="iPhone 13",
         description=(
             "Чип A15 Bionic, 6.1\" Super Retina XDR, подвійна камера "
@@ -130,24 +115,11 @@ PRODUCTS: list[Product] = [
         color="Starlight",
         stock=7,
         category=CATEGORY_PHONE,
+        subcategory=SUBCATEGORY_IPHONE_13,
         group="iPhone 13",
         description=(
             "Чип A15 Bionic, 6.1\" Super Retina XDR, подвійна камера "
             "та надійна автономність."
-        ),
-    ),
-    Product(
-        id="xiaomi-14",
-        brand="Xiaomi",
-        name="Xiaomi 14",
-        price=699,
-        storage="256GB",
-        color="Jade Green",
-        stock=20,
-        category=CATEGORY_PHONE,
-        description=(
-            "Snapdragon 8 Gen 3, 6.36\" LTPO AMOLED та потрійна камера, "
-            "налаштована Leica."
         ),
     ),
     # --- Годинники -----------------------------------------------------------
@@ -245,6 +217,7 @@ PRODUCTS: list[Product] = [
         color="White",
         stock=50,
         category=CATEGORY_ACCESSORIES,
+        subcategory=SUBCATEGORY_CHARGER,
         description=(
             "Компактний GaN-зарядний на 3 порти для телефонів і ноутбуків."
         ),
@@ -258,8 +231,51 @@ PRODUCTS: list[Product] = [
         color="Matte Black",
         stock=0,
         category=CATEGORY_ACCESSORIES,
+        subcategory=SUBCATEGORY_CASE,
         description=(
             "Захисний чохол із поглинанням ударів та матовим покриттям."
+        ),
+    ),
+    Product(
+        id="anker-powercore-20k",
+        brand="Anker",
+        name="Anker PowerCore 20K",
+        price=49,
+        storage="20000 mAh",
+        color="Black",
+        stock=30,
+        category=CATEGORY_ACCESSORIES,
+        subcategory=SUBCATEGORY_POWERBANK,
+        description=(
+            "Портативна батарея на 20 000 mAh з двома USB-портами та швидкою зарядкою."
+        ),
+    ),
+    Product(
+        id="usb-c-cable-2m",
+        brand="Baseus",
+        name="Кабель USB-C 2 м",
+        price=15,
+        storage="2 m",
+        color="Black",
+        stock=40,
+        category=CATEGORY_ACCESSORIES,
+        subcategory=SUBCATEGORY_CABLE,
+        description=(
+            "Міцний нейлоновий кабель USB-C — USB-C для швидкої зарядки та передачі даних."
+        ),
+    ),
+    Product(
+        id="screen-guard-iphone-15",
+        brand="ESR",
+        name="Захисне скло iPhone 15",
+        price=12,
+        storage="6.1\"",
+        color="Clear",
+        stock=35,
+        category=CATEGORY_ACCESSORIES,
+        subcategory=SUBCATEGORY_SCREEN_GUARD,
+        description=(
+            "Скло 9H з oleophobic-покриттям, проста установка та повна сумісність із Face ID."
         ),
     ),
 ]

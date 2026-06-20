@@ -28,7 +28,7 @@ async def _set_commands(app: Application) -> None:
         await app.bot.set_my_commands(
             [
                 BotCommand("start", "Головне меню"),
-                BotCommand("catalog", "Переглянути телефони"),
+                BotCommand("catalog", "Переглянути каталог"),
                 BotCommand("cart", "Переглянути кошик"),
                 BotCommand("help", "Як користуватися ботом"),
             ]

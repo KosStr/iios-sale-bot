@@ -5,7 +5,7 @@ from __future__ import annotations
 from store.db import cart_repo
 from store.models.cart import Cart, CartItem
 
-__all__ = ["Cart", "CartItem", "add_item", "remove_item", "clear_cart", "get_cart", "is_empty"]
+__all__ = ["Cart", "add_item", "remove_item", "clear_cart", "get_cart", "is_empty"]
 
 
 def add_item(user_id: int, product_id: str, qty: int = 1) -> None:

@@ -26,9 +26,5 @@ class Cart:
         return sum(item.line_total for item in self.items)
 
     @property
-    def count(self) -> int:
-        return sum(item.qty for item in self.items)
-
-    @property
     def is_empty(self) -> bool:
         return len(self.items) == 0

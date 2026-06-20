@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 _TABLES = """
 CREATE TABLE IF NOT EXISTS schema_meta (
@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS products (
     stock INTEGER NOT NULL DEFAULT 0,
     description TEXT NOT NULL,
     category TEXT NOT NULL DEFAULT 'phone',
+    subcategory TEXT NOT NULL DEFAULT '',
     image TEXT NOT NULL DEFAULT '',
     product_group TEXT NOT NULL DEFAULT '',
     sale_price INTEGER,
@@ -71,6 +72,7 @@ CREATE TABLE IF NOT EXISTS bookings (
 
 _INDEXES = """
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
+CREATE INDEX IF NOT EXISTS idx_products_subcategory ON products(subcategory);
 CREATE INDEX IF NOT EXISTS idx_products_group ON products(product_group);
 CREATE INDEX IF NOT EXISTS idx_products_name ON products(name);
 CREATE INDEX IF NOT EXISTS idx_products_sale_until ON products(sale_until)
@@ -89,9 +91,35 @@ CREATE INDEX IF NOT EXISTS idx_bookings_product ON bookings(product_id);
 """
 
 
+def _table_columns(conn: sqlite3.Connection, table: str) -> set[str]:
+    rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+    return {row[1] for row in rows}
+
+
+def _migrate_v2_subcategory(conn: sqlite3.Connection) -> None:
+    """Add subcategory column to existing databases and sync from the catalog."""
+    if "subcategory" in _table_columns(conn, "products"):
+        return
+
+    conn.execute(
+        "ALTER TABLE products ADD COLUMN subcategory TEXT NOT NULL DEFAULT ''"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_products_subcategory ON products(subcategory)"
+    )
+
+    from store.data.products import PRODUCTS
+
+    conn.executemany(
+        "UPDATE products SET subcategory = ? WHERE id = ?",
+        [(product.subcategory, product.id) for product in PRODUCTS],
+    )
+
+
 def apply_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(_TABLES)
     conn.executescript(_INDEXES)
+    _migrate_v2_subcategory(conn)
     conn.execute(
         """
         INSERT INTO schema_meta (key, value) VALUES ('version', ?)

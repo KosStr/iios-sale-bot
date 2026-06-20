@@ -5,6 +5,7 @@ Flow: start (button) -> name -> phone -> address -> confirm (buttons).
 
 from __future__ import annotations
 
+import logging
 import time
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -23,6 +24,8 @@ from store.services import cart as cart_service
 from store.services.catalog_filter import format_price, get_filter
 from store.utils.format import cart_summary
 
+logger = logging.getLogger(__name__)
+
 NAME, PHONE, ADDRESS, CONFIRM = range(4)
 
 _CANCEL_KEYBOARD = InlineKeyboardMarkup(
@@ -36,7 +39,7 @@ async def start_checkout(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     if cart_service.is_empty(update.effective_user.id):
         await query.edit_message_text(
-            "Ваш кошик порожній — додайте телефон перед оформленням."
+            "Ваш кошик порожній — додайте товари перед оформленням."
         )
         return ConversationHandler.END
 
@@ -109,6 +112,23 @@ async def confirm_order(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     order = context.user_data.get("order", {})
     currency = get_filter(context).get("currency", "UAH")
 
+    try:
+        save_order(
+            order_id=order_id,
+            user_id=user_id,
+            customer_name=order.get("name", ""),
+            phone=order.get("phone", ""),
+            address=order.get("address", ""),
+            cart=cart,
+            currency=currency,
+        )
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Failed to save order %s", order_id)
+        await query.edit_message_text(
+            "На жаль, не вдалося зберегти замовлення. Спробуйте ще раз або зв'яжіться з нами."
+        )
+        return ConversationHandler.END
+
     await query.edit_message_text(
         "\n".join(
             [
@@ -125,16 +145,6 @@ async def confirm_order(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     )
 
     await _notify_admins(update, context, order_id, order, cart)
-
-    save_order(
-        order_id=order_id,
-        user_id=user_id,
-        customer_name=order.get("name", ""),
-        phone=order.get("phone", ""),
-        address=order.get("address", ""),
-        cart=cart,
-        currency=currency,
-    )
 
     cart_service.clear_cart(user_id)
     context.user_data.pop("order", None)
@@ -187,7 +197,7 @@ async def _notify_admins(
                 chat_id=chat_id, text=message, parse_mode=ParseMode.MARKDOWN
             )
         except Exception as err:  # noqa: BLE001 - log and continue
-            print(f"Failed to notify admin {chat_id}: {err}")
+            logger.warning("Failed to notify admin %s: %s", chat_id, err)
 
 
 def build_checkout_handler() -> ConversationHandler:

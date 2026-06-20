@@ -1,13 +1,12 @@
 """Reservation ("Забронювати") flow as a ConversationHandler.
 
-The booking is started by tapping a model — either from the filtered booking
-list (the «Забронювати» menu button opens the filter first) or from the
-«Забронювати» button on a product card. Then: name -> phone -> confirm.
+Started from the «Забронювати» button on a product card. Then: name -> phone -> confirm.
 On confirm, admins are notified.
 """
 
 from __future__ import annotations
 
+import logging
 import time
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -23,6 +22,8 @@ from telegram.ext import (
 
 from store.data.products import get_product_by_id
 from store.db.orders_repo import save_booking
+
+logger = logging.getLogger(__name__)
 
 NAME, PHONE, CONFIRM = range(3)
 
@@ -92,6 +93,21 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     booking = context.user_data.get("booking", {})
     booking_id = f"BR-{int(time.time()):X}"
 
+    try:
+        save_booking(
+            booking_id=booking_id,
+            user_id=update.effective_user.id,
+            product_id=booking.get("product_id", ""),
+            customer_name=booking.get("name", ""),
+            phone=booking.get("phone", ""),
+        )
+    except Exception:  # noqa: BLE001
+        logger.exception("Failed to save booking %s", booking_id)
+        await query.edit_message_text(
+            "На жаль, не вдалося зберегти бронювання. Спробуйте ще раз або зв'яжіться з нами."
+        )
+        return ConversationHandler.END
+
     await query.edit_message_text(
         "\n".join(
             [
@@ -107,14 +123,6 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     )
 
     await _notify_admins(update, context, booking_id, booking)
-
-    save_booking(
-        booking_id=booking_id,
-        user_id=update.effective_user.id,
-        product_id=booking.get("product_id", ""),
-        customer_name=booking.get("name", ""),
-        phone=booking.get("phone", ""),
-    )
 
     context.user_data.pop("booking", None)
     return ConversationHandler.END
@@ -158,7 +166,7 @@ async def _notify_admins(
                 chat_id=chat_id, text=message, parse_mode=ParseMode.MARKDOWN
             )
         except Exception as err:  # noqa: BLE001 - log and continue
-            print(f"Failed to notify admin {chat_id}: {err}")
+            logger.warning("Failed to notify admin %s: %s", chat_id, err)
 
 
 def build_booking_handler() -> ConversationHandler:

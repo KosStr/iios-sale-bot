@@ -20,14 +20,15 @@ from store.services.catalog_filter import (
     CURRENCIES,
     PRICE_RANGES,
     button_price,
+    category_has_subcategories,
     format_price,
+    subcategory_options,
 )
 from store.services.grouping import Group
 
 # Reply-keyboard button labels (also used as router patterns in bot.py)
 BTN_CATALOG = "🛍 Каталог"
 BTN_CART = "🛒 Кошик"
-BTN_BOOK = "📅 Забронювати"
 BTN_CONTACTS = "📞 Контакти"
 BTN_LOCATION = "📍 Локація"
 BTN_HELP = "ℹ️ Допомога"
@@ -37,7 +38,6 @@ def main_menu_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         [
             [KeyboardButton(BTN_CATALOG), KeyboardButton(BTN_CART)],
-            [KeyboardButton(BTN_BOOK)],
             [KeyboardButton(BTN_CONTACTS), KeyboardButton(BTN_LOCATION)],
             [KeyboardButton(BTN_HELP)],
         ],
@@ -65,6 +65,18 @@ def filter_keyboard(flt: dict) -> InlineKeyboardMarkup:
     for i in range(0, len(cat_buttons), 2):
         rows.append(cat_buttons[i : i + 2])
 
+    category = flt.get("category", "all")
+    if category_has_subcategories(category):
+        sub_buttons = [
+            InlineKeyboardButton(
+                _check(flt.get("subcategory", "all") == key, label),
+                callback_data=f"flt:sub:{key}",
+            )
+            for key, label in subcategory_options(category)
+        ]
+        for i in range(0, len(sub_buttons), 2):
+            rows.append(sub_buttons[i : i + 2])
+
     # Currency toggle
     rows.append(
         [
@@ -91,18 +103,18 @@ def filter_keyboard(flt: dict) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(rows)
 
 
-def _group_row(group: "Group", currency: str, action: str) -> list[InlineKeyboardButton]:
+def _group_row(group: Group, currency: str) -> list[InlineKeyboardButton]:
     """One list row for a model group.
 
-    Single-variant groups go straight to the product/booking action; multi-
-    variant groups expand to a variant list via the `group:` callback.
+    Single-variant groups open the product card; multi-variant groups expand
+    to a variant list via the ``group:`` callback.
     """
     if group.is_single:
         product = group.only
         return [
             InlineKeyboardButton(
                 f"{product.name} — {button_price(product, currency)}",
-                callback_data=f"{action}:{product.id}",
+                callback_data=f"product:{product.id}",
             )
         ]
     fire = " 🔥" if group.on_sale else ""
@@ -114,9 +126,9 @@ def _group_row(group: "Group", currency: str, action: str) -> list[InlineKeyboar
 
 
 def catalog_results_keyboard(
-    groups: list["Group"], currency: str
+    groups: list[Group], currency: str
 ) -> InlineKeyboardMarkup:
-    rows = [_group_row(group, currency, "product") for group in groups]
+    rows = [_group_row(group, currency) for group in groups]
     rows.append(
         [
             InlineKeyboardButton("🔍 Фільтр", callback_data="flt:open"),
@@ -126,23 +138,13 @@ def catalog_results_keyboard(
     return InlineKeyboardMarkup(rows)
 
 
-def booking_results_keyboard(
-    groups: list["Group"], currency: str
-) -> InlineKeyboardMarkup:
-    rows = [_group_row(group, currency, "book") for group in groups]
-    rows.append([InlineKeyboardButton("🔍 Фільтр", callback_data="flt:open")])
-    return InlineKeyboardMarkup(rows)
-
-
-def group_variants_keyboard(
-    group: "Group", currency: str, action: str
-) -> InlineKeyboardMarkup:
-    """List the variants of a model. `action` is 'product' or 'book'."""
+def group_variants_keyboard(group: Group, currency: str) -> InlineKeyboardMarkup:
+    """List the variants of a grouped model."""
     rows = [
         [
             InlineKeyboardButton(
                 f"{variant.storage} • {variant.color} — {button_price(variant, currency)}",
-                callback_data=f"{action}:{variant.id}",
+                callback_data=f"product:{variant.id}",
             )
         ]
         for variant in group.variants
@@ -158,13 +160,13 @@ def product_keyboard(product: Product) -> InlineKeyboardMarkup:
             [InlineKeyboardButton("➕ Додати у кошик", callback_data=f"add:{product.id}")]
         )
     rows.append(
-        [InlineKeyboardButton("📅 Забронювати", callback_data=f"book:{product.id}")]
-    )
-    rows.append(
         [
             InlineKeyboardButton("⬅️ Назад до каталогу", callback_data="catalog:view"),
             InlineKeyboardButton("🛒 Кошик", callback_data="cart:view"),
         ]
+    )
+    rows.append(
+        [InlineKeyboardButton("📅 Забронювати", callback_data=f"book:{product.id}")]
     )
     return InlineKeyboardMarkup(rows)
 

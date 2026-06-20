@@ -9,7 +9,7 @@ from store.db.connection import db_connection
 
 _SELECT = """
 SELECT id, brand, name, price, storage, color, stock, description,
-       category, image, product_group, sale_price, sale_until
+       category, subcategory, image, product_group, sale_price, sale_until
 FROM products
 """
 
@@ -28,6 +28,7 @@ def _row_to_product(row) -> Product:
         stock=row["stock"],
         description=row["description"],
         category=row["category"],
+        subcategory=row["subcategory"] or "",
         image=row["image"] or "",
         group=row["product_group"] or "",
         sale_price=row["sale_price"],
@@ -45,12 +46,3 @@ def fetch_by_id(product_id: str) -> Product | None:
     with db_connection() as conn:
         row = conn.execute(f"{_SELECT} WHERE id = ?", (product_id,)).fetchone()
     return _row_to_product(row) if row else None
-
-
-def fetch_by_category(category: str) -> list[Product]:
-    with db_connection() as conn:
-        rows = conn.execute(
-            f"{_SELECT} WHERE category = ? ORDER BY name, storage, color",
-            (category,),
-        ).fetchall()
-    return [_row_to_product(row) for row in rows]
