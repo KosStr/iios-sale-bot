@@ -18,6 +18,11 @@ from telegram.ext import (
 )
 
 from store.config import Config
+from store.handlers.admin_add import build_admin_add_handler
+from store.handlers.admin_products import (
+    build_admin_edit_handler,
+    build_admin_product_handlers,
+)
 from store.handlers.booking import build_booking_handler
 from store.handlers.cart import add_to_cart, clear_cart, remove_from_cart, show_cart
 from store.handlers.catalog import show_catalog, show_product
@@ -38,6 +43,8 @@ from store.keyboards import (
     BTN_LOCATION,
     main_menu_keyboard,
 )
+
+from store.utils.admin import is_admin
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +84,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text(HELP, parse_mode=ParseMode.MARKDOWN)
+    lines = list(HELP)
+    if is_admin(update, context):
+        lines.extend(
+            [
+                "",
+                "*Адмін:*",
+                "/add — додати товар",
+                "/products — список, редагування, видалення",
+            ]
+        )
+    await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
 
 
 async def on_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -95,6 +112,10 @@ def create_application(config: Config) -> Application:
     app.add_handler(CommandHandler("cart", show_cart))
 
     # Multi-step conversations (registered before generic callback handlers)
+    app.add_handler(build_admin_add_handler())
+    app.add_handler(build_admin_edit_handler())
+    for handler in build_admin_product_handlers():
+        app.add_handler(handler)
     app.add_handler(build_booking_handler())
     app.add_handler(build_checkout_handler())
 

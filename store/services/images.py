@@ -93,3 +93,25 @@ def photo_source(product: Product):
     if url:
         return url
     return get_image_bytes(product)
+
+
+def upload_image(key: str, data: bytes, content_type: str = "image/jpeg") -> bool:
+    """Upload image bytes to R2. Returns True on success."""
+    if not _private_enabled():
+        logger.warning("R2 upload skipped: private bucket credentials not configured.")
+        return False
+    try:
+        _client().put_object(
+            Bucket=_private_config()["bucket"],
+            Key=key,
+            Body=data,
+            ContentType=content_type,
+        )
+        return True
+    except Exception as err:  # noqa: BLE001
+        logger.exception("R2 upload failed for %s: %s", key, err)
+        return False
+
+
+def r2_write_enabled() -> bool:
+    return _private_enabled()
