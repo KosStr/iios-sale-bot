@@ -96,30 +96,20 @@ def _table_columns(conn: sqlite3.Connection, table: str) -> set[str]:
     return {row[1] for row in rows}
 
 
-def _migrate_v2_subcategory(conn: sqlite3.Connection) -> None:
-    """Add subcategory column to existing databases and sync from the catalog."""
+def _ensure_subcategory_column(conn: sqlite3.Connection) -> None:
+    """Add subcategory column to databases created before schema v2."""
     if "subcategory" in _table_columns(conn, "products"):
         return
 
     conn.execute(
         "ALTER TABLE products ADD COLUMN subcategory TEXT NOT NULL DEFAULT ''"
     )
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_products_subcategory ON products(subcategory)"
-    )
-
-    from store.data.products import PRODUCTS
-
-    conn.executemany(
-        "UPDATE products SET subcategory = ? WHERE id = ?",
-        [(product.subcategory, product.id) for product in PRODUCTS],
-    )
 
 
 def apply_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(_TABLES)
+    _ensure_subcategory_column(conn)
     conn.executescript(_INDEXES)
-    _migrate_v2_subcategory(conn)
     conn.execute(
         """
         INSERT INTO schema_meta (key, value) VALUES ('version', ?)
