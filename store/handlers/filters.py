@@ -16,7 +16,9 @@ from store.keyboards import (
     group_variants_keyboard,
 )
 from store.services.catalog_filter import (
+    CATEGORY_LABELS,
     PRICE_RANGES,
+    category_has_subcategories,
     filter_products,
     filter_summary,
     get_filter,
@@ -28,13 +30,24 @@ _FILTER_TITLE = "🔍 *Фільтр товарів*"
 
 
 def _filter_text(flt: dict) -> str:
-    return f"{_FILTER_TITLE}\n\n{filter_summary(flt)}\n\nОберіть параметри та натисніть «Показати товари»."
+    if flt.get("ui") == "sub":
+        category = CATEGORY_LABELS.get(flt.get("category", "all"), "Категорія")
+        return (
+            f"🔍 *{category}*\n\n{filter_summary(flt)}\n\n"
+            "Оберіть підкатегорію та натисніть «Показати товари»."
+        )
+    return (
+        f"{_FILTER_TITLE}\n\n{filter_summary(flt)}\n\n"
+        "Оберіть параметри та натисніть «Показати товари»."
+    )
 
 
 async def open_filter_for_catalog(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
-    await _send_filter(update, get_filter(context))
+    flt = get_filter(context)
+    flt["ui"] = "main"
+    await _send_filter(update, flt)
 
 
 async def _send_filter(update: Update, flt: dict) -> None:
@@ -52,7 +65,29 @@ async def _send_filter(update: Update, flt: dict) -> None:
 
 
 async def reopen_filter(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await _send_filter(update, get_filter(context))
+    flt = get_filter(context)
+    if category_has_subcategories(flt.get("category", "all")) and flt.get(
+        "category", "all"
+    ) != "all":
+        flt["ui"] = "sub"
+    else:
+        flt["ui"] = "main"
+    await _send_filter(update, flt)
+
+
+async def back_to_main_filter(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    query = update.callback_query
+    await query.answer()
+    flt = get_filter(context)
+    flt["ui"] = "main"
+    flt["subcategory"] = "all"
+    await query.edit_message_text(
+        _filter_text(flt),
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=filter_keyboard(flt),
+    )
 
 
 async def set_filter_value(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -64,6 +99,10 @@ async def set_filter_value(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if field == "cat":
         flt["category"] = value
         flt["subcategory"] = "all"
+        if value != "all" and category_has_subcategories(value):
+            flt["ui"] = "sub"
+        else:
+            flt["ui"] = "main"
     elif field == "sub":
         flt["subcategory"] = value
     elif field == "cur":

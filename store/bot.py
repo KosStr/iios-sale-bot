@@ -22,12 +22,14 @@ from store.handlers.admin_add import build_admin_add_handler
 from store.handlers.admin_products import (
     build_admin_edit_handler,
     build_admin_product_handlers,
+    cmd_products,
 )
 from store.handlers.booking import build_booking_handler
 from store.handlers.cart import add_to_cart, clear_cart, remove_from_cart, show_cart
 from store.handlers.catalog import show_catalog, show_product
 from store.handlers.checkout import build_checkout_handler
 from store.handlers.filters import (
+    back_to_main_filter,
     open_filter_for_catalog,
     reopen_filter,
     set_filter_value,
@@ -36,6 +38,8 @@ from store.handlers.filters import (
 )
 from store.handlers.info import show_contacts, show_location
 from store.keyboards import (
+    BTN_ADMIN_ADD,
+    BTN_ADMIN_PRODUCTS,
     BTN_CART,
     BTN_CATALOG,
     BTN_CONTACTS,
@@ -79,7 +83,9 @@ HELP = "\n".join(
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
-        WELCOME, parse_mode=ParseMode.MARKDOWN, reply_markup=main_menu_keyboard()
+        WELCOME,
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=main_menu_keyboard(admin=is_admin(update, context)),
     )
 
 
@@ -95,6 +101,18 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             ]
         )
     await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
+
+
+async def _admin_add_btn(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    from store.handlers.admin_add import start_add
+    await start_add(update, context)
+
+
+async def _admin_products_btn(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not is_admin(update, context):
+        await update.message.reply_text("Ця команда лише для адміністраторів.")
+        return
+    await cmd_products(update, context)
 
 
 async def on_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -125,9 +143,13 @@ def create_application(config: Config) -> Application:
     app.add_handler(MessageHandler(filters.Regex(rf"^{re.escape(BTN_CONTACTS)}$"), show_contacts))
     app.add_handler(MessageHandler(filters.Regex(rf"^{re.escape(BTN_LOCATION)}$"), show_location))
     app.add_handler(MessageHandler(filters.Regex(rf"^{re.escape(BTN_HELP)}$"), help_command))
+    # Admin reply-keyboard buttons
+    app.add_handler(MessageHandler(filters.Regex(rf"^{re.escape(BTN_ADMIN_ADD)}$"), _admin_add_btn))
+    app.add_handler(MessageHandler(filters.Regex(rf"^{re.escape(BTN_ADMIN_PRODUCTS)}$"), _admin_products_btn))
 
     # Filter callbacks
     app.add_handler(CallbackQueryHandler(set_filter_value, pattern=r"^flt:(cat|sub|cur|price):"))
+    app.add_handler(CallbackQueryHandler(back_to_main_filter, pattern=r"^flt:back$"))
     app.add_handler(CallbackQueryHandler(show_results, pattern=r"^flt:show$"))
     app.add_handler(CallbackQueryHandler(reopen_filter, pattern=r"^flt:open$"))
     app.add_handler(CallbackQueryHandler(show_group, pattern=r"^group:"))
