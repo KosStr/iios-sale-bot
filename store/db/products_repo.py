@@ -11,15 +11,17 @@ from store.db.connection import db_connection
 
 _SELECT = """
 SELECT id, brand, name, price, storage, color, stock, description,
-       category, subcategory, image, product_group, sale_price, sale_until
+       category, subcategory, image, product_group, sale_price, sale_until,
+       channel_post_url
 FROM products
 """
 
 _INSERT = """
 INSERT INTO products (
     id, brand, name, price, storage, color, stock, description,
-    category, subcategory, image, product_group, sale_price, sale_until
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    category, subcategory, image, product_group, sale_price, sale_until,
+    channel_post_url
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 """
 
 
@@ -72,6 +74,7 @@ def insert(product: Product) -> None:
                 product.group,
                 product.sale_price,
                 sale_until,
+                product.channel_post_url,
             ),
         )
 
@@ -95,6 +98,7 @@ def _row_to_product(row) -> Product:
         group=row["product_group"] or "",
         sale_price=row["sale_price"],
         sale_until=sale_until,
+        channel_post_url=row["channel_post_url"] or "",
     )
 
 
@@ -120,6 +124,7 @@ def update(product_id: str, **fields: object) -> None:
         "image",
         "description",
         "brand",
+        "channel_post_url",
     }
     updates = {key: value for key, value in fields.items() if key in allowed}
     if not updates:

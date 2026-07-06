@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 _TABLES = """
 CREATE TABLE IF NOT EXISTS schema_meta (
@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS products (
     image TEXT NOT NULL DEFAULT '',
     product_group TEXT NOT NULL DEFAULT '',
     sale_price INTEGER,
-    sale_until TEXT
+    sale_until TEXT,
+    channel_post_url TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS cart_items (
@@ -106,9 +107,20 @@ def _ensure_subcategory_column(conn: sqlite3.Connection) -> None:
     )
 
 
+def _ensure_channel_post_url_column(conn: sqlite3.Connection) -> None:
+    """Add channel_post_url column to databases created before schema v3."""
+    if "channel_post_url" in _table_columns(conn, "products"):
+        return
+
+    conn.execute(
+        "ALTER TABLE products ADD COLUMN channel_post_url TEXT NOT NULL DEFAULT ''"
+    )
+
+
 def apply_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(_TABLES)
     _ensure_subcategory_column(conn)
+    _ensure_channel_post_url_column(conn)
     conn.executescript(_INDEXES)
     conn.execute(
         """

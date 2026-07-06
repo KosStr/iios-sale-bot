@@ -169,6 +169,10 @@ def product_keyboard(product: Product) -> InlineKeyboardMarkup:
         rows.append(
             [InlineKeyboardButton("➕ Додати у кошик", callback_data=f"add:{product.id}")]
         )
+    if product.channel_post_url:
+        rows.append(
+            [InlineKeyboardButton("📢 Пост у каналі", url=product.channel_post_url)]
+        )
     rows.append(
         [
             InlineKeyboardButton("⬅️ Назад до каталогу", callback_data="catalog:view"),

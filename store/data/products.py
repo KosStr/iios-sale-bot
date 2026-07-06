@@ -50,6 +50,9 @@ class Product:
     # Time-limited discount: special price (USD) active until `sale_until`.
     sale_price: int | None = None
     sale_until: datetime | None = None
+    # Optional link to a Telegram channel post (e.g. https://t.me/iios_cv/42).
+    # When set, a "View in channel" button appears on the product card.
+    channel_post_url: str = ""
 
 
 # Reference moment used to set the demo sales below relative to startup.
