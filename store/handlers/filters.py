@@ -17,7 +17,6 @@ from store.keyboards import (
 )
 from store.services.catalog_filter import (
     CATEGORY_LABELS,
-    PRICE_RANGES,
     category_has_subcategories,
     filter_products,
     filter_summary,
@@ -30,15 +29,21 @@ _FILTER_TITLE = "🔍 *Фільтр товарів*"
 
 
 def _filter_text(flt: dict) -> str:
-    if flt.get("ui") == "sub":
+    ui = flt.get("ui", "main")
+    if ui == "sub":
         category = CATEGORY_LABELS.get(flt.get("category", "all"), "Категорія")
         return (
             f"🔍 *{category}*\n\n{filter_summary(flt)}\n\n"
-            "Оберіть підкатегорію та натисніть «Показати товари»."
+            "Оберіть підкатегорію та натисніть «Далі»."
+        )
+    if ui == "price":
+        return (
+            f"🔍 *Ціна*\n\n{filter_summary(flt)}\n\n"
+            "Оберіть валюту та діапазон ціни."
         )
     return (
         f"{_FILTER_TITLE}\n\n{filter_summary(flt)}\n\n"
-        "Оберіть параметри та натисніть «Показати товари»."
+        "Оберіть категорію."
     )
 
 
@@ -66,23 +71,46 @@ async def _send_filter(update: Update, flt: dict) -> None:
 
 async def reopen_filter(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     flt = get_filter(context)
-    if category_has_subcategories(flt.get("category", "all")) and flt.get(
-        "category", "all"
-    ) != "all":
+    category = flt.get("category", "all")
+    if category != "all" and category_has_subcategories(category):
         flt["ui"] = "sub"
+    elif category != "all":
+        flt["ui"] = "price"
     else:
         flt["ui"] = "main"
     await _send_filter(update, flt)
 
 
-async def back_to_main_filter(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> None:
+async def to_price_screen(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Advance from subcategory step to price step."""
     query = update.callback_query
     await query.answer()
     flt = get_filter(context)
-    flt["ui"] = "main"
-    flt["subcategory"] = "all"
+    flt["ui"] = "price"
+    await query.edit_message_text(
+        _filter_text(flt),
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=filter_keyboard(flt),
+    )
+
+
+async def back_to_main_filter(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Context-aware back: price → sub (or main), sub → main."""
+    query = update.callback_query
+    await query.answer()
+    flt = get_filter(context)
+    ui = flt.get("ui", "main")
+    if ui == "price":
+        category = flt.get("category", "all")
+        if category != "all" and category_has_subcategories(category):
+            flt["ui"] = "sub"
+        else:
+            flt["ui"] = "main"
+    else:
+        flt["ui"] = "main"
+        flt["subcategory"] = "all"
     await query.edit_message_text(
         _filter_text(flt),
         parse_mode=ParseMode.MARKDOWN,
@@ -99,17 +127,16 @@ async def set_filter_value(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if field == "cat":
         flt["category"] = value
         flt["subcategory"] = "all"
+        flt["price"] = "any"
         if value != "all" and category_has_subcategories(value):
             flt["ui"] = "sub"
         else:
-            flt["ui"] = "main"
+            flt["ui"] = "price"
     elif field == "sub":
         flt["subcategory"] = value
     elif field == "cur":
         flt["currency"] = value
-        valid_keys = {key for key, *_ in PRICE_RANGES[value]}
-        if flt.get("price") not in valid_keys:
-            flt["price"] = "any"
+        flt["price"] = "any"
     elif field == "price":
         flt["price"] = value
 

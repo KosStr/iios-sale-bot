@@ -14,6 +14,8 @@ DISCONTINUED_PRODUCT_IDS = (
     "samsung-s24-ultra",
     "pixel-8-pro",
     "xiaomi-14",
+    "iphone-13-128-blue",  # removed variant (128GB Blue no longer stocked)
+    "zenbook-14",          # ASUS replaced by full MacBook lineup
 )
 
 _INSERT = """

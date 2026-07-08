@@ -35,6 +35,7 @@ from store.handlers.filters import (
     set_filter_value,
     show_group,
     show_results,
+    to_price_screen,
 )
 from store.handlers.info import show_contacts, show_location
 from store.keyboards import (
@@ -149,6 +150,7 @@ def create_application(config: Config) -> Application:
 
     # Filter callbacks
     app.add_handler(CallbackQueryHandler(set_filter_value, pattern=r"^flt:(cat|sub|cur|price):"))
+    app.add_handler(CallbackQueryHandler(to_price_screen, pattern=r"^flt:to_price$"))
     app.add_handler(CallbackQueryHandler(back_to_main_filter, pattern=r"^flt:back$"))
     app.add_handler(CallbackQueryHandler(show_results, pattern=r"^flt:show$"))
     app.add_handler(CallbackQueryHandler(reopen_filter, pattern=r"^flt:open$"))

@@ -23,9 +23,10 @@ UAH_RATE = 41.5
 CATEGORIES: list[tuple[str, str]] = [
     ("all", "🧩 Усі категорії"),
     ("phone", "📱 iPhone"),
+    ("ipad", "📲 iPad"),
     ("watch", "⌚ Годинники"),
     ("headphones", "🎧 Навушники"),
-    ("laptop", "💻 Ноутбуки"),
+    ("laptop", "💻 MacBook"),
     ("accessories", "🔌 Аксесуари"),
 ]
 CATEGORY_LABELS: dict[str, str] = dict(CATEGORIES)
@@ -34,8 +35,21 @@ CATEGORY_LABELS: dict[str, str] = dict(CATEGORIES)
 SUBCATEGORIES: dict[str, list[tuple[str, str]]] = {
     "phone": [
         ("all", "🧩 Усі"),
-        ("iphone_13", "iPhone 13"),
-        ("iphone_15_pro", "iPhone 15 Pro"),
+        ("iphone_17", "iPhone 17"),
+        ("iphone_16", "iPhone 16"),
+        ("iphone_15", "iPhone 15"),
+    ],
+    "ipad": [
+        ("all", "🧩 Усі"),
+        ("ipad_pro", "iPad Pro"),
+        ("ipad_air", "iPad Air"),
+        ("ipad_mini", "iPad mini"),
+        ("ipad_base", "iPad"),
+    ],
+    "laptop": [
+        ("all", "🧩 Усі"),
+        ("macbook_m", "MacBook M"),
+        ("macbook_intel", "MacBook Intel"),
     ],
     "accessories": [
         ("all", "🧩 Усі"),
@@ -52,24 +66,6 @@ SUBCATEGORY_LABELS: dict[str, dict[str, str]] = {
 
 # Currency code -> symbol.
 CURRENCIES: dict[str, str] = {"UAH": "₴", "USD": "$"}
-
-# Price ranges per currency: key, label, low (incl.), high (excl.).
-PRICE_RANGES: dict[str, list[tuple[str, str, float, float]]] = {
-    "USD": [
-        ("any", "Будь-яка ціна", 0, math.inf),
-        ("r1", "До $300", 0, 300),
-        ("r2", "$300 – $700", 300, 700),
-        ("r3", "$700 – $1000", 700, 1000),
-        ("r4", "Понад $1000", 1000, math.inf),
-    ],
-    "UAH": [
-        ("any", "Будь-яка ціна", 0, math.inf),
-        ("r1", "До 12 000 ₴", 0, 12000),
-        ("r2", "12 000 – 29 000 ₴", 12000, 29000),
-        ("r3", "29 000 – 41 000 ₴", 29000, 41000),
-        ("r4", "Понад 41 000 ₴", 41000, math.inf),
-    ],
-}
 
 _default_currency = os.getenv("CURRENCY", "UAH").strip().upper() or "UAH"
 if _default_currency not in CURRENCIES:
@@ -115,6 +111,71 @@ def convert(amount_usd: int, currency: str) -> int:
     return amount_usd
 
 
+def _products_in_category(category: str, subcategory: str) -> list[Product]:
+    """All products matching category/subcategory, ignoring price."""
+    result: list[Product] = []
+    for product in get_all_products():
+        if category != "all" and product.category != category:
+            continue
+        if (
+            category_has_subcategories(category)
+            and subcategory != "all"
+            and product.subcategory != subcategory
+        ):
+            continue
+        result.append(product)
+    return result
+
+
+def _floor_display(value: int) -> int:
+    """Round value down so only the first 2 digits are significant.
+
+    Examples: 343 → 340, 3 430 → 3 400, 41 500 → 41 000.
+    Values below 10 are returned unchanged.
+    """
+    if value < 10:
+        return value
+    digits = len(str(value))
+    step = 10 ** (digits - 2)
+    return (value // step) * step
+
+
+def _fmt_split(value: int, currency: str) -> str:
+    """Format the display value for a price split label."""
+    display = _floor_display(value)
+    if currency == "UAH":
+        return f"{display:,} ₴".replace(",", "\u00a0")
+    return f"${display:,}"
+
+
+def dynamic_price_ranges(
+    flt: dict, currency: str
+) -> list[tuple[str, str, float, float]]:
+    """Return 3 price options: all / up-to-median / median+.
+
+    The split point is the median effective price of the products currently
+    visible in the selected category/subcategory.  Falls back to a single
+    "any" option when fewer than 2 products are available.
+    Labels use a rounded display value; filter bounds stay exact.
+    """
+    category = flt.get("category", "all")
+    subcategory = flt.get("subcategory", "all")
+    products = _products_in_category(category, subcategory)
+
+    if len(products) < 2:
+        return [("any", "Будь-яка ціна", 0, math.inf)]
+
+    prices = sorted(convert(effective_price(p), currency) for p in products)
+    median = prices[len(prices) // 2]
+    median_fmt = _fmt_split(median, currency)
+
+    return [
+        ("any", "Будь-яка ціна", 0, math.inf),
+        ("low", f"До {median_fmt}", 0, median + 1),
+        ("high", f"{median_fmt}+", median, math.inf),
+    ]
+
+
 def format_price(amount_usd: int, currency: str) -> str:
     value = convert(amount_usd, currency)
     if currency == "UAH":
@@ -130,36 +191,20 @@ def button_price(product: Product, currency: str) -> str:
     return label
 
 
-def price_range_label(currency: str, key: str) -> str:
-    for k, label, _lo, _hi in PRICE_RANGES.get(currency, []):
-        if k == key:
-            return label
-    return "Будь-яка ціна"
-
-
-def _range_bounds(currency: str, key: str) -> tuple[float, float]:
-    for k, _label, lo, hi in PRICE_RANGES.get(currency, []):
-        if k == key:
-            return lo, hi
-    return 0, math.inf
-
-
 def filter_products(flt: dict) -> list[Product]:
     category = flt.get("category", "all")
     subcategory = flt.get("subcategory", "all")
     currency = flt.get("currency", "UAH")
-    lo, hi = _range_bounds(currency, flt.get("price", "any"))
+    price_key = flt.get("price", "any")
+
+    ranges = dynamic_price_ranges(flt, currency)
+    lo, hi = next(
+        ((rlo, rhi) for k, _, rlo, rhi in ranges if k == price_key),
+        (0, math.inf),
+    )
 
     result: list[Product] = []
-    for product in get_all_products():
-        if category != "all" and product.category != category:
-            continue
-        if (
-            category_has_subcategories(category)
-            and subcategory != "all"
-            and product.subcategory != subcategory
-        ):
-            continue
+    for product in _products_in_category(category, subcategory):
         price = convert(effective_price(product), currency)
         if lo <= price < hi:
             result.append(product)
@@ -177,11 +222,15 @@ def filter_summary(flt: dict) -> str:
         lines.append(f"Підкатегорія: *{sub_label}*")
 
     currency = flt.get("currency", "UAH")
-    price = price_range_label(currency, flt.get("price", "any"))
+    price_key = flt.get("price", "any")
+    ranges = dynamic_price_ranges(flt, currency)
+    price_label = next(
+        (label for k, label, _, _ in ranges if k == price_key), "Будь-яка ціна"
+    )
     lines.extend(
         [
             f"Валюта: *{currency}*",
-            f"Ціна: *{price}*",
+            f"Ціна: *{price_label}*",
         ]
     )
     return "\n".join(lines)

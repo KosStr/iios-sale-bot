@@ -18,9 +18,9 @@ from store.services.cart import Cart
 from store.services.catalog_filter import (
     CATEGORIES,
     CURRENCIES,
-    PRICE_RANGES,
     button_price,
     category_has_subcategories,
+    dynamic_price_ranges,
     format_price,
     subcategory_options,
 )
@@ -54,13 +54,18 @@ def _check(selected: bool, label: str) -> str:
 
 
 def filter_keyboard(flt: dict) -> InlineKeyboardMarkup:
-    """Filter screen: main (category/currency/price) or sub (subcategory only)."""
-    if flt.get("ui") == "sub" and category_has_subcategories(flt.get("category", "all")):
+    """Step-based filter dispatcher: cat → [sub →] price."""
+    ui = flt.get("ui", "main")
+    if ui == "price":
+        return _price_filter_keyboard(flt)
+    if ui == "sub" and category_has_subcategories(flt.get("category", "all")):
         return _subcategory_filter_keyboard(flt)
+    return _category_keyboard(flt)
 
-    currency = flt.get("currency", "UAH")
+
+def _category_keyboard(flt: dict) -> InlineKeyboardMarkup:
+    """Step 1: pick a category. Tapping any option auto-advances."""
     rows: list[list[InlineKeyboardButton]] = []
-
     cat_buttons = [
         InlineKeyboardButton(
             _check(flt.get("category") == key, label), callback_data=f"flt:cat:{key}"
@@ -69,32 +74,11 @@ def filter_keyboard(flt: dict) -> InlineKeyboardMarkup:
     ]
     for i in range(0, len(cat_buttons), 2):
         rows.append(cat_buttons[i : i + 2])
-
-    rows.append(
-        [
-            InlineKeyboardButton(
-                _check(currency == code, f"{code} {symbol}"),
-                callback_data=f"flt:cur:{code}",
-            )
-            for code, symbol in CURRENCIES.items()
-        ]
-    )
-
-    for key, label, _lo, _hi in PRICE_RANGES[currency]:
-        rows.append(
-            [
-                InlineKeyboardButton(
-                    _check(flt.get("price") == key, label),
-                    callback_data=f"flt:price:{key}",
-                )
-            ]
-        )
-
-    rows.append([InlineKeyboardButton("🔎 Показати товари", callback_data="flt:show")])
     return InlineKeyboardMarkup(rows)
 
 
 def _subcategory_filter_keyboard(flt: dict) -> InlineKeyboardMarkup:
+    """Step 2 (optional): pick a subcategory, then proceed to price."""
     category = flt.get("category", "all")
     rows: list[list[InlineKeyboardButton]] = []
 
@@ -108,8 +92,46 @@ def _subcategory_filter_keyboard(flt: dict) -> InlineKeyboardMarkup:
     for i in range(0, len(sub_buttons), 2):
         rows.append(sub_buttons[i : i + 2])
 
-    rows.append([InlineKeyboardButton("⬅️ Назад", callback_data="flt:back")])
-    rows.append([InlineKeyboardButton("🔎 Показати товари", callback_data="flt:show")])
+    rows.append(
+        [
+            InlineKeyboardButton("⬅️ Назад", callback_data="flt:back"),
+            InlineKeyboardButton("Далі ➡️", callback_data="flt:to_price"),
+        ]
+    )
+    return InlineKeyboardMarkup(rows)
+
+
+def _price_filter_keyboard(flt: dict) -> InlineKeyboardMarkup:
+    """Step 3: pick currency and price range, then show results."""
+    currency = flt.get("currency", "UAH")
+    rows: list[list[InlineKeyboardButton]] = []
+
+    rows.append(
+        [
+            InlineKeyboardButton(
+                _check(currency == code, f"{code} {symbol}"),
+                callback_data=f"flt:cur:{code}",
+            )
+            for code, symbol in CURRENCIES.items()
+        ]
+    )
+
+    for key, label, _lo, _hi in dynamic_price_ranges(flt, currency):
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    _check(flt.get("price") == key, label),
+                    callback_data=f"flt:price:{key}",
+                )
+            ]
+        )
+
+    rows.append(
+        [
+            InlineKeyboardButton("⬅️ Назад", callback_data="flt:back"),
+            InlineKeyboardButton("🔎 Показати товари", callback_data="flt:show"),
+        ]
+    )
     return InlineKeyboardMarkup(rows)
 
 
