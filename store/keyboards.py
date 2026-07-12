@@ -22,6 +22,7 @@ from store.services.catalog_filter import (
     category_has_subcategories,
     dynamic_price_ranges,
     format_price,
+    has_price_filter,
     subcategory_options,
 )
 from store.services.grouping import Group
@@ -53,6 +54,13 @@ def _check(selected: bool, label: str) -> str:
     return f"✅ {label}" if selected else label
 
 
+def _rows_of_2(
+    buttons: list[InlineKeyboardButton],
+) -> list[list[InlineKeyboardButton]]:
+    """Split a flat button list into two-column rows."""
+    return [buttons[i : i + 2] for i in range(0, len(buttons), 2)]
+
+
 def filter_keyboard(flt: dict) -> InlineKeyboardMarkup:
     """Step-based filter dispatcher: cat → [sub →] price."""
     ui = flt.get("ui", "main")
@@ -65,23 +73,18 @@ def filter_keyboard(flt: dict) -> InlineKeyboardMarkup:
 
 def _category_keyboard(flt: dict) -> InlineKeyboardMarkup:
     """Step 1: pick a category. Tapping any option auto-advances."""
-    rows: list[list[InlineKeyboardButton]] = []
-    cat_buttons = [
+    buttons = [
         InlineKeyboardButton(
             _check(flt.get("category") == key, label), callback_data=f"flt:cat:{key}"
         )
         for key, label in CATEGORIES
     ]
-    for i in range(0, len(cat_buttons), 2):
-        rows.append(cat_buttons[i : i + 2])
-    return InlineKeyboardMarkup(rows)
+    return InlineKeyboardMarkup(_rows_of_2(buttons))
 
 
 def _subcategory_filter_keyboard(flt: dict) -> InlineKeyboardMarkup:
     """Step 2 (optional): pick a subcategory, then proceed to price."""
     category = flt.get("category", "all")
-    rows: list[list[InlineKeyboardButton]] = []
-
     sub_buttons = [
         InlineKeyboardButton(
             _check(flt.get("subcategory", "all") == key, label),
@@ -89,15 +92,12 @@ def _subcategory_filter_keyboard(flt: dict) -> InlineKeyboardMarkup:
         )
         for key, label in subcategory_options(category)
     ]
-    for i in range(0, len(sub_buttons), 2):
-        rows.append(sub_buttons[i : i + 2])
-
-    rows.append(
-        [
-            InlineKeyboardButton("⬅️ Назад", callback_data="flt:back"),
-            InlineKeyboardButton("Далі ➡️", callback_data="flt:to_price"),
-        ]
-    )
+    rows = _rows_of_2(sub_buttons)
+    next_label = "Далі ➡️" if has_price_filter(flt) else "🔎 Показати товари"
+    rows.append([
+        InlineKeyboardButton("⬅️ Назад", callback_data="flt:back"),
+        InlineKeyboardButton(next_label, callback_data="flt:to_price"),
+    ])
     return InlineKeyboardMarkup(rows)
 
 

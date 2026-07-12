@@ -21,6 +21,7 @@ from store.services.catalog_filter import (
     filter_products,
     filter_summary,
     get_filter,
+    has_price_filter,
 )
 from store.services.grouping import build_groups, find_group
 from store.utils.tg import edit_or_resend
@@ -81,17 +82,44 @@ async def reopen_filter(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await _send_filter(update, flt)
 
 
+async def _render_results(query, flt: dict) -> None:
+    """Edit the current message to show filtered results or a no-results notice."""
+    products = filter_products(flt)
+    if not products:
+        await query.edit_message_text(
+            "😕 За вашим фільтром нічого не знайдено.\nСпробуйте змінити параметри.",
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=filter_keyboard(flt),
+        )
+        return
+    groups = build_groups(products)
+    currency = flt.get("currency", "UAH")
+    await query.edit_message_text(
+        f"🛍 *Знайдено моделей: {len(groups)}*\n\nОберіть модель, щоб переглянути деталі:",
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=catalog_results_keyboard(groups, currency),
+    )
+
+
+async def _advance_after_category(query, flt: dict, context) -> None:
+    """After category/subcategory is locked in, go to price or skip to results."""
+    if has_price_filter(flt):
+        flt["ui"] = "price"
+        await query.edit_message_text(
+            _filter_text(flt),
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=filter_keyboard(flt),
+        )
+        return
+    await _render_results(query, flt)
+
+
 async def to_price_screen(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Advance from subcategory step to price step."""
+    """Advance from subcategory step to price (or results if < 5 products)."""
     query = update.callback_query
     await query.answer()
     flt = get_filter(context)
-    flt["ui"] = "price"
-    await query.edit_message_text(
-        _filter_text(flt),
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=filter_keyboard(flt),
-    )
+    await _advance_after_category(query, flt, context)
 
 
 async def back_to_main_filter(
@@ -101,13 +129,9 @@ async def back_to_main_filter(
     query = update.callback_query
     await query.answer()
     flt = get_filter(context)
-    ui = flt.get("ui", "main")
-    if ui == "price":
+    if flt.get("ui") == "price":
         category = flt.get("category", "all")
-        if category != "all" and category_has_subcategories(category):
-            flt["ui"] = "sub"
-        else:
-            flt["ui"] = "main"
+        flt["ui"] = "sub" if category != "all" and category_has_subcategories(category) else "main"
     else:
         flt["ui"] = "main"
         flt["subcategory"] = "all"
@@ -128,10 +152,18 @@ async def set_filter_value(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         flt["category"] = value
         flt["subcategory"] = "all"
         flt["price"] = "any"
+        await query.answer()
         if value != "all" and category_has_subcategories(value):
             flt["ui"] = "sub"
+            await query.edit_message_text(
+                _filter_text(flt),
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=filter_keyboard(flt),
+            )
         else:
-            flt["ui"] = "price"
+            await _advance_after_category(query, flt, context)
+        return
+
     elif field == "sub":
         flt["subcategory"] = value
     elif field == "cur":
@@ -151,26 +183,7 @@ async def set_filter_value(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
-
-    flt = get_filter(context)
-    products = filter_products(flt)
-    currency = flt.get("currency", "UAH")
-
-    if not products:
-        await query.edit_message_text(
-            "😕 За вашим фільтром нічого не знайдено.\nСпробуйте змінити параметри.",
-            parse_mode=ParseMode.MARKDOWN,
-            reply_markup=filter_keyboard(flt),
-        )
-        return
-
-    groups = build_groups(products)
-    text = f"🛍 *Знайдено моделей: {len(groups)}*\n\nОберіть модель, щоб переглянути деталі:"
-    keyboard = catalog_results_keyboard(groups, currency)
-
-    await query.edit_message_text(
-        text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard
-    )
+    await _render_results(query, get_filter(context))
 
 
 async def show_group(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

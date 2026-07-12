@@ -113,18 +113,15 @@ def convert(amount_usd: int, currency: str) -> int:
 
 def _products_in_category(category: str, subcategory: str) -> list[Product]:
     """All products matching category/subcategory, ignoring price."""
-    result: list[Product] = []
-    for product in get_all_products():
-        if category != "all" and product.category != category:
-            continue
-        if (
-            category_has_subcategories(category)
-            and subcategory != "all"
-            and product.subcategory != subcategory
-        ):
-            continue
-        result.append(product)
-    return result
+    return [
+        p for p in get_all_products()
+        if (category == "all" or p.category == category)
+        and (
+            not category_has_subcategories(category)
+            or subcategory == "all"
+            or p.subcategory == subcategory
+        )
+    ]
 
 
 def _floor_display(value: int) -> int:
@@ -146,6 +143,13 @@ def _fmt_split(value: int, currency: str) -> str:
     if currency == "UAH":
         return f"{display:,} ₴".replace(",", "\u00a0")
     return f"${display:,}"
+
+
+def has_price_filter(flt: dict) -> bool:
+    """True when the current category/subcategory has 5+ products."""
+    category = flt.get("category", "all")
+    subcategory = flt.get("subcategory", "all")
+    return len(_products_in_category(category, subcategory)) >= 5
 
 
 def dynamic_price_ranges(
@@ -212,10 +216,9 @@ def filter_products(flt: dict) -> list[Product]:
 
 
 def filter_summary(flt: dict) -> str:
-    category = CATEGORY_LABELS.get(flt.get("category", "all"), "Усі категорії")
-    lines = [f"Категорія: *{category}*"]
-
     cat_key = flt.get("category", "all")
+    lines = [f"Категорія: *{CATEGORY_LABELS.get(cat_key, 'Усі категорії')}*"]
+
     sub_key = flt.get("subcategory", "all")
     if category_has_subcategories(cat_key) and sub_key != "all":
         sub_label = SUBCATEGORY_LABELS[cat_key].get(sub_key, sub_key)
@@ -223,14 +226,9 @@ def filter_summary(flt: dict) -> str:
 
     currency = flt.get("currency", "UAH")
     price_key = flt.get("price", "any")
-    ranges = dynamic_price_ranges(flt, currency)
     price_label = next(
-        (label for k, label, _, _ in ranges if k == price_key), "Будь-яка ціна"
+        (label for k, label, _, _ in dynamic_price_ranges(flt, currency) if k == price_key),
+        "Будь-яка ціна",
     )
-    lines.extend(
-        [
-            f"Валюта: *{currency}*",
-            f"Ціна: *{price_label}*",
-        ]
-    )
+    lines.extend([f"Валюта: *{currency}*", f"Ціна: *{price_label}*"])
     return "\n".join(lines)
