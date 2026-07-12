@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
@@ -17,6 +18,7 @@ from telegram.ext import (
 
 from store.data.products import Product
 from store.db import products_repo
+from store.keyboards import BTN_ADMIN_ADD
 from store.services.catalog_filter import (
     CATEGORIES,
     CATEGORY_LABELS,
@@ -45,17 +47,11 @@ def _clear_draft(context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 def _category_keyboard() -> InlineKeyboardMarkup:
-    rows = []
-    row: list[InlineKeyboardButton] = []
-    for key, label in CATEGORIES:
-        if key == "all":
-            continue
-        row.append(InlineKeyboardButton(label, callback_data=f"adm:cat:{key}"))
-        if len(row) == 2:
-            rows.append(row)
-            row = []
-    if row:
-        rows.append(row)
+    buttons = [
+        InlineKeyboardButton(label, callback_data=f"adm:cat:{key}")
+        for key, label in CATEGORIES if key != "all"
+    ]
+    rows = [buttons[i : i + 2] for i in range(0, len(buttons), 2)]
     rows.append([InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")])
     return InlineKeyboardMarkup(rows)
 
@@ -182,6 +178,7 @@ async def pick_category(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     await query.edit_message_text(
         "Скільки одиниць *на складі*? (число)",
         parse_mode=ParseMode.MARKDOWN,
+        reply_markup=_CANCEL,
     )
     return STOCK
 
@@ -193,6 +190,7 @@ async def pick_subcategory(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     await query.edit_message_text(
         "Скільки одиниць *на складі*? (число)",
         parse_mode=ParseMode.MARKDOWN,
+        reply_markup=_CANCEL,
     )
     return STOCK
 
@@ -209,13 +207,15 @@ async def collect_stock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         return STOCK
 
     _draft(context)["stock"] = stock
-    hint = (
-        "Надішліть *фото* товару"
-        if r2_write_enabled()
-        else "Надішліть *фото* (потрібні R2 ключі для завантаження) або /skip"
-    )
+    if r2_write_enabled():
+        hint = "Надішліть *фото* товару або /skip — без фото."
+    else:
+        hint = (
+            "⚠️ R2 не налаштовано — фото зберегти неможливо.\n\n"
+            "Введіть /skip, щоб продовжити без фото."
+        )
     await update.message.reply_text(
-        f"{hint}\n\nАбо /skip — без фото.",
+        hint,
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=_CANCEL,
     )
@@ -315,7 +315,10 @@ async def cancel_add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 def build_admin_add_handler() -> ConversationHandler:
     return ConversationHandler(
-        entry_points=[CommandHandler("add", start_add)],
+        entry_points=[
+            CommandHandler("add", start_add),
+            MessageHandler(filters.Regex(rf"^{re.escape(BTN_ADMIN_ADD)}$"), start_add),
+        ],
         states={
             NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_name)],
             PRICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_price)],

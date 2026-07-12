@@ -39,7 +39,6 @@ from store.handlers.filters import (
 )
 from store.handlers.info import show_contacts, show_location
 from store.keyboards import (
-    BTN_ADMIN_ADD,
     BTN_ADMIN_PRODUCTS,
     BTN_CART,
     BTN_CATALOG,
@@ -91,22 +90,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    lines = list(HELP)
+    text = HELP
     if is_admin(update, context):
-        lines.extend(
-            [
-                "",
-                "*Адмін:*",
-                "/add — додати товар",
-                "/products — список, редагування, видалення",
-            ]
-        )
-    await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
-
-
-async def _admin_add_btn(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    from store.handlers.admin_add import start_add
-    await start_add(update, context)
+        text += "\n\n*Адмін:*\n/add — додати товар\n/products — список, редагування, видалення"
+    await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
 
 async def _admin_products_btn(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -145,7 +132,6 @@ def create_application(config: Config) -> Application:
     app.add_handler(MessageHandler(filters.Regex(rf"^{re.escape(BTN_LOCATION)}$"), show_location))
     app.add_handler(MessageHandler(filters.Regex(rf"^{re.escape(BTN_HELP)}$"), help_command))
     # Admin reply-keyboard buttons
-    app.add_handler(MessageHandler(filters.Regex(rf"^{re.escape(BTN_ADMIN_ADD)}$"), _admin_add_btn))
     app.add_handler(MessageHandler(filters.Regex(rf"^{re.escape(BTN_ADMIN_PRODUCTS)}$"), _admin_products_btn))
 
     # Filter callbacks

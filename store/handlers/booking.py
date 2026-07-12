@@ -22,6 +22,7 @@ from telegram.ext import (
 
 from store.data.products import get_product_by_id
 from store.db.orders_repo import save_booking
+from store.utils.admin import broadcast_to_admins, user_handle
 
 logger = logging.getLogger(__name__)
 
@@ -145,28 +146,17 @@ async def _notify_admins(
     booking_id: str,
     booking: dict,
 ) -> None:
-    admin_ids = context.bot_data.get("admin_chat_ids", [])
-    if not admin_ids:
-        return
-
-    user = update.effective_user
-    handle = f"@{user.username}" if user.username else f"id {user.id}"
-    message = "\n".join(
-        [
+    handle = user_handle(update.effective_user)
+    await broadcast_to_admins(
+        context,
+        "\n".join([
             f"🔔 *Нове бронювання {booking_id}*",
             "",
             f"Модель: {booking.get('model', '?')}",
             f"Клієнт: {booking.get('name', '?')} ({handle})",
             f"Телефон: {booking.get('phone', '?')}",
-        ]
+        ]),
     )
-    for chat_id in admin_ids:
-        try:
-            await context.bot.send_message(
-                chat_id=chat_id, text=message, parse_mode=ParseMode.MARKDOWN
-            )
-        except Exception as err:  # noqa: BLE001 - log and continue
-            logger.warning("Failed to notify admin %s: %s", chat_id, err)
 
 
 def build_booking_handler() -> ConversationHandler:

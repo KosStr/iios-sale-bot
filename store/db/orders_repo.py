@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from store.data.products import effective_price
 from store.db.connection import db_connection
 from store.services.cart import Cart
 
@@ -21,8 +22,6 @@ def save_order(
     cart: Cart,
     currency: str,
 ) -> None:
-    from store.data.products import effective_price
-
     with db_connection() as conn:
         conn.execute(
             """

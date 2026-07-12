@@ -9,6 +9,7 @@ from store.services.catalog_filter import (
     CATEGORIES,
     CATEGORY_LABELS,
     SUBCATEGORIES,
+    category_has_subcategories,
     format_price,
     subcategory_options,
 )
@@ -91,19 +92,11 @@ def edit_menu_keyboard(product_id: str) -> InlineKeyboardMarkup:
 
 
 def edit_category_keyboard(product_id: str) -> InlineKeyboardMarkup:
-    rows: list[list[InlineKeyboardButton]] = []
-    row: list[InlineKeyboardButton] = []
-    for key, label in CATEGORIES:
-        if key == "all":
-            continue
-        row.append(
-            InlineKeyboardButton(label, callback_data=f"adm:ecat:{product_id}:{key}")
-        )
-        if len(row) == 2:
-            rows.append(row)
-            row = []
-    if row:
-        rows.append(row)
+    buttons = [
+        InlineKeyboardButton(label, callback_data=f"adm:ecat:{product_id}:{key}")
+        for key, label in CATEGORIES if key != "all"
+    ]
+    rows = [buttons[i : i + 2] for i in range(0, len(buttons), 2)]
     rows.append([InlineKeyboardButton("⬅️ Назад", callback_data=f"adm:edit:{product_id}")])
     return InlineKeyboardMarkup(rows)
 
@@ -142,5 +135,3 @@ def delete_confirm_keyboard(product_id: str) -> InlineKeyboardMarkup:
     )
 
 
-def category_has_subcategories(category: str) -> bool:
-    return category in SUBCATEGORIES

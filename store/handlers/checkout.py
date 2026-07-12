@@ -22,6 +22,7 @@ from telegram.ext import (
 from store.db.orders_repo import save_order
 from store.services import cart as cart_service
 from store.services.catalog_filter import format_price, get_filter
+from store.utils.admin import broadcast_to_admins, user_handle
 from store.utils.format import cart_summary
 
 logger = logging.getLogger(__name__)
@@ -173,15 +174,11 @@ async def _notify_admins(
     order: dict,
     cart,
 ) -> None:
-    admin_ids = context.bot_data.get("admin_chat_ids", [])
-    if not admin_ids:
-        return
-
-    user = update.effective_user
-    handle = f"@{user.username}" if user.username else f"id {user.id}"
+    handle = user_handle(update.effective_user)
     currency = get_filter(context).get("currency", "UAH")
-    message = "\n".join(
-        [
+    await broadcast_to_admins(
+        context,
+        "\n".join([
             f"🔔 *Нове замовлення {order_id}*",
             "",
             cart_summary(cart, currency),
@@ -189,15 +186,8 @@ async def _notify_admins(
             f"Клієнт: {order.get('name', '?')} ({handle})",
             f"Телефон: {order.get('phone', '?')}",
             f"Адреса: {order.get('address', '?')}",
-        ]
+        ]),
     )
-    for chat_id in admin_ids:
-        try:
-            await context.bot.send_message(
-                chat_id=chat_id, text=message, parse_mode=ParseMode.MARKDOWN
-            )
-        except Exception as err:  # noqa: BLE001 - log and continue
-            logger.warning("Failed to notify admin %s: %s", chat_id, err)
 
 
 def build_checkout_handler() -> ConversationHandler:

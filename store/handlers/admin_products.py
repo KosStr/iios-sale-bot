@@ -20,7 +20,6 @@ from store.data.products import get_all_products
 from store.db import products_repo
 from store.handlers.admin_ui import (
     PAGE_SIZE,
-    category_has_subcategories,
     delete_confirm_keyboard,
     edit_category_keyboard,
     edit_menu_keyboard,
@@ -29,6 +28,7 @@ from store.handlers.admin_ui import (
     product_detail_text,
     product_list_keyboard,
 )
+from store.services.catalog_filter import category_has_subcategories
 from store.services.images import upload_image
 from store.utils.admin import is_admin
 
