@@ -54,7 +54,7 @@ async def start_checkout(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 
 async def collect_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data["order"]["name"] = update.message.text.strip()
+    context.user_data.setdefault("order", {})["name"] = update.message.text.strip()
     await update.message.reply_text(
         "Чудово. На який номер телефону з вами зв'язатися?",
         reply_markup=_CANCEL_KEYBOARD,
@@ -63,7 +63,7 @@ async def collect_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 
 async def collect_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data["order"]["phone"] = update.message.text.strip()
+    context.user_data.setdefault("order", {})["phone"] = update.message.text.strip()
     await update.message.reply_text(
         "Вкажіть, будь ласка, адресу доставки.", reply_markup=_CANCEL_KEYBOARD
     )
@@ -71,7 +71,7 @@ async def collect_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
 
 async def collect_address(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    order = context.user_data["order"]
+    order = context.user_data.setdefault("order", {})
     order["address"] = update.message.text.strip()
 
     cart = cart_service.get_cart(update.effective_user.id)
@@ -123,7 +123,7 @@ async def confirm_order(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             cart=cart,
             currency=currency,
         )
-    except Exception as err:  # noqa: BLE001
+    except Exception:  # noqa: BLE001
         logger.exception("Failed to save order %s", order_id)
         await query.edit_message_text(
             "На жаль, не вдалося зберегти замовлення. Спробуйте ще раз або зв'яжіться з нами."

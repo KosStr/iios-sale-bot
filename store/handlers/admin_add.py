@@ -37,6 +37,13 @@ _CANCEL = InlineKeyboardMarkup(
     [[InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")]]
 )
 
+_PHOTO_KEYBOARD = InlineKeyboardMarkup(
+    [
+        [InlineKeyboardButton("⏭ Пропустити (без фото)", callback_data="adm:skip_photo")],
+        [InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")],
+    ]
+)
+
 
 def _draft(context: ContextTypes.DEFAULT_TYPE) -> dict:
     return context.user_data.setdefault("admin_add", {})
@@ -208,16 +215,13 @@ async def collect_stock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
     _draft(context)["stock"] = stock
     if r2_write_enabled():
-        hint = "Надішліть *фото* товару або /skip — без фото."
+        hint = "Надішліть *фото* товару або натисніть «Пропустити»."
     else:
-        hint = (
-            "⚠️ R2 не налаштовано — фото зберегти неможливо.\n\n"
-            "Введіть /skip, щоб продовжити без фото."
-        )
+        hint = "⚠️ R2 не налаштовано — фото зберегти неможливо.\nНатисніть «Пропустити», щоб продовжити."
     await update.message.reply_text(
         hint,
         parse_mode=ParseMode.MARKDOWN,
-        reply_markup=_CANCEL,
+        reply_markup=_PHOTO_KEYBOARD,
     )
     return PHOTO
 
@@ -233,7 +237,8 @@ async def collect_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     except Exception:  # noqa: BLE001
         logger.exception("Failed to download photo from Telegram")
         await update.message.reply_text(
-            "Не вдалося завантажити фото. Спробуйте ще раз або /skip."
+            "Не вдалося завантажити фото. Спробуйте ще раз або натисніть «Пропустити».",
+            reply_markup=_PHOTO_KEYBOARD,
         )
         return PHOTO
 
@@ -241,8 +246,9 @@ async def collect_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         draft["image"] = image_key
     else:
         await update.message.reply_text(
-            "⚠️ Фото не завантажено в R2 (перевірте R2_* secrets). "
-            "Товар можна зберегти без фото — /skip"
+            "⚠️ Фото не завантажено в R2 (перевірте R2_* secrets).\n"
+            "Натисніть «Пропустити», щоб зберегти товар без фото.",
+            reply_markup=_PHOTO_KEYBOARD,
         )
         return PHOTO
 
@@ -251,6 +257,8 @@ async def collect_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
 
 async def skip_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.callback_query:
+        await update.callback_query.answer()
     await _show_confirm(update, context)
     return CONFIRM
 
@@ -263,7 +271,7 @@ async def _show_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             [InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")],
         ]
     )
-    await update.message.reply_text(
+    await update.effective_message.reply_text(
         _preview(draft),
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=keyboard,
@@ -327,6 +335,7 @@ def build_admin_add_handler() -> ConversationHandler:
             STOCK: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_stock)],
             PHOTO: [
                 MessageHandler(filters.PHOTO, collect_photo),
+                CallbackQueryHandler(skip_photo, pattern=r"^adm:skip_photo$"),
                 CommandHandler("skip", skip_photo),
             ],
             CONFIRM: [

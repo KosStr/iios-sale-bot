@@ -56,7 +56,7 @@ async def start_booking(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
 
 async def collect_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data["booking"]["name"] = update.message.text.strip()
+    context.user_data.setdefault("booking", {})["name"] = update.message.text.strip()
     await update.message.reply_text(
         "Вкажіть номер телефону для зв'язку.", reply_markup=_CANCEL_KEYBOARD
     )
@@ -64,7 +64,7 @@ async def collect_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 
 async def collect_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    booking = context.user_data["booking"]
+    booking = context.user_data.setdefault("booking", {})
     booking["phone"] = update.message.text.strip()
 
     review = "\n".join(

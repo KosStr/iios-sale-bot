@@ -33,7 +33,7 @@ async def add_to_cart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     product_id = query.data.split(":", 1)[1]
     product = get_product_by_id(product_id)
 
-    if not is_in_stock(product):
+    if not product or not is_in_stock(product):
         await query.answer("На жаль, цього товару немає в наявності.", show_alert=True)
         return
 
