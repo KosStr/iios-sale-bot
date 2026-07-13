@@ -33,7 +33,8 @@ from store.utils.admin import is_admin
 
 logger = logging.getLogger(__name__)
 
-NAME, PRICE, CATEGORY, SUBCATEGORY, STOCK, PHOTO, CONFIRM = range(7)
+# ── State constants (order = wizard step order) ──────────────────────────────
+CATEGORY, SUBCATEGORY, NAME, DESCRIPTION, PRICE, BRAND, STORAGE, COLOR, STOCK, PHOTO, CONFIRM = range(11)
 
 _CANCEL = InlineKeyboardMarkup(
     [[InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")]]
@@ -42,6 +43,13 @@ _CANCEL = InlineKeyboardMarkup(
 _PHOTO_KEYBOARD = InlineKeyboardMarkup(
     [
         [InlineKeyboardButton("⏭ Пропустити (без фото)", callback_data="adm:skip_photo")],
+        [InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")],
+    ]
+)
+
+_STORAGE_SKIP = InlineKeyboardMarkup(
+    [
+        [InlineKeyboardButton("⏭ Пропустити (—)", callback_data="adm:skip_storage")],
         [InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")],
     ]
 )
@@ -79,6 +87,19 @@ def _subcategory_keyboard(category: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(rows)
 
 
+def _storage_hint(category: str) -> str:
+    """Return a category-appropriate label/hint for the storage field."""
+    hints = {
+        "phone": "Обсяг пам'яті (напр. `128GB`, `256GB`)",
+        "ipad": "Обсяг пам'яті (напр. `128GB`, `256GB`)",
+        "laptop": "Конфігурація (напр. `16GB / 256GB`)",
+        "watch": "Розмір корпусу (напр. `45mm`, `49mm`)",
+        "headphones": "Характеристика (напр. `ANC`)",
+        "accessories": "Специфікація (напр. `20 000 mAh`)",
+    }
+    return hints.get(category, "Специфікація")
+
+
 def _preview(draft: dict) -> str:
     cat = CATEGORY_LABELS.get(draft.get("category", ""), draft.get("category", "?"))
     sub = draft.get("subcategory") or "—"
@@ -89,6 +110,10 @@ def _preview(draft: dict) -> str:
             "",
             f"Назва: <b>{escape(draft['name'])}</b>",
             f"ID: <code>{escape(draft['id'])}</code>",
+            f"Опис: {escape(draft.get('description', '—'))}",
+            f"Бренд: {escape(draft.get('brand', '—'))}",
+            f"Специфікація: {escape(draft.get('storage', '—'))}",
+            f"Колір: {escape(draft.get('color', '—'))}",
             f"Ціна: <b>{escape(format_price(draft['price'], 'USD'))}</b>",
             f"Категорія: {escape(cat)}",
             f"Підкатегорія: {escape(str(sub))}",
@@ -104,15 +129,17 @@ def _build_product(draft: dict) -> Product:
         brand=draft.get("brand", "—"),
         name=draft["name"],
         price=draft["price"],
-        storage="—",
-        color="—",
+        storage=draft.get("storage", "—"),
+        color=draft.get("color", "—"),
         stock=draft["stock"],
-        description=draft["name"],
+        description=draft.get("description", draft["name"]),
         category=draft["category"],
         subcategory=draft.get("subcategory", ""),
         image=draft.get("image", ""),
     )
 
+
+# ── Step 1: entry → category ──────────────────────────────────────────────────
 
 async def start_add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not is_admin(update, context):
@@ -121,52 +148,14 @@ async def start_add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     _clear_draft(context)
     await update.message.reply_text(
-        "➕ *Додати товар*\n\nНадішліть *назву* товару.",
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=_CANCEL,
-    )
-    return NAME
-
-
-async def collect_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    name = update.message.text.strip()
-    if len(name) < 2:
-        await update.message.reply_text("Назва занадто коротка. Спробуйте ще раз.")
-        return NAME
-
-    draft = _draft(context)
-    draft["name"] = name
-    draft["id"] = products_repo.make_unique_id(name)
-    draft["brand"] = name.split()[0] if name.split() else "—"
-
-    await update.message.reply_text(
-        f"Ціна в *USD* (лише число, напр. `49` або `999`):",
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=_CANCEL,
-    )
-    return PRICE
-
-
-async def collect_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    raw = update.message.text.strip().replace(",", ".")
-    try:
-        price = int(float(raw))
-    except ValueError:
-        await update.message.reply_text("Введіть число, наприклад: 49")
-        return PRICE
-
-    if price <= 0:
-        await update.message.reply_text("Ціна має бути більше нуля.")
-        return PRICE
-
-    _draft(context)["price"] = price
-    await update.message.reply_text(
-        "Оберіть *категорію*:",
+        "➕ *Додати товар*\n\nОберіть *категорію*:",
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=_category_keyboard(),
     )
     return CATEGORY
 
+
+# ── Step 2: category (→ subcategory if needed, else → name) ──────────────────
 
 async def pick_category(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
@@ -185,24 +174,154 @@ async def pick_category(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         return SUBCATEGORY
 
     await query.edit_message_text(
-        "Скільки одиниць *на складі*? (число)",
+        "Надішліть *назву* товару:",
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=_CANCEL,
     )
-    return STOCK
+    return NAME
 
+
+# ── Step 3 (optional): subcategory → name ────────────────────────────────────
 
 async def pick_subcategory(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
     _draft(context)["subcategory"] = query.data.split(":", 2)[2]
     await query.edit_message_text(
+        "Надішліть *назву* товару:",
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=_CANCEL,
+    )
+    return NAME
+
+
+# ── Step 4: name → description ───────────────────────────────────────────────
+
+async def collect_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    name = update.message.text.strip()
+    if len(name) < 2:
+        await update.message.reply_text("Назва занадто коротка. Спробуйте ще раз.")
+        return NAME
+
+    draft = _draft(context)
+    draft["name"] = name
+    draft["id"] = products_repo.make_unique_id(name)
+
+    await update.message.reply_text(
+        "Надішліть *опис* товару (коротко, 1–2 речення):",
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=_CANCEL,
+    )
+    return DESCRIPTION
+
+
+# ── Step 5: description → price ──────────────────────────────────────────────
+
+async def collect_description(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    description = update.message.text.strip()
+    if len(description) < 2:
+        await update.message.reply_text("Опис занадто короткий. Спробуйте ще раз.")
+        return DESCRIPTION
+
+    _draft(context)["description"] = description
+
+    await update.message.reply_text(
+        "Ціна в *USD* (лише число, напр. `49` або `999`):",
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=_CANCEL,
+    )
+    return PRICE
+
+
+# ── Step 6: price → brand ────────────────────────────────────────────────────
+
+async def collect_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    raw = update.message.text.strip().replace(",", ".")
+    try:
+        price = int(float(raw))
+    except ValueError:
+        await update.message.reply_text("Введіть число, наприклад: 49")
+        return PRICE
+
+    if price <= 0:
+        await update.message.reply_text("Ціна має бути більше нуля.")
+        return PRICE
+
+    _draft(context)["price"] = price
+    await update.message.reply_text(
+        "Надішліть *бренд* товару (напр. `Apple`, `Samsung`, `Anker`):",
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=_CANCEL,
+    )
+    return BRAND
+
+
+# ── Step 7: brand → storage ──────────────────────────────────────────────────
+
+async def collect_brand(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    brand = update.message.text.strip()
+    if len(brand) < 1:
+        await update.message.reply_text("Введіть бренд. Спробуйте ще раз.")
+        return BRAND
+
+    draft = _draft(context)
+    draft["brand"] = brand
+    hint = _storage_hint(draft.get("category", ""))
+
+    await update.message.reply_text(
+        f"{hint}:",
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=_STORAGE_SKIP,
+    )
+    return STORAGE
+
+
+# ── Step 8: storage → color ──────────────────────────────────────────────────
+
+async def collect_storage(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    storage = update.message.text.strip()
+    if not storage:
+        await update.message.reply_text("Введіть значення або натисніть «Пропустити».")
+        return STORAGE
+
+    _draft(context)["storage"] = storage
+    await update.message.reply_text(
+        "Надішліть *колір* товару (напр. `Black`, `Starlight`, `Natural Titanium`):",
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=_CANCEL,
+    )
+    return COLOR
+
+
+async def skip_storage(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.callback_query.answer()
+    _draft(context)["storage"] = "—"
+    await update.callback_query.edit_message_text(
+        "Надішліть *колір* товару (напр. `Black`, `Starlight`, `Natural Titanium`):",
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=_CANCEL,
+    )
+    return COLOR
+
+
+# ── Step 9: color → stock ────────────────────────────────────────────────────
+
+async def collect_color(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    color = update.message.text.strip()
+    if not color:
+        await update.message.reply_text("Введіть колір. Спробуйте ще раз.")
+        return COLOR
+
+    _draft(context)["color"] = color
+    await update.message.reply_text(
         "Скільки одиниць *на складі*? (число)",
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=_CANCEL,
     )
     return STOCK
 
+
+# ── Step 10: stock → photo ───────────────────────────────────────────────────
 
 async def collect_stock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     raw = update.message.text.strip()
@@ -227,6 +346,8 @@ async def collect_stock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     )
     return PHOTO
 
+
+# ── Step 11: photo → confirm ─────────────────────────────────────────────────
 
 async def collect_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     draft = _draft(context)
@@ -280,6 +401,8 @@ async def _show_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     )
 
 
+# ── Step 12: confirm → save ──────────────────────────────────────────────────
+
 async def save_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
@@ -330,10 +453,17 @@ def build_admin_add_handler() -> ConversationHandler:
             MessageHandler(filters.Regex(rf"^{re.escape(BTN_ADMIN_ADD)}$"), start_add),
         ],
         states={
-            NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_name)],
-            PRICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_price)],
             CATEGORY: [CallbackQueryHandler(pick_category, pattern=r"^adm:cat:")],
             SUBCATEGORY: [CallbackQueryHandler(pick_subcategory, pattern=r"^adm:sub:")],
+            NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_name)],
+            DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_description)],
+            PRICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_price)],
+            BRAND: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_brand)],
+            STORAGE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, collect_storage),
+                CallbackQueryHandler(skip_storage, pattern=r"^adm:skip_storage$"),
+            ],
+            COLOR: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_color)],
             STOCK: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_stock)],
             PHOTO: [
                 MessageHandler(filters.PHOTO, collect_photo),

@@ -166,6 +166,10 @@ async def set_filter_value(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     elif field == "sub":
         flt["subcategory"] = value
+        flt["price"] = "any"
+        await query.answer()
+        await _advance_after_category(query, flt, context)
+        return
     elif field == "cur":
         flt["currency"] = value
         flt["price"] = "any"
