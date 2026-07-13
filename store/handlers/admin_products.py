@@ -16,6 +16,8 @@ from telegram.ext import (
     filters,
 )
 
+from html import escape
+
 from store.data.products import get_all_products
 from store.db import products_repo
 from store.handlers.admin_ui import (
@@ -114,7 +116,7 @@ async def view_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     await query.edit_message_text(
         product_detail_text(product),
-        parse_mode=ParseMode.MARKDOWN,
+        parse_mode=ParseMode.HTML,
         reply_markup=product_detail_keyboard(product_id),
     )
 
@@ -133,8 +135,8 @@ async def open_edit_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
     await query.edit_message_text(
-        f"✏️ *Редагування*\n\n{product_detail_text(product)}\n\nЩо змінити?",
-        parse_mode=ParseMode.MARKDOWN,
+        f"✏️ <b>Редагування</b>\n\n{product_detail_text(product)}\n\nЩо змінити?",
+        parse_mode=ParseMode.HTML,
         reply_markup=edit_menu_keyboard(product_id),
     )
 
@@ -153,8 +155,9 @@ async def ask_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         return
 
     await query.edit_message_text(
-        f"🗑 *Видалити товар?*\n\n*{product.name}*\n`{product.id}`\n\nЦю дію не можна скасувати.",
-        parse_mode=ParseMode.MARKDOWN,
+        f"🗑 <b>Видалити товар?</b>\n\n<b>{escape(product.name)}</b>\n"
+        f"<code>{escape(product.id)}</code>\n\nЦю дію не можна скасувати.",
+        parse_mode=ParseMode.HTML,
         reply_markup=delete_confirm_keyboard(product_id),
     )
 
@@ -245,7 +248,7 @@ async def _show_updated_product(query, product_id: str, prefix: str) -> None:
         return
     await query.edit_message_text(
         f"{prefix}\n\n{product_detail_text(product)}",
-        parse_mode=ParseMode.MARKDOWN,
+        parse_mode=ParseMode.HTML,
         reply_markup=edit_menu_keyboard(product_id),
     )
 
@@ -341,7 +344,7 @@ async def apply_edit_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     updated = products_repo.fetch_by_id(product_id)
     await update.message.reply_text(
         f"{message}\n\n{product_detail_text(updated)}",
-        parse_mode=ParseMode.MARKDOWN,
+        parse_mode=ParseMode.HTML,
         reply_markup=edit_menu_keyboard(product_id),
     )
     return ConversationHandler.END

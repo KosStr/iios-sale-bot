@@ -16,6 +16,8 @@ from telegram.ext import (
     filters,
 )
 
+from html import escape
+
 from store.data.products import Product
 from store.db import products_repo
 from store.keyboards import BTN_ADMIN_ADD
@@ -83,13 +85,13 @@ def _preview(draft: dict) -> str:
     photo = "так" if draft.get("image") else "ні"
     return "\n".join(
         [
-            "📋 *Перевірте товар:*",
+            "📋 <b>Перевірте товар:</b>",
             "",
-            f"Назва: *{draft['name']}*",
-            f"ID: `{draft['id']}`",
-            f"Ціна: *{format_price(draft['price'], 'USD')}*",
-            f"Категорія: {cat}",
-            f"Підкатегорія: {sub}",
+            f"Назва: <b>{escape(draft['name'])}</b>",
+            f"ID: <code>{escape(draft['id'])}</code>",
+            f"Ціна: <b>{escape(format_price(draft['price'], 'USD'))}</b>",
+            f"Категорія: {escape(cat)}",
+            f"Підкатегорія: {escape(str(sub))}",
             f"На складі: {draft['stock']}",
             f"Фото: {photo}",
         ]
@@ -273,7 +275,7 @@ async def _show_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     )
     await update.effective_message.reply_text(
         _preview(draft),
-        parse_mode=ParseMode.MARKDOWN,
+        parse_mode=ParseMode.HTML,
         reply_markup=keyboard,
     )
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from html import escape
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from store.data.products import Product
@@ -23,14 +25,14 @@ def product_detail_text(product: Product) -> str:
     photo = product.image or "—"
     return "\n".join(
         [
-            f"📦 *{product.name}*",
+            f"📦 <b>{escape(product.name)}</b>",
             "",
-            f"ID: `{product.id}`",
-            f"Ціна: *{format_price(product.price, 'USD')}*",
-            f"На складі: *{product.stock}*",
-            f"Категорія: {cat}",
-            f"Підкатегорія: {sub}",
-            f"Фото: `{photo}`",
+            f"ID: <code>{escape(product.id)}</code>",
+            f"Ціна: <b>{escape(format_price(product.price, 'USD'))}</b>",
+            f"На складі: <b>{product.stock}</b>",
+            f"Категорія: {escape(cat)}",
+            f"Підкатегорія: {escape(sub)}",
+            f"Фото: <code>{escape(photo)}</code>",
         ]
     )
 
