@@ -67,11 +67,16 @@ class Product:
     channel_post_url: str = ""
 
 
-# Reference moment used to set the demo sales below relative to startup.
+PRODUCTS: list[Product] = [
+    # intentionally empty — add products via the admin /add command
+]
+
+
+# Reference moment kept for compatibility with any import that reads _NOW.
 _NOW = datetime.now()
 
 
-PRODUCTS: list[Product] = [
+_PRODUCTS_LEGACY: list[Product] = [
     # ── iPhone 17 ─────────────────────────────────────────────────────────────
     Product(
         id="iphone-17-128-black",
@@ -683,6 +688,7 @@ PRODUCTS: list[Product] = [
         description="Скло 9H з oleophobic-покриттям та повною сумісністю з Face ID.",
     ),
 ]
+
 
 def get_all_products() -> list[Product]:
     from store.db.products_repo import fetch_all

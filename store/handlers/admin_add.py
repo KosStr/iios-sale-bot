@@ -34,7 +34,7 @@ from store.utils.admin import is_admin
 logger = logging.getLogger(__name__)
 
 # ── State constants (order = wizard step order) ──────────────────────────────
-CATEGORY, SUBCATEGORY, NAME, DESCRIPTION, PRICE, BRAND, STORAGE, COLOR, STOCK, PHOTO, CONFIRM = range(11)
+CATEGORY, SUBCATEGORY, NAME, DESCRIPTION, PRICE, BRAND, STORAGE, COLOR, STOCK, CHANNEL, PHOTO, CONFIRM = range(12)
 
 _CANCEL = InlineKeyboardMarkup(
     [[InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")]]
@@ -52,6 +52,18 @@ _STORAGE_SKIP = InlineKeyboardMarkup(
         [InlineKeyboardButton("⏭ Пропустити (—)", callback_data="adm:skip_storage")],
         [InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")],
     ]
+)
+
+_CHANNEL_SKIP = InlineKeyboardMarkup(
+    [
+        [InlineKeyboardButton("⏭ Пропустити (без посилання)", callback_data="adm:skip_channel")],
+        [InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")],
+    ]
+)
+
+_CHANNEL_URL_RE = re.compile(
+    r"^https?://(?:t\.me|telegram\.me)/[\w+/.-]+$",
+    re.IGNORECASE,
 )
 
 
@@ -104,6 +116,7 @@ def _preview(draft: dict) -> str:
     cat = CATEGORY_LABELS.get(draft.get("category", ""), draft.get("category", "?"))
     sub = draft.get("subcategory") or "—"
     photo = "так" if draft.get("image") else "ні"
+    channel = draft.get("channel_post_url") or "—"
     return "\n".join(
         [
             "📋 <b>Перевірте товар:</b>",
@@ -118,6 +131,7 @@ def _preview(draft: dict) -> str:
             f"Категорія: {escape(cat)}",
             f"Підкатегорія: {escape(str(sub))}",
             f"На складі: {draft['stock']}",
+            f"Пост у каналі: {escape(channel)}",
             f"Фото: {photo}",
         ]
     )
@@ -136,6 +150,7 @@ def _build_product(draft: dict) -> Product:
         category=draft["category"],
         subcategory=draft.get("subcategory", ""),
         image=draft.get("image", ""),
+        channel_post_url=draft.get("channel_post_url", ""),
     )
 
 
@@ -321,7 +336,7 @@ async def collect_color(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     return STOCK
 
 
-# ── Step 10: stock → photo ───────────────────────────────────────────────────
+# ── Step 10: stock → channel ─────────────────────────────────────────────────
 
 async def collect_stock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     raw = update.message.text.strip()
@@ -335,19 +350,73 @@ async def collect_stock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         return STOCK
 
     _draft(context)["stock"] = stock
+    await update.message.reply_text(
+        "Посилання на *пост у каналі* (напр. `https://t.me/iios_cv/42`)\n"
+        "або натисніть «Пропустити»:",
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=_CHANNEL_SKIP,
+    )
+    return CHANNEL
+
+
+# ── Step 11: channel → photo ─────────────────────────────────────────────────
+
+def _normalize_channel_url(raw: str) -> str | None:
+    url = raw.strip()
+    if url.startswith("t.me/") or url.startswith("telegram.me/"):
+        url = "https://" + url
+    if not _CHANNEL_URL_RE.match(url):
+        return None
+    return url
+
+
+async def _ask_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if r2_write_enabled():
         hint = "Надішліть *фото* товару або натисніть «Пропустити»."
     else:
-        hint = "⚠️ R2 не налаштовано — фото зберегти неможливо.\nНатисніть «Пропустити», щоб продовжити."
-    await update.message.reply_text(
-        hint,
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=_PHOTO_KEYBOARD,
-    )
+        hint = (
+            "⚠️ R2 не налаштовано — фото зберегти неможливо.\n"
+            "Натисніть «Пропустити», щоб продовжити."
+        )
+    target = update.effective_message
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            hint,
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=_PHOTO_KEYBOARD,
+        )
+    else:
+        await target.reply_text(
+            hint,
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=_PHOTO_KEYBOARD,
+        )
     return PHOTO
 
 
-# ── Step 11: photo → confirm ─────────────────────────────────────────────────
+async def collect_channel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    url = _normalize_channel_url(update.message.text)
+    if not url:
+        await update.message.reply_text(
+            "Некоректне посилання. Очікую формат:\n"
+            "`https://t.me/iios_cv/42`\n"
+            "або натисніть «Пропустити».",
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=_CHANNEL_SKIP,
+        )
+        return CHANNEL
+
+    _draft(context)["channel_post_url"] = url
+    return await _ask_photo(update, context)
+
+
+async def skip_channel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.callback_query.answer()
+    _draft(context)["channel_post_url"] = ""
+    return await _ask_photo(update, context)
+
+
+# ── Step 12: photo → confirm ─────────────────────────────────────────────────
 
 async def collect_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     draft = _draft(context)
@@ -401,7 +470,7 @@ async def _show_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     )
 
 
-# ── Step 12: confirm → save ──────────────────────────────────────────────────
+# ── Step 13: confirm → save ──────────────────────────────────────────────────
 
 async def save_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
@@ -465,6 +534,10 @@ def build_admin_add_handler() -> ConversationHandler:
             ],
             COLOR: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_color)],
             STOCK: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_stock)],
+            CHANNEL: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, collect_channel),
+                CallbackQueryHandler(skip_channel, pattern=r"^adm:skip_channel$"),
+            ],
             PHOTO: [
                 MessageHandler(filters.PHOTO, collect_photo),
                 CallbackQueryHandler(skip_photo, pattern=r"^adm:skip_photo$"),
