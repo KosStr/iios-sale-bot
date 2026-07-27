@@ -10,7 +10,7 @@ env/
 .pytest_cache/
 build/
 dist/
-data/
+/data/
 *.db
 *.db-wal
 *.db-shm

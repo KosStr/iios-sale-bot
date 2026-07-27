@@ -124,6 +124,8 @@ def update(product_id: str, **fields: object) -> None:
         "image",
         "description",
         "brand",
+        "storage",
+        "color",
         "channel_post_url",
     }
     updates = {key: value for key, value in fields.items() if key in allowed}

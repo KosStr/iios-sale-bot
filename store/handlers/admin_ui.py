@@ -10,8 +10,6 @@ from store.data.products import Product
 from store.services.catalog_filter import (
     CATEGORIES,
     CATEGORY_LABELS,
-    SUBCATEGORIES,
-    category_has_subcategories,
     format_price,
     subcategory_options,
 )

@@ -310,9 +310,7 @@ async def apply_edit_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 if len(text) < 2:
                     await update.message.reply_text("Назва занадто коротка.")
                     return EDIT_INPUT
-                products_repo.update(
-                    product_id, name=text, description=text, brand=text.split()[0]
-                )
+                products_repo.update(product_id, name=text)
                 message = "✅ Назву оновлено."
             elif field == "price":
                 price = int(float(text.replace(",", ".")))

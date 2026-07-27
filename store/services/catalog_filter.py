@@ -124,25 +124,11 @@ def _products_in_category(category: str, subcategory: str) -> list[Product]:
     ]
 
 
-def _floor_display(value: int) -> int:
-    """Round value down so only the first 2 digits are significant.
-
-    Examples: 343 → 340, 3 430 → 3 400, 41 500 → 41 000.
-    Values below 10 are returned unchanged.
-    """
-    if value < 10:
-        return value
-    digits = len(str(value))
-    step = 10 ** (digits - 2)
-    return (value // step) * step
-
-
 def _fmt_split(value: int, currency: str) -> str:
-    """Format the display value for a price split label."""
-    display = _floor_display(value)
+    """Format an exact amount (already in the target currency) for a filter label."""
     if currency == "UAH":
-        return f"{display:,} ₴".replace(",", "\u00a0")
-    return f"${display:,}"
+        return f"{value:,} ₴".replace(",", "\u00a0")
+    return f"${value:,}"
 
 
 def has_price_filter(flt: dict) -> bool:
@@ -155,12 +141,13 @@ def has_price_filter(flt: dict) -> bool:
 def dynamic_price_ranges(
     flt: dict, currency: str
 ) -> list[tuple[str, str, float, float]]:
-    """Return 3 price options: all / up-to-median / median+.
+    """Return 3 price options: any / cheaper-than-average / pricier-than-average.
 
-    The split point is the median effective price of the products currently
-    visible in the selected category/subcategory.  Falls back to a single
-    "any" option when fewer than 2 products are available.
-    Labels use a rounded display value; filter bounds stay exact.
+    The split point is the average (mean) effective price of the products
+    currently visible in the selected category/subcategory, shown as its
+    exact value (no rounding) directly in the "less than" / "more than"
+    labels. Falls back to a single "any" option when fewer than 2 products
+    are available.
     """
     category = flt.get("category", "all")
     subcategory = flt.get("subcategory", "all")
@@ -169,14 +156,14 @@ def dynamic_price_ranges(
     if len(products) < 2:
         return [("any", "Будь-яка ціна", 0, math.inf)]
 
-    prices = sorted(convert(effective_price(p), currency) for p in products)
-    median = prices[len(prices) // 2]
-    median_fmt = _fmt_split(median, currency)
+    prices = [convert(effective_price(p), currency) for p in products]
+    average = round(sum(prices) / len(prices))
+    average_fmt = _fmt_split(average, currency)
 
     return [
         ("any", "Будь-яка ціна", 0, math.inf),
-        ("low", f"До {median_fmt}", 0, median + 1),
-        ("high", f"{median_fmt}+", median, math.inf),
+        ("low", f"Менше {average_fmt}", 0, average),
+        ("high", f"Більше {average_fmt}", average, math.inf),
     ]
 
 

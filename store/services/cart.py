@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from store.db import cart_repo
-from store.models.cart import Cart, CartItem
+from store.models.cart import Cart
 
 __all__ = ["Cart", "add_item", "remove_item", "clear_cart", "get_cart", "is_empty"]
 
