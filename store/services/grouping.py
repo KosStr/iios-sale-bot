@@ -11,6 +11,16 @@ from dataclasses import dataclass
 
 from store.data.products import Product, effective_price, is_on_sale
 
+# A group key is sent as "group:<key>" callback data, which Telegram caps at
+# 64 bytes. Model names are admin-typed and may be Cyrillic (2 bytes/char),
+# so they have to be validated before they reach a keyboard.
+MAX_GROUP_NAME_BYTES = 64 - len("group:")
+
+
+def fits_group_key(name: str) -> bool:
+    """True when `name` is short enough to use as a group callback payload."""
+    return len(name.encode("utf-8")) <= MAX_GROUP_NAME_BYTES
+
 
 def group_key(product: Product) -> str:
     return product.group or product.id

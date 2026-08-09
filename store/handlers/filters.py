@@ -2,6 +2,10 @@
 
 Lets the user pick a category, subcategory, currency (UAH/USD) and price range,
 then renders the matching products as a catalog list.
+
+The wizard step is kept in ``flt["ui"]``: main (category) → sub → price.
+Every handler here renders through ``_send_filter`` or ``render_results``,
+which are also the only places that answer the callback query.
 """
 
 from __future__ import annotations
@@ -10,11 +14,8 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-from store.keyboards import (
-    catalog_results_keyboard,
-    filter_keyboard,
-    group_variants_keyboard,
-)
+from store.handlers.catalog import render_results
+from store.keyboards import filter_keyboard, group_variants_keyboard
 from store.services.catalog_filter import (
     CATEGORY_LABELS,
     category_has_subcategories,
@@ -23,29 +24,49 @@ from store.services.catalog_filter import (
     get_filter,
     has_price_filter,
 )
-from store.services.grouping import build_groups, find_group
+from store.services.grouping import find_group
 from store.utils.tg import edit_or_resend
-
-_FILTER_TITLE = "🔍 *Фільтр товарів*"
 
 
 def _filter_text(flt: dict) -> str:
+    summary = filter_summary(flt)
     ui = flt.get("ui", "main")
     if ui == "sub":
         category = CATEGORY_LABELS.get(flt.get("category", "all"), "Категорія")
         return (
-            f"🔍 *{category}*\n\n{filter_summary(flt)}\n\n"
+            f"🔍 *{category}*\n\n{summary}\n\n"
             "Оберіть підкатегорію та натисніть «Далі»."
         )
     if ui == "price":
-        return (
-            f"🔍 *Ціна*\n\n{filter_summary(flt)}\n\n"
-            "Оберіть валюту та діапазон ціни."
+        return f"🔍 *Ціна*\n\n{summary}\n\nОберіть валюту та діапазон ціни."
+    return f"🔍 *Фільтр товарів*\n\n{summary}\n\nОберіть категорію."
+
+
+async def _send_filter(update: Update, flt: dict) -> None:
+    """Render the current filter step, editing the message when possible."""
+    text = _filter_text(flt)
+    keyboard = filter_keyboard(flt)
+    query = update.callback_query
+    if query:
+        await query.answer()
+        await query.edit_message_text(
+            text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard
         )
-    return (
-        f"{_FILTER_TITLE}\n\n{filter_summary(flt)}\n\n"
-        "Оберіть категорію."
-    )
+    else:
+        await update.message.reply_text(
+            text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard
+        )
+
+
+async def _advance_after_category(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, flt: dict
+) -> None:
+    """Category/subcategory is set: go to the price step, or straight to results."""
+    if has_price_filter(flt):
+        flt["ui"] = "price"
+        await _send_filter(update, flt)
+        return
+    await render_results(update, context, flt)
 
 
 async def open_filter_for_catalog(
@@ -56,153 +77,89 @@ async def open_filter_for_catalog(
     await _send_filter(update, flt)
 
 
-async def _send_filter(update: Update, flt: dict) -> None:
-    text = _filter_text(flt)
-    keyboard = filter_keyboard(flt)
-    if update.callback_query:
-        await update.callback_query.answer()
-        await update.callback_query.edit_message_text(
-            text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard
-        )
-    else:
-        await update.message.reply_text(
-            text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard
-        )
-
-
 async def reopen_filter(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Reopen the filter at the most relevant step for the current selection."""
     flt = get_filter(context)
     category = flt.get("category", "all")
-    if category != "all" and category_has_subcategories(category):
+    if category == "all":
+        flt["ui"] = "main"
+    elif category_has_subcategories(category):
         flt["ui"] = "sub"
-    elif category != "all":
+    elif has_price_filter(flt):
         flt["ui"] = "price"
     else:
         flt["ui"] = "main"
     await _send_filter(update, flt)
 
 
-async def _render_results(query, flt: dict) -> None:
-    """Edit the current message to show filtered results or a no-results notice."""
-    products = filter_products(flt)
-    if not products:
-        await query.edit_message_text(
-            "😕 За вашим фільтром нічого не знайдено.\nСпробуйте змінити параметри.",
-            parse_mode=ParseMode.MARKDOWN,
-            reply_markup=filter_keyboard(flt),
-        )
-        return
-    groups = build_groups(products)
-    currency = flt.get("currency", "UAH")
-    await query.edit_message_text(
-        f"🛍 *Знайдено моделей: {len(groups)}*\n\nОберіть модель, щоб переглянути деталі:",
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=catalog_results_keyboard(groups, currency),
-    )
-
-
-async def _advance_after_category(query, flt: dict, context) -> None:
-    """After category/subcategory is locked in, go to price or skip to results."""
-    if has_price_filter(flt):
-        flt["ui"] = "price"
-        await query.edit_message_text(
-            _filter_text(flt),
-            parse_mode=ParseMode.MARKDOWN,
-            reply_markup=filter_keyboard(flt),
-        )
-        return
-    await _render_results(query, flt)
-
-
 async def to_price_screen(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Advance from subcategory step to price (or results if < 5 products)."""
-    query = update.callback_query
-    await query.answer()
-    flt = get_filter(context)
-    await _advance_after_category(query, flt, context)
+    """Advance from the subcategory step to price (or results if too few products)."""
+    await _advance_after_category(update, context, get_filter(context))
 
 
 async def back_to_main_filter(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
     """Context-aware back: price → sub (or main), sub → main."""
-    query = update.callback_query
-    await query.answer()
     flt = get_filter(context)
-    if flt.get("ui") == "price":
-        category = flt.get("category", "all")
-        flt["ui"] = "sub" if category != "all" and category_has_subcategories(category) else "main"
+    if flt.get("ui") == "price" and category_has_subcategories(
+        flt.get("category", "all")
+    ):
+        flt["ui"] = "sub"
     else:
         flt["ui"] = "main"
         flt["subcategory"] = "all"
-    await query.edit_message_text(
-        _filter_text(flt),
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=filter_keyboard(flt),
-    )
+    await _send_filter(update, flt)
 
 
 async def set_filter_value(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle flt:cat/sub/cur/price toggles and re-render."""
-    query = update.callback_query
-    _, field, value = query.data.split(":", 2)
+    """Handle flt:cat/sub/cur/price taps and re-render the relevant step."""
+    _, field, value = update.callback_query.data.split(":", 2)
     flt = get_filter(context)
 
     if field == "cat":
         flt["category"] = value
         flt["subcategory"] = "all"
         flt["price"] = "any"
-        await query.answer()
-        if value != "all" and category_has_subcategories(value):
+        if category_has_subcategories(value):
             flt["ui"] = "sub"
-            await query.edit_message_text(
-                _filter_text(flt),
-                parse_mode=ParseMode.MARKDOWN,
-                reply_markup=filter_keyboard(flt),
-            )
+            await _send_filter(update, flt)
         else:
-            await _advance_after_category(query, flt, context)
+            await _advance_after_category(update, context, flt)
         return
 
-    elif field == "sub":
+    if field == "sub":
         flt["subcategory"] = value
         flt["price"] = "any"
-        await query.answer()
-        await _advance_after_category(query, flt, context)
+        await _advance_after_category(update, context, flt)
         return
-    elif field == "cur":
+
+    if field == "cur":
         flt["currency"] = value
         flt["price"] = "any"
     elif field == "price":
         flt["price"] = value
 
-    await query.answer()
-    await query.edit_message_text(
-        _filter_text(flt),
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=filter_keyboard(flt),
-    )
+    await _send_filter(update, flt)
 
 
 async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    await query.answer()
-    await _render_results(query, get_filter(context))
+    await render_results(update, context, get_filter(context))
 
 
 async def show_group(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Expand a multi-variant model into its variant list."""
-    query = update.callback_query
     flt = get_filter(context)
-    currency = flt.get("currency", "UAH")
-    key = query.data.split(":", 1)[1]
+    key = update.callback_query.data.split(":", 1)[1]
     group = find_group(key, filter_products(flt))
 
     if group is None:
-        await show_results(update, context)
+        await render_results(update, context, flt)
         return
 
-    text = f"📦 *{group.label}*\n\nОберіть варіант:"
     await edit_or_resend(
-        update, context, text, group_variants_keyboard(group, currency)
+        update,
+        context,
+        f"📦 *{group.label}*\n\nОберіть варіант:",
+        group_variants_keyboard(group, flt.get("currency", "UAH")),
     )

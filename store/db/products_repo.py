@@ -114,6 +114,18 @@ def fetch_by_id(product_id: str) -> Product | None:
     return _row_to_product(row) if row else None
 
 
+def distinct_groups(category: str = "") -> list[str]:
+    """Existing non-empty model groups, optionally limited to one category."""
+    sql = "SELECT DISTINCT product_group FROM products WHERE product_group != ''"
+    params: tuple[str, ...] = ()
+    if category:
+        sql += " AND category = ?"
+        params = (category,)
+    with db_connection() as conn:
+        rows = conn.execute(f"{sql} ORDER BY product_group", params).fetchall()
+    return [row[0] for row in rows]
+
+
 def update(product_id: str, **fields: object) -> None:
     allowed = {
         "name",
@@ -126,6 +138,7 @@ def update(product_id: str, **fields: object) -> None:
         "brand",
         "storage",
         "color",
+        "product_group",
         "channel_post_url",
     }
     updates = {key: value for key, value in fields.items() if key in allowed}

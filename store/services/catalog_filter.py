@@ -124,54 +124,64 @@ def _products_in_category(category: str, subcategory: str) -> list[Product]:
     ]
 
 
-def _fmt_split(value: int, currency: str) -> str:
-    """Format an exact amount (already in the target currency) for a filter label."""
+def _products_for(flt: dict) -> list[Product]:
+    """Products matching the filter's category/subcategory, ignoring price."""
+    return _products_in_category(
+        flt.get("category", "all"), flt.get("subcategory", "all")
+    )
+
+
+def _fmt_amount(value: int, currency: str) -> str:
+    """Format an amount already converted to `currency`."""
     if currency == "UAH":
-        return f"{value:,} ₴".replace(",", "\u00a0")
+        return f"{value:,} ₴".replace(",", " ")
     return f"${value:,}"
 
 
-def has_price_filter(flt: dict) -> bool:
-    """True when the current category/subcategory has 5+ products."""
-    category = flt.get("category", "all")
-    subcategory = flt.get("subcategory", "all")
-    return len(_products_in_category(category, subcategory)) >= 5
+def format_price(amount_usd: int, currency: str) -> str:
+    """Format a USD amount for display in `currency`."""
+    return _fmt_amount(convert(amount_usd, currency), currency)
+
+
+# Unrestricted option, also the fallback when a stored price key no longer exists.
+ANY_PRICE: tuple[str, str, float, float] = ("any", "Будь-яка ціна", 0, math.inf)
+
+
+def _price_ranges(
+    products: list[Product], currency: str
+) -> list[tuple[str, str, float, float]]:
+    """Price options for `products`: any / below-average / above-average.
+
+    The split point is the average (mean) effective price, shown as its exact
+    value. The two halves are only offered when products fall on both sides,
+    so choosing one can never lead to an empty result.
+    """
+    if len(products) < 2:
+        return [ANY_PRICE]
+
+    prices = [convert(effective_price(p), currency) for p in products]
+    average = round(sum(prices) / len(prices))
+    if min(prices) >= average:  # every product sits at/above the average
+        return [ANY_PRICE]
+
+    label = _fmt_amount(average, currency)
+    return [
+        ANY_PRICE,
+        ("low", f"Менше {label}", 0, average),
+        ("high", f"Більше {label}", average, math.inf),
+    ]
 
 
 def dynamic_price_ranges(
     flt: dict, currency: str
 ) -> list[tuple[str, str, float, float]]:
-    """Return 3 price options: any / cheaper-than-average / pricier-than-average.
-
-    The split point is the average (mean) effective price of the products
-    currently visible in the selected category/subcategory, shown as its
-    exact value (no rounding) directly in the "less than" / "more than"
-    labels. Falls back to a single "any" option when fewer than 2 products
-    are available.
-    """
-    category = flt.get("category", "all")
-    subcategory = flt.get("subcategory", "all")
-    products = _products_in_category(category, subcategory)
-
-    if len(products) < 2:
-        return [("any", "Будь-яка ціна", 0, math.inf)]
-
-    prices = [convert(effective_price(p), currency) for p in products]
-    average = round(sum(prices) / len(prices))
-    average_fmt = _fmt_split(average, currency)
-
-    return [
-        ("any", "Будь-яка ціна", 0, math.inf),
-        ("low", f"Менше {average_fmt}", 0, average),
-        ("high", f"Більше {average_fmt}", average, math.inf),
-    ]
+    """Price options for the category/subcategory selected in `flt`."""
+    return _price_ranges(_products_for(flt), currency)
 
 
-def format_price(amount_usd: int, currency: str) -> str:
-    value = convert(amount_usd, currency)
-    if currency == "UAH":
-        return f"{value:,} ₴".replace(",", " ")
-    return f"${value:,}"
+def has_price_filter(flt: dict) -> bool:
+    """True when the current category/subcategory has 5+ products."""
+    return len(_products_for(flt)) >= 5
 
 
 def button_price(product: Product, currency: str) -> str:
@@ -182,24 +192,28 @@ def button_price(product: Product, currency: str) -> str:
     return label
 
 
+def _selected_range(
+    ranges: list[tuple[str, str, float, float]], price_key: str
+) -> tuple[str, float, float]:
+    """Label and bounds of the chosen option, falling back to 'any'."""
+    for key, label, lo, hi in ranges:
+        if key == price_key:
+            return label, lo, hi
+    return ANY_PRICE[1], ANY_PRICE[2], ANY_PRICE[3]
+
+
 def filter_products(flt: dict) -> list[Product]:
-    category = flt.get("category", "all")
-    subcategory = flt.get("subcategory", "all")
+    """Products matching the full filter: category, subcategory and price."""
     currency = flt.get("currency", "UAH")
-    price_key = flt.get("price", "any")
-
-    ranges = dynamic_price_ranges(flt, currency)
-    lo, hi = next(
-        ((rlo, rhi) for k, _, rlo, rhi in ranges if k == price_key),
-        (0, math.inf),
+    products = _products_for(flt)
+    _, lo, hi = _selected_range(
+        _price_ranges(products, currency), flt.get("price", "any")
     )
-
-    result: list[Product] = []
-    for product in _products_in_category(category, subcategory):
-        price = convert(effective_price(product), currency)
-        if lo <= price < hi:
-            result.append(product)
-    return result
+    return [
+        product
+        for product in products
+        if lo <= convert(effective_price(product), currency) < hi
+    ]
 
 
 def filter_summary(flt: dict) -> str:
@@ -212,10 +226,8 @@ def filter_summary(flt: dict) -> str:
         lines.append(f"Підкатегорія: *{sub_label}*")
 
     currency = flt.get("currency", "UAH")
-    price_key = flt.get("price", "any")
-    price_label = next(
-        (label for k, label, _, _ in dynamic_price_ranges(flt, currency) if k == price_key),
-        "Будь-яка ціна",
+    price_label, _lo, _hi = _selected_range(
+        dynamic_price_ranges(flt, currency), flt.get("price", "any")
     )
     lines.extend([f"Валюта: *{currency}*", f"Ціна: *{price_label}*"])
     return "\n".join(lines)

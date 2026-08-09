@@ -31,6 +31,7 @@ from store.handlers.admin_ui import (
     product_list_keyboard,
 )
 from store.services.catalog_filter import category_has_subcategories
+from store.services.grouping import fits_group_key
 from store.services.images import upload_image
 from store.utils.admin import is_admin
 
@@ -42,6 +43,10 @@ _FIELD_PROMPTS = {
     "name": "Надішліть нову *назву* товару:",
     "price": "Надішліть нову *ціну в USD* (число):",
     "stock": "Надішліть нову *кількість на складі* (ціле число):",
+    "group": (
+        "Надішліть назву *моделі* — товари з однаковою моделлю показуються "
+        "одним рядком у каталозі.\nНадішліть `-`, щоб зробити товар окремим:"
+    ),
     "photo": "Надішліть нове *фото* товару:",
 }
 
@@ -325,6 +330,15 @@ async def apply_edit_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                     return EDIT_INPUT
                 products_repo.update(product_id, stock=int(text))
                 message = "✅ Склад оновлено."
+            elif field == "group":
+                group = "" if text == "-" else text
+                if not fits_group_key(group):
+                    await update.message.reply_text(
+                        "Назва моделі занадто довга. Скоротіть її."
+                    )
+                    return EDIT_INPUT
+                products_repo.update(product_id, product_group=group)
+                message = "✅ Модель оновлено."
             else:
                 await update.message.reply_text("Невідоме поле.")
                 _clear_edit(context)
@@ -359,7 +373,7 @@ def build_admin_edit_handler() -> ConversationHandler:
         entry_points=[
             CallbackQueryHandler(
                 start_edit_field,
-                pattern=r"^adm:efld:[^:]+:(name|price|stock|photo)$",
+                pattern=r"^adm:efld:[^:]+:(name|price|stock|group|photo)$",
             ),
         ],
         states={

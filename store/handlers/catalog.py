@@ -15,17 +15,23 @@ from store.utils.format import product_summary
 from store.utils.tg import edit_or_resend, send_photo_or_text
 
 
-async def show_catalog(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Render the filtered catalog list (used by the 'back to catalog' button)."""
-    flt = get_filter(context)
-    currency = flt.get("currency", "UAH")
-    groups = build_groups(filter_products(flt))
+async def render_results(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, flt: dict
+) -> None:
+    """Show the models matching `flt`, or a no-results notice.
 
-    if not groups:
-        text = "😕 За вашим фільтром нічого не знайдено.\nЗмініть параметри фільтра."
+    Shared by the filter wizard and the "back to catalog" button. Uses
+    ``edit_or_resend`` so it also works when the current screen is a photo card.
+    """
+    groups = build_groups(filter_products(flt))
+    if groups:
+        text = (
+            f"🛍 *Знайдено моделей: {len(groups)}*\n\n"
+            "Оберіть модель, щоб переглянути деталі:"
+        )
     else:
-        text = f"🛍 *Знайдено моделей: {len(groups)}*\n\nОберіть модель, щоб переглянути деталі:"
-    keyboard = catalog_results_keyboard(groups, currency)
+        text = "😕 За вашим фільтром нічого не знайдено.\nЗмініть параметри фільтра."
+    keyboard = catalog_results_keyboard(groups, flt.get("currency", "UAH"))
 
     if update.callback_query:
         await edit_or_resend(update, context, text, keyboard)
@@ -33,6 +39,11 @@ async def show_catalog(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await update.message.reply_text(
             text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard
         )
+
+
+async def show_catalog(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Render the filtered catalog list (used by the 'back to catalog' button)."""
+    await render_results(update, context, get_filter(context))
 
 
 async def show_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

@@ -26,6 +26,7 @@ def product_detail_text(product: Product) -> str:
             f"📦 <b>{escape(product.name)}</b>",
             "",
             f"ID: <code>{escape(product.id)}</code>",
+            f"Модель: {escape(product.group or '—')}",
             f"Ціна: <b>{escape(format_price(product.price, 'USD'))}</b>",
             f"На складі: <b>{product.stock}</b>",
             f"Категорія: {escape(cat)}",
@@ -84,6 +85,7 @@ def edit_menu_keyboard(product_id: str) -> InlineKeyboardMarkup:
                 InlineKeyboardButton("Категорія", callback_data=f"adm:ecat:{product_id}:menu"),
             ],
             [
+                InlineKeyboardButton("Модель", callback_data=f"adm:efld:{product_id}:group"),
                 InlineKeyboardButton("Фото", callback_data=f"adm:efld:{product_id}:photo"),
             ],
             [InlineKeyboardButton("⬅️ Назад", callback_data=f"adm:view:{product_id}")],

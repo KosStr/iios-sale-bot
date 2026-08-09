@@ -28,13 +28,17 @@ from store.services.catalog_filter import (
     format_price,
     subcategory_options,
 )
+from store.services.grouping import fits_group_key
 from store.services.images import r2_write_enabled, upload_image
 from store.utils.admin import is_admin
 
 logger = logging.getLogger(__name__)
 
 # ── State constants (order = wizard step order) ──────────────────────────────
-CATEGORY, SUBCATEGORY, NAME, DESCRIPTION, PRICE, BRAND, STORAGE, COLOR, STOCK, CHANNEL, PHOTO, CONFIRM = range(12)
+CATEGORY, SUBCATEGORY, NAME, GROUP, DESCRIPTION, PRICE, BRAND, STORAGE, COLOR, STOCK, CHANNEL, PHOTO, CONFIRM = range(13)
+
+# Existing models offered as buttons on the GROUP step.
+_GROUP_CHOICE_LIMIT = 8
 
 _CANCEL = InlineKeyboardMarkup(
     [[InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")]]
@@ -99,6 +103,24 @@ def _subcategory_keyboard(category: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(rows)
 
 
+def _group_keyboard(draft: dict) -> InlineKeyboardMarkup:
+    """Offer existing models to join, or a new one named after this product."""
+    rows = [
+        [InlineKeyboardButton(f"📦 {label}", callback_data=f"adm:grp:{index}")]
+        for index, label in enumerate(draft.get("group_choices", []))
+    ]
+    rows.append(
+        [
+            InlineKeyboardButton(
+                f"🆕 Окрема модель «{draft['name'][:24]}»",
+                callback_data="adm:grp_new",
+            )
+        ]
+    )
+    rows.append([InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")])
+    return InlineKeyboardMarkup(rows)
+
+
 def _storage_hint(category: str) -> str:
     """Return a category-appropriate label/hint for the storage field."""
     hints = {
@@ -123,6 +145,7 @@ def _preview(draft: dict) -> str:
             "",
             f"Назва: <b>{escape(draft['name'])}</b>",
             f"ID: <code>{escape(draft['id'])}</code>",
+            f"Модель: {escape(draft.get('group') or '—')}",
             f"Опис: {escape(draft.get('description', '—'))}",
             f"Бренд: {escape(draft.get('brand', '—'))}",
             f"Специфікація: {escape(draft.get('storage', '—'))}",
@@ -150,6 +173,7 @@ def _build_product(draft: dict) -> Product:
         category=draft["category"],
         subcategory=draft.get("subcategory", ""),
         image=draft.get("image", ""),
+        group=draft.get("group", ""),
         channel_post_url=draft.get("channel_post_url", ""),
     )
 
@@ -210,7 +234,7 @@ async def pick_subcategory(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     return NAME
 
 
-# ── Step 4: name → description ───────────────────────────────────────────────
+# ── Step 4: name → model group ───────────────────────────────────────────────
 
 async def collect_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     name = update.message.text.strip()
@@ -222,15 +246,73 @@ async def collect_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     draft["name"] = name
     draft["id"] = products_repo.make_unique_id(name)
 
+    # Variants of one model share a group and are shown as a single catalog row.
+    choices = products_repo.distinct_groups(draft.get("category", ""))
+    if not choices:
+        draft["group"] = name if fits_group_key(name) else ""
+        return await _ask_description(update, context)
+
+    draft["group_choices"] = choices[:_GROUP_CHOICE_LIMIT]
     await update.message.reply_text(
-        "Надішліть *опис* товару (коротко, 1–2 речення):",
+        "Це варіант існуючої *моделі*?\n"
+        "Варіанти однієї моделі покупець бачить одним рядком у каталозі.",
         parse_mode=ParseMode.MARKDOWN,
-        reply_markup=_CANCEL,
+        reply_markup=_group_keyboard(draft),
     )
+    return GROUP
+
+
+# ── Step 5: model group → description ────────────────────────────────────────
+
+async def _ask_description(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    prompt = "Надішліть *опис* товару (коротко, 1–2 речення):"
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_CANCEL
+        )
+    else:
+        await update.message.reply_text(
+            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_CANCEL
+        )
     return DESCRIPTION
 
 
-# ── Step 5: description → price ──────────────────────────────────────────────
+async def pick_group(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Join the model picked from the list of existing ones."""
+    await update.callback_query.answer()
+    draft = _draft(context)
+    choices = draft.get("group_choices", [])
+    index = int(update.callback_query.data.rsplit(":", 1)[1])
+    draft["group"] = choices[index] if 0 <= index < len(choices) else draft["name"]
+    return await _ask_description(update, context)
+
+
+async def new_group(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Start a new model named after this product."""
+    await update.callback_query.answer()
+    draft = _draft(context)
+    name = draft["name"]
+    draft["group"] = name if fits_group_key(name) else ""
+    return await _ask_description(update, context)
+
+
+async def collect_group(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Admin typed a model name instead of picking one from the list."""
+    name = update.message.text.strip()
+    if not fits_group_key(name):
+        await update.message.reply_text(
+            "Назва моделі занадто довга. Скоротіть її та надішліть ще раз.",
+            reply_markup=_group_keyboard(_draft(context)),
+        )
+        return GROUP
+
+    _draft(context)["group"] = name
+    return await _ask_description(update, context)
+
+
+# ── Step 6: description → price ──────────────────────────────────────────────
 
 async def collect_description(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     description = update.message.text.strip()
@@ -378,7 +460,6 @@ async def _ask_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             "⚠️ R2 не налаштовано — фото зберегти неможливо.\n"
             "Натисніть «Пропустити», щоб продовжити."
         )
-    target = update.effective_message
     if update.callback_query:
         await update.callback_query.edit_message_text(
             hint,
@@ -386,7 +467,7 @@ async def _ask_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             reply_markup=_PHOTO_KEYBOARD,
         )
     else:
-        await target.reply_text(
+        await update.message.reply_text(
             hint,
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=_PHOTO_KEYBOARD,
@@ -525,6 +606,11 @@ def build_admin_add_handler() -> ConversationHandler:
             CATEGORY: [CallbackQueryHandler(pick_category, pattern=r"^adm:cat:")],
             SUBCATEGORY: [CallbackQueryHandler(pick_subcategory, pattern=r"^adm:sub:")],
             NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_name)],
+            GROUP: [
+                CallbackQueryHandler(pick_group, pattern=r"^adm:grp:\d+$"),
+                CallbackQueryHandler(new_group, pattern=r"^adm:grp_new$"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, collect_group),
+            ],
             DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_description)],
             PRICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_price)],
             BRAND: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_brand)],
