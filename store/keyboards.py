@@ -17,7 +17,6 @@ from store.data.products import Product
 from store.services.cart import Cart
 from store.services.catalog_filter import (
     CATEGORIES,
-    CURRENCIES,
     button_price,
     category_has_subcategories,
     dynamic_price_ranges,
@@ -102,21 +101,10 @@ def _subcategory_filter_keyboard(flt: dict) -> InlineKeyboardMarkup:
 
 
 def _price_filter_keyboard(flt: dict) -> InlineKeyboardMarkup:
-    """Step 3: pick currency and price range, then show results."""
-    currency = flt.get("currency", "UAH")
+    """Step 3: pick price range, then show results."""
     rows: list[list[InlineKeyboardButton]] = []
 
-    rows.append(
-        [
-            InlineKeyboardButton(
-                _check(currency == code, f"{code} {symbol}"),
-                callback_data=f"flt:cur:{code}",
-            )
-            for code, symbol in CURRENCIES.items()
-        ]
-    )
-
-    for key, label, _lo, _hi in dynamic_price_ranges(flt, currency):
+    for key, label, _lo, _hi in dynamic_price_ranges(flt, "USD"):
         rows.append(
             [
                 InlineKeyboardButton(
@@ -200,9 +188,6 @@ def product_keyboard(product: Product) -> InlineKeyboardMarkup:
             InlineKeyboardButton("⬅️ Назад до каталогу", callback_data="catalog:view"),
             InlineKeyboardButton("🛒 Кошик", callback_data="cart:view"),
         ]
-    )
-    rows.append(
-        [InlineKeyboardButton("📅 Забронювати", callback_data=f"book:{product.id}")]
     )
     return InlineKeyboardMarkup(rows)
 

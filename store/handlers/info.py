@@ -34,29 +34,20 @@ def _contacts_text() -> str:
     lines = ["📞 <b>Контакти</b>", ""]
     name = _env("STORE_NAME", "IIOS Store")
     phone = _env("STORE_PHONE", "+380 99 123 45 67")
-    phone2 = _env("STORE_PHONE2", "+380 73 987 65 43")
-    email = _env("STORE_EMAIL", "info@iios.store")
     telegram = _env("STORE_TELEGRAM", "@iios_cv")
     instagram = _instagram_link()
     website = _env("STORE_WEBSITE", "https://iios.store")
-    hours = _env("STORE_HOURS", "Пн–Нд, 10:00–20:00")
 
     if name:
         lines.append(f"🏪 {escape(name)}")
     if phone:
         lines.append(f"☎️ Телефон: {escape(phone)}")
-    if phone2:
-        lines.append(f"📱 Додатковий: {escape(phone2)}")
-    if email:
-        lines.append(f"✉️ Email: {escape(email)}")
     if telegram:
         lines.append(f"💬 Telegram: {escape(telegram)}")
     if instagram:
         lines.append(f"📸 Instagram: {instagram}")
     if website:
         lines.append(f'🌐 Сайт: <a href="{escape(website)}">{escape(website)}</a>')
-    if hours:
-        lines.append(f"🕙 Графік роботи: {escape(hours)}")
     return "\n".join(lines)
 
 

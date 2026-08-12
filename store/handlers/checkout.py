@@ -62,20 +62,27 @@ async def collect_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     return PHONE
 
 
+_SKIP_ADDRESS_KEYBOARD = InlineKeyboardMarkup(
+    [
+        [InlineKeyboardButton("⏭ Пропустити адресу", callback_data="checkout:skip_address")],
+        [InlineKeyboardButton("✖️ Скасувати замовлення", callback_data="checkout:cancel")],
+    ]
+)
+
+
 async def collect_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.setdefault("order", {})["phone"] = update.message.text.strip()
     await update.message.reply_text(
-        "Вкажіть, будь ласка, адресу доставки.", reply_markup=_CANCEL_KEYBOARD
+        "Вкажіть, будь ласка, адресу доставки або пропустіть цей крок.",
+        reply_markup=_SKIP_ADDRESS_KEYBOARD,
     )
     return ADDRESS
 
 
-async def collect_address(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    order = context.user_data.setdefault("order", {})
-    order["address"] = update.message.text.strip()
-
-    cart = cart_service.get_cart(update.effective_user.id)
-    currency = get_filter(context).get("currency", "UAH")
+async def _build_confirm_message(
+    order: dict, cart, currency: str
+) -> tuple[str, InlineKeyboardMarkup]:
+    address_line = f"Адреса: {order['address']}" if order.get("address") else "Адреса: не вказано"
     review = "\n".join(
         [
             "📦 *Підтвердіть, будь ласка, замовлення*",
@@ -84,7 +91,7 @@ async def collect_address(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             "",
             f"Ім'я: {order['name']}",
             f"Телефон: {order['phone']}",
-            f"Адреса: {order['address']}",
+            address_line,
         ]
     )
     keyboard = InlineKeyboardMarkup(
@@ -93,9 +100,29 @@ async def collect_address(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             [InlineKeyboardButton("✖️ Скасувати замовлення", callback_data="checkout:cancel")],
         ]
     )
-    await update.message.reply_text(
-        review, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard
-    )
+    return review, keyboard
+
+
+async def skip_address(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+    order = context.user_data.setdefault("order", {})
+    order["address"] = ""
+    cart = cart_service.get_cart(update.effective_user.id)
+    currency = get_filter(context).get("currency", "USD")
+    review, keyboard = await _build_confirm_message(order, cart, currency)
+    await query.message.reply_text(review, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard)
+    return CONFIRM
+
+
+async def collect_address(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    order = context.user_data.setdefault("order", {})
+    order["address"] = update.message.text.strip()
+
+    cart = cart_service.get_cart(update.effective_user.id)
+    currency = get_filter(context).get("currency", "USD")
+    review, keyboard = await _build_confirm_message(order, cart, currency)
+    await update.message.reply_text(review, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard)
     return CONFIRM
 
 
@@ -111,7 +138,7 @@ async def confirm_order(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
     order_id = f"ORD-{int(time.time()):X}"
     order = context.user_data.get("order", {})
-    currency = get_filter(context).get("currency", "UAH")
+    currency = "USD"
 
     try:
         save_order(
@@ -175,7 +202,7 @@ async def _notify_admins(
     cart,
 ) -> None:
     handle = user_handle(update.effective_user)
-    currency = get_filter(context).get("currency", "UAH")
+    currency = "USD"
     await broadcast_to_admins(
         context,
         "\n".join([
@@ -196,7 +223,10 @@ def build_checkout_handler() -> ConversationHandler:
         states={
             NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_name)],
             PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_phone)],
-            ADDRESS: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_address)],
+            ADDRESS: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, collect_address),
+                CallbackQueryHandler(skip_address, pattern=r"^checkout:skip_address$"),
+            ],
             CONFIRM: [
                 CallbackQueryHandler(confirm_order, pattern=r"^checkout:confirm$"),
                 CallbackQueryHandler(cancel_order, pattern=r"^checkout:cancel$"),

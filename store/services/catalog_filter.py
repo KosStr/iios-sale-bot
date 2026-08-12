@@ -1,13 +1,12 @@
-"""Catalog filtering: categories, currency (UAH/USD) and price ranges.
+"""Catalog filtering: categories and price ranges (USD only).
 
 Per-user filter state is stored in ``context.user_data["filter"]``.
-Product prices are kept in USD and converted to UAH for display/filtering.
+All prices are stored and displayed in USD.
 """
 
 from __future__ import annotations
 
 import math
-import os
 
 from store.data.products import (
     Product,
@@ -15,9 +14,6 @@ from store.data.products import (
     get_all_products,
     is_on_sale,
 )
-
-# USD -> UAH conversion rate (edit to taste / wire to a live rate later).
-UAH_RATE = 41.5
 
 # Category keys paired with their Ukrainian labels (order = menu order).
 CATEGORIES: list[tuple[str, str]] = [
@@ -35,21 +31,35 @@ CATEGORY_LABELS: dict[str, str] = dict(CATEGORIES)
 SUBCATEGORIES: dict[str, list[tuple[str, str]]] = {
     "phone": [
         ("all", "🧩 Усі"),
-        ("iphone_17", "iPhone 17"),
-        ("iphone_16", "iPhone 16"),
-        ("iphone_15", "iPhone 15"),
+        ("iphone_mini", "iPhone mini"),
+        ("iphone_base", "iPhone базовий"),
+        ("iphone_plus", "iPhone Plus"),
+        ("iphone_pro", "iPhone Pro"),
+        ("iphone_pro_max", "iPhone Pro Max"),
     ],
     "ipad": [
         ("all", "🧩 Усі"),
+        ("ipad_mini", "iPad mini"),
         ("ipad_pro", "iPad Pro"),
         ("ipad_air", "iPad Air"),
-        ("ipad_mini", "iPad mini"),
-        ("ipad_base", "iPad"),
+        ("ipad_gen", "iPad 5–10 gen"),
+    ],
+    "watch": [
+        ("all", "🧩 Усі"),
+        ("watch_series", "Watch Series (3–12)"),
+        ("watch_ultra", "Watch Ultra"),
+    ],
+    "headphones": [
+        ("all", "🧩 Усі"),
+        ("headphones_basic", "Базові"),
+        ("headphones_pro", "Pro"),
+        ("headphones_max", "Max"),
+        ("headphones_other", "Інші"),
     ],
     "laptop": [
         ("all", "🧩 Усі"),
-        ("macbook_m", "MacBook M"),
-        ("macbook_intel", "MacBook Intel"),
+        ("macbook_air", "MacBook Air"),
+        ("macbook_pro", "MacBook Pro"),
     ],
     "accessories": [
         ("all", "🧩 Усі"),
@@ -57,24 +67,21 @@ SUBCATEGORIES: dict[str, list[tuple[str, str]]] = {
         ("case", "📱 Чохли"),
         ("cable", "🔌 Кабелі"),
         ("screen_guard", "🛡 Захист екрану"),
-        ("charger", "⚡ Зарядки"),
+        ("charger", "⚡ Зарядний пристрій"),
+        ("auto_accessories", "🚗 Автоаксесуари"),
     ],
 }
 SUBCATEGORY_LABELS: dict[str, dict[str, str]] = {
     category: dict(items) for category, items in SUBCATEGORIES.items()
 }
 
-# Currency code -> symbol.
-CURRENCIES: dict[str, str] = {"UAH": "₴", "USD": "$"}
-
-_default_currency = os.getenv("CURRENCY", "UAH").strip().upper() or "UAH"
-if _default_currency not in CURRENCIES:
-    _default_currency = "UAH"
+# Only USD is supported.
+CURRENCIES: dict[str, str] = {"USD": "$"}
 
 DEFAULT_FILTER: dict[str, str] = {
     "category": "all",
     "subcategory": "all",
-    "currency": _default_currency,
+    "currency": "USD",
     "price": "any",
 }
 
@@ -84,10 +91,7 @@ def _normalize_filter(flt: dict) -> dict:
     valid_subs = {key for key, _ in subcategory_options(category)}
     if flt.get("subcategory", "all") not in valid_subs:
         flt["subcategory"] = "all"
-
-    currency = flt.get("currency", DEFAULT_FILTER["currency"])
-    if currency not in CURRENCIES:
-        flt["currency"] = "UAH"
+    flt["currency"] = "USD"
     return flt
 
 
@@ -106,8 +110,7 @@ def get_filter(context) -> dict:
 
 
 def convert(amount_usd: int, currency: str) -> int:
-    if currency == "UAH":
-        return round(amount_usd * UAH_RATE)
+    """Return the amount in the requested currency (only USD currently)."""
     return amount_usd
 
 
@@ -133,8 +136,6 @@ def _products_for(flt: dict) -> list[Product]:
 
 def _fmt_amount(value: int, currency: str) -> str:
     """Format an amount already converted to `currency`."""
-    if currency == "UAH":
-        return f"{value:,} ₴".replace(",", " ")
     return f"${value:,}"
 
 
@@ -204,7 +205,7 @@ def _selected_range(
 
 def filter_products(flt: dict) -> list[Product]:
     """Products matching the full filter: category, subcategory and price."""
-    currency = flt.get("currency", "UAH")
+    currency = "USD"
     products = _products_for(flt)
     _, lo, hi = _selected_range(
         _price_ranges(products, currency), flt.get("price", "any")
@@ -225,9 +226,8 @@ def filter_summary(flt: dict) -> str:
         sub_label = SUBCATEGORY_LABELS[cat_key].get(sub_key, sub_key)
         lines.append(f"Підкатегорія: *{sub_label}*")
 
-    currency = flt.get("currency", "UAH")
     price_label, _lo, _hi = _selected_range(
-        dynamic_price_ranges(flt, currency), flt.get("price", "any")
+        dynamic_price_ranges(flt, "USD"), flt.get("price", "any")
     )
-    lines.extend([f"Валюта: *{currency}*", f"Ціна: *{price_label}*"])
+    lines.append(f"Ціна: *{price_label}*")
     return "\n".join(lines)

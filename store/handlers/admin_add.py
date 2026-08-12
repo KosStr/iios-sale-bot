@@ -99,6 +99,9 @@ def _subcategory_keyboard(category: str) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(label, callback_data=f"adm:sub:{key}")]
         for key, label in options
     ]
+    rows.append(
+        [InlineKeyboardButton("📦 Без підкатегорії", callback_data="adm:sub_none")]
+    )
     rows.append([InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")])
     return InlineKeyboardMarkup(rows)
 
@@ -226,6 +229,19 @@ async def pick_subcategory(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     query = update.callback_query
     await query.answer()
     _draft(context)["subcategory"] = query.data.split(":", 2)[2]
+    await query.edit_message_text(
+        "Надішліть *назву* товару:",
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=_CANCEL,
+    )
+    return NAME
+
+
+async def skip_subcategory(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Admin chose 'no subcategory'."""
+    query = update.callback_query
+    await query.answer()
+    _draft(context)["subcategory"] = ""
     await query.edit_message_text(
         "Надішліть *назву* товару:",
         parse_mode=ParseMode.MARKDOWN,
@@ -604,7 +620,10 @@ def build_admin_add_handler() -> ConversationHandler:
         ],
         states={
             CATEGORY: [CallbackQueryHandler(pick_category, pattern=r"^adm:cat:")],
-            SUBCATEGORY: [CallbackQueryHandler(pick_subcategory, pattern=r"^adm:sub:")],
+            SUBCATEGORY: [
+                CallbackQueryHandler(skip_subcategory, pattern=r"^adm:sub_none$"),
+                CallbackQueryHandler(pick_subcategory, pattern=r"^adm:sub:"),
+            ],
             NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_name)],
             GROUP: [
                 CallbackQueryHandler(pick_group, pattern=r"^adm:grp:\d+$"),
