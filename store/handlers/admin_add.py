@@ -28,6 +28,7 @@ from store.services.catalog_filter import (
     format_price,
     subcategory_options,
 )
+from store.services.channel_sync import post_product
 from store.services.grouping import fits_group_key
 from store.services.images import r2_write_enabled, upload_image
 from store.utils.admin import is_admin
@@ -434,7 +435,7 @@ async def collect_color(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     return STOCK
 
 
-# ── Step 10: stock → channel ─────────────────────────────────────────────────
+# ── Step 10: stock → channel (or photo when CHANNEL_ID is configured) ────────
 
 async def collect_stock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     raw = update.message.text.strip()
@@ -448,6 +449,12 @@ async def collect_stock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         return STOCK
 
     _draft(context)["stock"] = stock
+
+    # Skip the manual channel-URL step when auto-posting is enabled.
+    if context.bot_data.get("channel_id"):
+        _draft(context)["channel_post_url"] = ""
+        return await _ask_photo(update, context)
+
     await update.message.reply_text(
         "Посилання на *пост у каналі* (напр. `https://t.me/iios_cv/42`)\n"
         "або натисніть «Пропустити»:",
@@ -583,7 +590,14 @@ async def save_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         _clear_draft(context)
         return ConversationHandler.END
 
+    # Auto-post to the configured channel and save the returned URL.
+    channel_id: str = context.bot_data.get("channel_id", "")
+    post_url = await post_product(context.bot, channel_id, product)
+    if post_url:
+        products_repo.update(product.id, channel_post_url=post_url)
+
     _clear_draft(context)
+    channel_note = f"\n📢 Пост у каналі: {post_url}" if post_url else ""
     await query.edit_message_text(
         "\n".join(
             [
@@ -595,7 +609,7 @@ async def save_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
                 "",
                 "Вже видно в каталозі для покупців.",
             ]
-        ),
+        ) + channel_note,
         parse_mode=ParseMode.MARKDOWN,
     )
     return ConversationHandler.END

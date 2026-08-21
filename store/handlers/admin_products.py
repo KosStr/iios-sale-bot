@@ -31,6 +31,7 @@ from store.handlers.admin_ui import (
     product_list_keyboard,
 )
 from store.services.catalog_filter import category_has_subcategories
+from store.services.channel_sync import delete_product_post, sync_product_post
 from store.services.grouping import fits_group_key
 from store.services.images import upload_image
 from store.utils.admin import is_admin
@@ -176,6 +177,9 @@ async def confirm_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await query.answer()
     product_id = query.data.split(":", 2)[2]
 
+    # Fetch before deleting so we can remove the channel post.
+    product_to_delete = products_repo.fetch_by_id(product_id)
+
     try:
         products_repo.delete(product_id)
     except sqlite3.IntegrityError:
@@ -188,6 +192,9 @@ async def confirm_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         logger.exception("Failed to delete product %s", product_id)
         await query.edit_message_text("❌ Не вдалося видалити товар.")
         return
+
+    if product_to_delete:
+        await delete_product_post(context.bot, product_to_delete)
 
     await _send_product_list(update, context, page=0)
 
@@ -256,6 +263,7 @@ async def _show_updated_product(query, product_id: str, prefix: str) -> None:
         parse_mode=ParseMode.HTML,
         reply_markup=edit_menu_keyboard(product_id),
     )
+    await sync_product_post(query.get_bot(), product)
 
 
 async def start_edit_field(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -359,6 +367,7 @@ async def apply_edit_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         parse_mode=ParseMode.HTML,
         reply_markup=edit_menu_keyboard(product_id),
     )
+    await sync_product_post(context.bot, updated)
     return ConversationHandler.END
 
 

@@ -22,7 +22,7 @@ from telegram.ext import (
 from store.db.orders_repo import save_order
 from store.services import cart as cart_service
 from store.services.catalog_filter import format_price, get_filter
-from store.utils.admin import broadcast_to_admins, user_handle
+from store.utils.admin import broadcast_to_admins, notify_order_chat, user_handle
 from store.utils.format import cart_summary
 
 logger = logging.getLogger(__name__)
@@ -173,6 +173,7 @@ async def confirm_order(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     )
 
     await _notify_admins(update, context, order_id, order, cart)
+    await notify_order_chat(context, order_id, order, cart)
 
     cart_service.clear_cart(user_id)
     context.user_data.pop("order", None)

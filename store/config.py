@@ -62,6 +62,8 @@ class Config:
     database_path: str
     webhook: WebhookConfig
     admin_chat_ids: list[str] = field(default_factory=list)
+    notify_chat_id: str = ""
+    channel_id: str = ""
 
 
 def _load_webhook_config() -> WebhookConfig:
@@ -95,4 +97,6 @@ def load_config() -> Config:
         database_path=os.getenv("DATABASE_PATH", "data/store.db"),
         webhook=_load_webhook_config(),
         admin_chat_ids=admin_ids,
+        notify_chat_id=os.getenv("NOTIFY_CHAT_ID", "").strip(),
+        channel_id=os.getenv("CHANNEL_ID", "").strip(),
     )

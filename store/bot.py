@@ -109,6 +109,8 @@ async def on_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
 def create_application(config: Config) -> Application:
     app = ApplicationBuilder().token(config.bot_token).build()
     app.bot_data["admin_chat_ids"] = config.admin_chat_ids
+    app.bot_data["notify_chat_id"] = config.notify_chat_id
+    app.bot_data["channel_id"] = config.channel_id
 
     # Commands
     app.add_handler(CommandHandler("start", start))
