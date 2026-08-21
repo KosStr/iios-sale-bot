@@ -86,6 +86,7 @@ def _category_keyboard() -> InlineKeyboardMarkup:
         for key, label in CATEGORIES if key != "all"
     ]
     rows = [buttons[i : i + 2] for i in range(0, len(buttons), 2)]
+    rows.append([InlineKeyboardButton("⏭ Без категорії", callback_data="adm:cat_none")])
     rows.append([InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")])
     return InlineKeyboardMarkup(rows)
 
@@ -522,13 +523,30 @@ async def skip_channel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 # ── Step 12: photo → confirm ─────────────────────────────────────────────────
 
+def _photo_file_id(message) -> str | None:
+    """Return the best file_id from a photo or image-document message."""
+    if message.photo:
+        return message.photo[-1].file_id
+    if message.document and (message.document.mime_type or "").startswith("image/"):
+        return message.document.file_id
+    return None
+
+
 async def collect_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     draft = _draft(context)
-    photo = update.message.photo[-1]
+    file_id = _photo_file_id(update.message)
+    if not file_id:
+        await update.message.reply_text(
+            "Надішліть *фото* (не файл). Або натисніть «Пропустити».",
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=_PHOTO_KEYBOARD,
+        )
+        return PHOTO
+
     image_key = f"{draft['id']}.jpg"
 
     try:
-        tg_file = await context.bot.get_file(photo.file_id)
+        tg_file = await context.bot.get_file(file_id)
         image_bytes = bytes(await tg_file.download_as_bytearray())
     except Exception:  # noqa: BLE001
         logger.exception("Failed to download photo from Telegram")
@@ -658,7 +676,7 @@ def build_admin_add_handler() -> ConversationHandler:
                 CallbackQueryHandler(skip_channel, pattern=r"^adm:skip_channel$"),
             ],
             PHOTO: [
-                MessageHandler(filters.PHOTO, collect_photo),
+                MessageHandler(filters.PHOTO | filters.Document.IMAGE, collect_photo),
                 CallbackQueryHandler(skip_photo, pattern=r"^adm:skip_photo$"),
                 CommandHandler("skip", skip_photo),
             ],

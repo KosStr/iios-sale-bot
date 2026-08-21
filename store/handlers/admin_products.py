@@ -306,9 +306,19 @@ async def apply_edit_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     try:
         if field == "photo":
-            photo = update.message.photo[-1]
+            msg = update.message
+            if msg.photo:
+                file_id = msg.photo[-1].file_id
+            elif msg.document and (msg.document.mime_type or "").startswith("image/"):
+                file_id = msg.document.file_id
+            else:
+                await update.message.reply_text(
+                    "Надішліть *фото* (не файл). Спробуйте ще раз або /cancel.",
+                    parse_mode=ParseMode.MARKDOWN,
+                )
+                return EDIT_INPUT
             image_key = product.image or f"{product.id}.jpg"
-            tg_file = await context.bot.get_file(photo.file_id)
+            tg_file = await context.bot.get_file(file_id)
             image_bytes = bytes(await tg_file.download_as_bytearray())
             if not upload_image(image_key, image_bytes):
                 await update.message.reply_text(
@@ -387,7 +397,7 @@ def build_admin_edit_handler() -> ConversationHandler:
         ],
         states={
             EDIT_INPUT: [
-                MessageHandler(filters.PHOTO, apply_edit_input),
+                MessageHandler(filters.PHOTO | filters.Document.IMAGE, apply_edit_input),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, apply_edit_input),
             ],
         },

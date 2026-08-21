@@ -29,7 +29,7 @@ from telegram.error import TelegramError
 
 from store.data.products import Product
 from store.services.catalog_filter import format_price
-from store.services.images import photo_source
+from store.services.images import get_image_bytes, image_url
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +89,21 @@ def _post_text(product: Product) -> str:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
+def _best_photo(product: Product):
+    """Return the best photo source for a channel post.
+
+    Bytes (uploaded directly by the bot) are preferred over a URL because
+    Telegram's servers fetch URLs from their own network — which may not have
+    access to a private or restricted R2 bucket.  Falls back to a public URL
+    when no private credentials are configured, and to None when neither is
+    available.
+    """
+    bytes_ = get_image_bytes(product)
+    if bytes_:
+        return bytes_
+    return image_url(product)   # may be None
+
+
 async def post_product(bot: Bot, channel_id: str, product: Product) -> str:
     """Send a new channel post for *product*.
 
@@ -99,7 +114,7 @@ async def post_product(bot: Bot, channel_id: str, product: Product) -> str:
         return ""
 
     text = _post_text(product)
-    photo = photo_source(product)
+    photo = _best_photo(product)
 
     try:
         if photo:
