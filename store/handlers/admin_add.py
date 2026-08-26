@@ -66,6 +66,34 @@ _CHANNEL_SKIP = InlineKeyboardMarkup(
     ]
 )
 
+_DESCRIPTION_SKIP = InlineKeyboardMarkup(
+    [
+        [InlineKeyboardButton("⏭ Пропустити", callback_data="adm:skip_desc")],
+        [InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")],
+    ]
+)
+
+_BRAND_SKIP = InlineKeyboardMarkup(
+    [
+        [InlineKeyboardButton("⏭ Пропустити (—)", callback_data="adm:skip_brand")],
+        [InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")],
+    ]
+)
+
+_COLOR_SKIP = InlineKeyboardMarkup(
+    [
+        [InlineKeyboardButton("⏭ Пропустити (—)", callback_data="adm:skip_color")],
+        [InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")],
+    ]
+)
+
+_STOCK_SKIP = InlineKeyboardMarkup(
+    [
+        [InlineKeyboardButton("⏭ Пропустити (0)", callback_data="adm:skip_stock")],
+        [InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")],
+    ]
+)
+
 _CHANNEL_URL_RE = re.compile(
     r"^https?://(?:t\.me|telegram\.me)/[\w+/.-]+$",
     re.IGNORECASE,
@@ -86,7 +114,6 @@ def _category_keyboard() -> InlineKeyboardMarkup:
         for key, label in CATEGORIES if key != "all"
     ]
     rows = [buttons[i : i + 2] for i in range(0, len(buttons), 2)]
-    rows.append([InlineKeyboardButton("⏭ Без категорії", callback_data="adm:cat_none")])
     rows.append([InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")])
     return InlineKeyboardMarkup(rows)
 
@@ -288,11 +315,11 @@ async def _ask_description(
     prompt = "Надішліть *опис* товару (коротко, 1–2 речення):"
     if update.callback_query:
         await update.callback_query.edit_message_text(
-            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_CANCEL
+            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_DESCRIPTION_SKIP
         )
     else:
         await update.message.reply_text(
-            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_CANCEL
+            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_DESCRIPTION_SKIP
         )
     return DESCRIPTION
 
@@ -332,6 +359,19 @@ async def collect_group(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
 # ── Step 6: description → price ──────────────────────────────────────────────
 
+async def _ask_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    prompt = "Ціна в *USD* (лише число, напр. `49` або `999`):"
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_CANCEL
+        )
+    else:
+        await update.message.reply_text(
+            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_CANCEL
+        )
+    return PRICE
+
+
 async def collect_description(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     description = update.message.text.strip()
     if len(description) < 2:
@@ -339,13 +379,13 @@ async def collect_description(update: Update, context: ContextTypes.DEFAULT_TYPE
         return DESCRIPTION
 
     _draft(context)["description"] = description
+    return await _ask_price(update, context)
 
-    await update.message.reply_text(
-        "Ціна в *USD* (лише число, напр. `49` або `999`):",
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=_CANCEL,
-    )
-    return PRICE
+
+async def skip_description(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.callback_query.answer()
+    _draft(context).pop("description", None)
+    return await _ask_price(update, context)
 
 
 # ── Step 6: price → brand ────────────────────────────────────────────────────
@@ -366,12 +406,26 @@ async def collect_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     await update.message.reply_text(
         "Надішліть *бренд* товару (напр. `Apple`, `Samsung`, `Anker`):",
         parse_mode=ParseMode.MARKDOWN,
-        reply_markup=_CANCEL,
+        reply_markup=_BRAND_SKIP,
     )
     return BRAND
 
 
 # ── Step 7: brand → storage ──────────────────────────────────────────────────
+
+async def _ask_storage(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    hint = _storage_hint(_draft(context).get("category", ""))
+    prompt = f"{hint}:"
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_STORAGE_SKIP
+        )
+    else:
+        await update.message.reply_text(
+            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_STORAGE_SKIP
+        )
+    return STORAGE
+
 
 async def collect_brand(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     brand = update.message.text.strip()
@@ -379,19 +433,30 @@ async def collect_brand(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         await update.message.reply_text("Введіть бренд. Спробуйте ще раз.")
         return BRAND
 
-    draft = _draft(context)
-    draft["brand"] = brand
-    hint = _storage_hint(draft.get("category", ""))
+    _draft(context)["brand"] = brand
+    return await _ask_storage(update, context)
 
-    await update.message.reply_text(
-        f"{hint}:",
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=_STORAGE_SKIP,
-    )
-    return STORAGE
+
+async def skip_brand(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.callback_query.answer()
+    _draft(context)["brand"] = "—"
+    return await _ask_storage(update, context)
 
 
 # ── Step 8: storage → color ──────────────────────────────────────────────────
+
+async def _ask_color(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    prompt = "Надішліть *колір* товару (напр. `Black`, `Starlight`, `Natural Titanium`):"
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_COLOR_SKIP
+        )
+    else:
+        await update.message.reply_text(
+            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_COLOR_SKIP
+        )
+    return COLOR
+
 
 async def collect_storage(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     storage = update.message.text.strip()
@@ -400,26 +465,29 @@ async def collect_storage(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return STORAGE
 
     _draft(context)["storage"] = storage
-    await update.message.reply_text(
-        "Надішліть *колір* товару (напр. `Black`, `Starlight`, `Natural Titanium`):",
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=_CANCEL,
-    )
-    return COLOR
+    return await _ask_color(update, context)
 
 
 async def skip_storage(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.callback_query.answer()
     _draft(context)["storage"] = "—"
-    await update.callback_query.edit_message_text(
-        "Надішліть *колір* товару (напр. `Black`, `Starlight`, `Natural Titanium`):",
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=_CANCEL,
-    )
-    return COLOR
+    return await _ask_color(update, context)
 
 
 # ── Step 9: color → stock ────────────────────────────────────────────────────
+
+async def _ask_stock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    prompt = "Скільки одиниць *на складі*? (число)"
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_STOCK_SKIP
+        )
+    else:
+        await update.message.reply_text(
+            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_STOCK_SKIP
+        )
+    return STOCK
+
 
 async def collect_color(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     color = update.message.text.strip()
@@ -428,15 +496,39 @@ async def collect_color(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         return COLOR
 
     _draft(context)["color"] = color
-    await update.message.reply_text(
-        "Скільки одиниць *на складі*? (число)",
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=_CANCEL,
-    )
-    return STOCK
+    return await _ask_stock(update, context)
+
+
+async def skip_color(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.callback_query.answer()
+    _draft(context)["color"] = "—"
+    return await _ask_stock(update, context)
 
 
 # ── Step 10: stock → channel (or photo when CHANNEL_ID is configured) ────────
+
+async def _after_stock(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    """Advance from stock to channel or photo."""
+    if context.bot_data.get("channel_id"):
+        _draft(context)["channel_post_url"] = ""
+        return await _ask_photo(update, context)
+
+    prompt = (
+        "Посилання на *пост у каналі* (напр. `https://t.me/iios_cv/42`)\n"
+        "або натисніть «Пропустити»:"
+    )
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_CHANNEL_SKIP
+        )
+    else:
+        await update.message.reply_text(
+            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_CHANNEL_SKIP
+        )
+    return CHANNEL
+
 
 async def collect_stock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     raw = update.message.text.strip()
@@ -450,19 +542,13 @@ async def collect_stock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         return STOCK
 
     _draft(context)["stock"] = stock
+    return await _after_stock(update, context)
 
-    # Skip the manual channel-URL step when auto-posting is enabled.
-    if context.bot_data.get("channel_id"):
-        _draft(context)["channel_post_url"] = ""
-        return await _ask_photo(update, context)
 
-    await update.message.reply_text(
-        "Посилання на *пост у каналі* (напр. `https://t.me/iios_cv/42`)\n"
-        "або натисніть «Пропустити»:",
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=_CHANNEL_SKIP,
-    )
-    return CHANNEL
+async def skip_stock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.callback_query.answer()
+    _draft(context)["stock"] = 0
+    return await _after_stock(update, context)
 
 
 # ── Step 11: channel → photo ─────────────────────────────────────────────────
@@ -662,15 +748,27 @@ def build_admin_add_handler() -> ConversationHandler:
                 CallbackQueryHandler(new_group, pattern=r"^adm:grp_new$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, collect_group),
             ],
-            DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_description)],
+            DESCRIPTION: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, collect_description),
+                CallbackQueryHandler(skip_description, pattern=r"^adm:skip_desc$"),
+            ],
             PRICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_price)],
-            BRAND: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_brand)],
+            BRAND: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, collect_brand),
+                CallbackQueryHandler(skip_brand, pattern=r"^adm:skip_brand$"),
+            ],
             STORAGE: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, collect_storage),
                 CallbackQueryHandler(skip_storage, pattern=r"^adm:skip_storage$"),
             ],
-            COLOR: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_color)],
-            STOCK: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_stock)],
+            COLOR: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, collect_color),
+                CallbackQueryHandler(skip_color, pattern=r"^adm:skip_color$"),
+            ],
+            STOCK: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, collect_stock),
+                CallbackQueryHandler(skip_stock, pattern=r"^adm:skip_stock$"),
+            ],
             CHANNEL: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, collect_channel),
                 CallbackQueryHandler(skip_channel, pattern=r"^adm:skip_channel$"),

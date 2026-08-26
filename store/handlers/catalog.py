@@ -12,6 +12,7 @@ from store.services.catalog_filter import filter_products, get_filter
 from store.services.grouping import build_groups
 from store.services.images import photo_source
 from store.utils.format import product_summary
+from store.utils.throttle import throttle
 from store.utils.tg import edit_or_resend, send_photo_or_text
 
 
@@ -41,11 +42,13 @@ async def render_results(
         )
 
 
+@throttle
 async def show_catalog(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Render the filtered catalog list (used by the 'back to catalog' button)."""
     await render_results(update, context, get_filter(context))
 
 
+@throttle
 async def show_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     product_id = query.data.split(":", 1)[1]

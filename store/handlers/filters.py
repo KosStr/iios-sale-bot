@@ -25,6 +25,7 @@ from store.services.catalog_filter import (
     has_price_filter,
 )
 from store.services.grouping import find_group
+from store.utils.throttle import throttle
 from store.utils.tg import edit_or_resend
 
 
@@ -69,6 +70,7 @@ async def _advance_after_category(
     await render_results(update, context, flt)
 
 
+@throttle
 async def open_filter_for_catalog(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
@@ -77,6 +79,7 @@ async def open_filter_for_catalog(
     await _send_filter(update, flt)
 
 
+@throttle
 async def reopen_filter(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Reopen the filter at the most relevant step for the current selection."""
     flt = get_filter(context)
@@ -92,11 +95,13 @@ async def reopen_filter(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await _send_filter(update, flt)
 
 
+@throttle
 async def to_price_screen(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Advance from the subcategory step to price (or results if too few products)."""
     await _advance_after_category(update, context, get_filter(context))
 
 
+@throttle
 async def back_to_main_filter(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
@@ -112,6 +117,7 @@ async def back_to_main_filter(
     await _send_filter(update, flt)
 
 
+@throttle
 async def set_filter_value(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle flt:cat/sub/cur/price taps and re-render the relevant step."""
     _, field, value = update.callback_query.data.split(":", 2)
@@ -143,10 +149,12 @@ async def set_filter_value(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     await _send_filter(update, flt)
 
 
+@throttle
 async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await render_results(update, context, get_filter(context))
 
 
+@throttle
 async def show_group(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Expand a multi-variant model into its variant list."""
     flt = get_filter(context)

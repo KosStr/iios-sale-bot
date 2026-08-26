@@ -11,9 +11,11 @@ from store.keyboards import cart_keyboard
 from store.services import cart as cart_service
 from store.services.catalog_filter import get_filter
 from store.utils.format import cart_summary
+from store.utils.throttle import throttle
 from store.utils.tg import edit_or_resend
 
 
+@throttle
 async def show_cart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     cart = cart_service.get_cart(update.effective_user.id)
     currency = get_filter(context).get("currency", "UAH")
@@ -28,6 +30,7 @@ async def show_cart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
 
 
+@throttle
 async def add_to_cart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     product_id = query.data.split(":", 1)[1]
@@ -42,6 +45,7 @@ async def add_to_cart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     await show_cart(update, context)
 
 
+@throttle
 async def remove_from_cart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     product_id = query.data.split(":", 1)[1]
@@ -50,6 +54,7 @@ async def remove_from_cart(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     await show_cart(update, context)
 
 
+@throttle
 async def clear_cart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     cart_service.clear_cart(update.effective_user.id)
