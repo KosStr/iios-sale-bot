@@ -8,6 +8,7 @@ from telegram.ext import ContextTypes
 
 from store.data.products import get_product_by_id
 from store.keyboards import catalog_results_keyboard, product_keyboard
+from store.services import cart as cart_service
 from store.services.catalog_filter import filter_products, get_filter
 from store.services.grouping import build_groups
 from store.services.images import photo_source
@@ -32,7 +33,8 @@ async def render_results(
         )
     else:
         text = "😕 За вашим фільтром нічого не знайдено.\nЗмініть параметри фільтра."
-    keyboard = catalog_results_keyboard(groups, flt.get("currency", "UAH"))
+    cart_count = cart_service.get_cart(update.effective_user.id).total_qty
+    keyboard = catalog_results_keyboard(groups, flt.get("currency", "UAH"), cart_count)
 
     if update.callback_query:
         await edit_or_resend(update, context, text, keyboard)
@@ -60,7 +62,8 @@ async def show_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     currency = get_filter(context).get("currency", "UAH")
     text = product_summary(product, currency)
-    keyboard = product_keyboard(product)
+    cart_count = cart_service.get_cart(update.effective_user.id).total_qty
+    keyboard = product_keyboard(product, cart_count)
     await send_photo_or_text(
         update,
         context,

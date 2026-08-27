@@ -185,9 +185,22 @@ def has_price_filter(flt: dict) -> bool:
     return len(_products_for(flt)) >= 5
 
 
+def _short_price(product: Product) -> str:
+    """One-line price for catalog list buttons, using whichever fields are set."""
+    uah = product.price_uah
+    usd = effective_price(product) if product.price else None
+    if uah and usd:
+        return f"{uah} грн (${usd})"
+    if uah:
+        return f"{uah} грн"
+    if usd:
+        return f"${usd}"
+    return "—"
+
+
 def button_price(product: Product, currency: str) -> str:
     """Short price label for catalog list buttons."""
-    label = format_price(effective_price(product), currency)
+    label = _short_price(product)
     if is_on_sale(product):
         return f"🔥 {label}"
     return label

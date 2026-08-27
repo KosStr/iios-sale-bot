@@ -12,7 +12,7 @@ from store.db.connection import db_connection
 _SELECT = """
 SELECT id, brand, name, price, storage, color, stock, description,
        category, subcategory, image, product_group, sale_price, sale_until,
-       channel_post_url
+       channel_post_url, price_uah
 FROM products
 """
 
@@ -20,8 +20,8 @@ _INSERT = """
 INSERT INTO products (
     id, brand, name, price, storage, color, stock, description,
     category, subcategory, image, product_group, sale_price, sale_until,
-    channel_post_url
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    channel_post_url, price_uah
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 """
 
 
@@ -75,6 +75,7 @@ def insert(product: Product) -> None:
                 product.sale_price,
                 sale_until,
                 product.channel_post_url,
+                product.price_uah,
             ),
         )
 
@@ -87,7 +88,7 @@ def _row_to_product(row) -> Product:
         id=row["id"],
         brand=row["brand"],
         name=row["name"],
-        price=row["price"],
+        price=row["price"] or 0,
         storage=row["storage"],
         color=row["color"],
         stock=row["stock"],
@@ -99,6 +100,7 @@ def _row_to_product(row) -> Product:
         sale_price=row["sale_price"],
         sale_until=sale_until,
         channel_post_url=row["channel_post_url"] or "",
+        price_uah=row["price_uah"],
     )
 
 
@@ -130,6 +132,7 @@ def update(product_id: str, **fields: object) -> None:
     allowed = {
         "name",
         "price",
+        "price_uah",
         "stock",
         "category",
         "subcategory",

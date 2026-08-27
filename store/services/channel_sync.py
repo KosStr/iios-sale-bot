@@ -20,6 +20,7 @@ Private channel:  https://t.me/c/<channel_id>/<msg_id>
 from __future__ import annotations
 
 import logging
+import os
 import re
 from html import escape
 
@@ -27,8 +28,7 @@ from telegram import Bot
 from telegram.constants import ParseMode
 from telegram.error import TelegramError
 
-from store.data.products import Product
-from store.services.catalog_filter import format_price
+from store.data.products import Product, is_on_sale
 from store.services.images import get_image_bytes, image_url
 
 logger = logging.getLogger(__name__)
@@ -64,26 +64,91 @@ def _make_post_url(channel_id: str, message_id: int) -> str:
     return f"https://t.me/{username}/{message_id}"
 
 
+def _price_line(product: Product) -> str:
+    """Format the price line for a channel post."""
+    uah = product.price_uah
+    usd = product.price if product.price else None
+    if uah and usd:
+        return f"{uah}  грн  ( {usd}$ )"
+    if uah:
+        return f"{uah}  грн"
+    if usd:
+        return f"{usd}$"
+    return ""
+
+
 def _post_text(product: Product) -> str:
-    """HTML text for a channel post / caption."""
-    price = format_price(product.price, "USD")
-    stock_line = (
-        f"✅ В наявності: {product.stock} шт."
-        if product.stock > 0
-        else "❌ Немає в наявності"
-    )
-    parts = [f"<b>{escape(product.name)}</b>  —  {price}", ""]
+    """HTML caption for a channel post, styled to match the IIOS channel format."""
+    parts = [f"<b>{escape(product.name)}</b>"]
 
+    # Condition line (brand used as condition: "Вживаний", "Новий", etc.)
     if product.brand and product.brand not in ("—", ""):
-        parts.append(f"🏷 {escape(product.brand)}")
-    if product.storage and product.storage not in ("—", ""):
-        parts.append(f"💾 {escape(product.storage)}")
-    if product.color and product.color not in ("—", ""):
-        parts.append(f"🎨 {escape(product.color)}")
-    if product.description and product.description not in ("—", "", product.name):
-        parts += ["", escape(product.description)]
+        parts += ["", escape(product.brand)]
 
-    parts += ["", stock_line]
+    # Description: each non-empty line becomes a ▪ bullet
+    desc = (product.description or "").strip()
+    if desc and desc != product.name:
+        bullets = [
+            f"▪ {escape(line.strip())}"
+            for line in desc.splitlines()
+            if line.strip()
+        ]
+        if bullets:
+            parts += [""] + bullets
+
+    # Warranty line
+    parts += ["", "🛡 90 днів гарантії від IIOS"]
+
+    # Price (sale price takes priority when active)
+    if is_on_sale(product):
+        regular = _price_line(product)
+        sale_usd = product.sale_price
+        sale_uah = product.price_uah  # UAH sale price not tracked separately
+        if sale_uah and sale_usd:
+            sale_line = f"<b>{sale_uah}  грн  ( {sale_usd}$ )</b>"
+        elif sale_usd:
+            sale_line = f"<b>{sale_usd}$</b>"
+        else:
+            sale_line = ""
+        price_block = ["", "🔥 <b>АКЦІЯ</b>"]
+        if regular:
+            price_block.append(f"<s>{regular}</s>")
+        if sale_line:
+            price_block.append(sale_line)
+        parts += price_block
+    else:
+        price = _price_line(product)
+        if price:
+            parts += ["", price]
+
+    # Divider + payment block
+    parts += [
+        "",
+        "———",
+        "",
+        "💳 Оплата:",
+        "• $ / ₴ / €",
+        "• Післяплата",
+        "• Приват / Моно / A Bank",
+        "",
+        "♻ Trade-in / Обмін",
+        "",
+    ]
+
+    # Contact info from env vars
+    manager = os.getenv("STORE_TELEGRAM", "").strip()
+    phone = os.getenv("STORE_PHONE", "").strip()
+    if manager:
+        parts.append(f"✉ Direct {escape(manager)}")
+    if phone:
+        parts.append(f"📞 {escape(phone)}")
+
+    # Instagram
+    instagram = os.getenv("STORE_INSTAGRAM", "").strip()
+    if instagram:
+        user = instagram.lstrip("@")
+        parts += ["", "Інстаграм", f"https://instagram.com/{escape(user)}"]
+
     return "\n".join(parts)
 
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 _TABLES = """
 CREATE TABLE IF NOT EXISTS schema_meta (
@@ -117,10 +117,19 @@ def _ensure_channel_post_url_column(conn: sqlite3.Connection) -> None:
     )
 
 
+def _ensure_price_uah_column(conn: sqlite3.Connection) -> None:
+    """Add price_uah column to databases created before schema v4."""
+    if "price_uah" in _table_columns(conn, "products"):
+        return
+
+    conn.execute("ALTER TABLE products ADD COLUMN price_uah INTEGER")
+
+
 def apply_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(_TABLES)
     _ensure_subcategory_column(conn)
     _ensure_channel_post_url_column(conn)
+    _ensure_price_uah_column(conn)
     conn.executescript(_INDEXES)
     conn.execute(
         """

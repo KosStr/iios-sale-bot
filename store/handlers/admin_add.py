@@ -25,7 +25,6 @@ from store.services.catalog_filter import (
     CATEGORIES,
     CATEGORY_LABELS,
     SUBCATEGORIES,
-    format_price,
     subcategory_options,
 )
 from store.services.channel_sync import post_product
@@ -36,7 +35,7 @@ from store.utils.admin import is_admin
 logger = logging.getLogger(__name__)
 
 # ── State constants (order = wizard step order) ──────────────────────────────
-CATEGORY, SUBCATEGORY, NAME, GROUP, DESCRIPTION, PRICE, BRAND, STORAGE, COLOR, STOCK, CHANNEL, PHOTO, CONFIRM = range(13)
+CATEGORY, SUBCATEGORY, NAME, GROUP, DESCRIPTION, PRICE_USD, PRICE_UAH, BRAND, STORAGE, COLOR, STOCK, CHANNEL, PHOTO, CONFIRM = range(14)
 
 # Existing models offered as buttons on the GROUP step.
 _GROUP_CHOICE_LIMIT = 8
@@ -90,6 +89,20 @@ _COLOR_SKIP = InlineKeyboardMarkup(
 _STOCK_SKIP = InlineKeyboardMarkup(
     [
         [InlineKeyboardButton("⏭ Пропустити (0)", callback_data="adm:skip_stock")],
+        [InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")],
+    ]
+)
+
+_PRICE_USD_SKIP = InlineKeyboardMarkup(
+    [
+        [InlineKeyboardButton("⏭ Без ціни в USD", callback_data="adm:skip_price_usd")],
+        [InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")],
+    ]
+)
+
+_PRICE_UAH_SKIP = InlineKeyboardMarkup(
+    [
+        [InlineKeyboardButton("⏭ Без ціни в UAH", callback_data="adm:skip_price_uah")],
         [InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")],
     ]
 )
@@ -166,6 +179,18 @@ def _storage_hint(category: str) -> str:
     return hints.get(category, "Специфікація")
 
 
+def _price_preview(draft: dict) -> str:
+    usd = draft.get("price", 0)
+    uah = draft.get("price_uah")
+    if usd and uah:
+        return f"{uah} грн / ${usd}"
+    if uah:
+        return f"{uah} грн"
+    if usd:
+        return f"${usd}"
+    return "—"
+
+
 def _preview(draft: dict) -> str:
     cat = CATEGORY_LABELS.get(draft.get("category", ""), draft.get("category", "?"))
     sub = draft.get("subcategory") or "—"
@@ -179,13 +204,13 @@ def _preview(draft: dict) -> str:
             f"ID: <code>{escape(draft['id'])}</code>",
             f"Модель: {escape(draft.get('group') or '—')}",
             f"Опис: {escape(draft.get('description', '—'))}",
-            f"Бренд: {escape(draft.get('brand', '—'))}",
+            f"Стан: {escape(draft.get('brand', '—'))}",
             f"Специфікація: {escape(draft.get('storage', '—'))}",
             f"Колір: {escape(draft.get('color', '—'))}",
-            f"Ціна: <b>{escape(format_price(draft['price'], 'USD'))}</b>",
+            f"Ціна: <b>{escape(_price_preview(draft))}</b>",
             f"Категорія: {escape(cat)}",
             f"Підкатегорія: {escape(str(sub))}",
-            f"На складі: {draft['stock']}",
+            f"На складі: {draft.get('stock', 0)}",
             f"Пост у каналі: {escape(channel)}",
             f"Фото: {photo}",
         ]
@@ -197,16 +222,17 @@ def _build_product(draft: dict) -> Product:
         id=draft["id"],
         brand=draft.get("brand", "—"),
         name=draft["name"],
-        price=draft["price"],
+        price=draft.get("price", 0),
         storage=draft.get("storage", "—"),
         color=draft.get("color", "—"),
-        stock=draft["stock"],
+        stock=draft.get("stock", 0),
         description=draft.get("description", draft["name"]),
         category=draft["category"],
         subcategory=draft.get("subcategory", ""),
         image=draft.get("image", ""),
         group=draft.get("group", ""),
         channel_post_url=draft.get("channel_post_url", ""),
+        price_uah=draft.get("price_uah"),
     )
 
 
@@ -312,7 +338,14 @@ async def collect_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 async def _ask_description(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
-    prompt = "Надішліть *опис* товару (коротко, 1–2 речення):"
+    prompt = (
+        "Надішліть *характеристики* товару — кожна з нового рядка стане окремим пунктом у каналі.\n\n"
+        "Приклад:\n"
+        "`Фізична SIM + E-Sim`\n"
+        "`Стан: Ідеальний`\n"
+        "`АКБ 100% (2 цикла)`\n"
+        "`Комплект: гарантія | кабель | рідна коробка`"
+    )
     if update.callback_query:
         await update.callback_query.edit_message_text(
             prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_DESCRIPTION_SKIP
@@ -357,19 +390,19 @@ async def collect_group(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     return await _ask_description(update, context)
 
 
-# ── Step 6: description → price ──────────────────────────────────────────────
+# ── Step 6: description → price USD ──────────────────────────────────────────
 
-async def _ask_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    prompt = "Ціна в *USD* (лише число, напр. `49` або `999`):"
+async def _ask_price_usd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    prompt = "Ціна в *USD* (напр. `460`). Якщо ціна лише в гривнях — пропустіть:"
     if update.callback_query:
         await update.callback_query.edit_message_text(
-            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_CANCEL
+            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_PRICE_USD_SKIP
         )
     else:
         await update.message.reply_text(
-            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_CANCEL
+            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_PRICE_USD_SKIP
         )
-    return PRICE
+    return PRICE_USD
 
 
 async def collect_description(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -379,35 +412,95 @@ async def collect_description(update: Update, context: ContextTypes.DEFAULT_TYPE
         return DESCRIPTION
 
     _draft(context)["description"] = description
-    return await _ask_price(update, context)
+    return await _ask_price_usd(update, context)
 
 
 async def skip_description(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.callback_query.answer()
     _draft(context).pop("description", None)
-    return await _ask_price(update, context)
+    return await _ask_price_usd(update, context)
 
 
-# ── Step 6: price → brand ────────────────────────────────────────────────────
+# ── Step 6b: price USD → price UAH ───────────────────────────────────────────
 
-async def collect_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def _ask_price_uah(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    prompt = "Ціна в *UAH* (напр. `20700`). Якщо ціна лише в доларах — пропустіть:"
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_PRICE_UAH_SKIP
+        )
+    else:
+        await update.message.reply_text(
+            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_PRICE_UAH_SKIP
+        )
+    return PRICE_UAH
+
+
+async def collect_price_usd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     raw = update.message.text.strip().replace(",", ".")
     try:
         price = int(float(raw))
     except ValueError:
-        await update.message.reply_text("Введіть число, наприклад: 49")
-        return PRICE
+        await update.message.reply_text("Введіть ціле число, наприклад: 460")
+        return PRICE_USD
 
     if price <= 0:
         await update.message.reply_text("Ціна має бути більше нуля.")
-        return PRICE
+        return PRICE_USD
 
     _draft(context)["price"] = price
-    await update.message.reply_text(
-        "Надішліть *бренд* товару (напр. `Apple`, `Samsung`, `Anker`):",
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=_BRAND_SKIP,
-    )
+    return await _ask_price_uah(update, context)
+
+
+async def skip_price_usd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.callback_query.answer()
+    _draft(context)["price"] = 0
+    return await _ask_price_uah(update, context)
+
+
+# ── Step 6c: price UAH → brand ───────────────────────────────────────────────
+
+async def collect_price_uah(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    raw = update.message.text.strip().replace(",", ".")
+    try:
+        price = int(float(raw))
+    except ValueError:
+        await update.message.reply_text("Введіть ціле число, наприклад: 20700")
+        return PRICE_UAH
+
+    if price <= 0:
+        await update.message.reply_text("Ціна має бути більше нуля.")
+        return PRICE_UAH
+
+    _draft(context)["price_uah"] = price
+    return await _ask_brand(update, context)
+
+
+async def skip_price_uah(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.callback_query.answer()
+    draft = _draft(context)
+    draft["price_uah"] = None
+    if not draft.get("price"):
+        # Neither price was given — require at least one.
+        await update.callback_query.edit_message_text(
+            "⚠️ Потрібна хоча б одна ціна. Введіть *ціну в USD*:",
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=_PRICE_USD_SKIP,
+        )
+        return PRICE_USD
+    return await _ask_brand(update, context)
+
+
+async def _ask_brand(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    prompt = "Надішліть *стан* товару (напр. `Вживаний`, `Новий`, `Новий запечатаний`):"
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_BRAND_SKIP
+        )
+    else:
+        await update.message.reply_text(
+            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_BRAND_SKIP
+        )
     return BRAND
 
 
@@ -429,8 +522,8 @@ async def _ask_storage(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 async def collect_brand(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     brand = update.message.text.strip()
-    if len(brand) < 1:
-        await update.message.reply_text("Введіть бренд. Спробуйте ще раз.")
+    if not brand:
+        await update.message.reply_text("Введіть стан. Спробуйте ще раз.")
         return BRAND
 
     _draft(context)["brand"] = brand
@@ -702,6 +795,12 @@ async def save_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
     _clear_draft(context)
     channel_note = f"\n📢 Пост у каналі: {post_url}" if post_url else ""
+    price_parts = []
+    if product.price_uah:
+        price_parts.append(f"{product.price_uah} грн")
+    if product.price:
+        price_parts.append(f"${product.price}")
+    price_str = " / ".join(price_parts) if price_parts else "—"
     await query.edit_message_text(
         "\n".join(
             [
@@ -709,7 +808,7 @@ async def save_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
                 "",
                 f"*{product.name}*",
                 f"ID: `{product.id}`",
-                f"Ціна: {format_price(product.price, 'USD')}",
+                f"Ціна: {price_str}",
                 "",
                 "Вже видно в каталозі для покупців.",
             ]
@@ -752,7 +851,14 @@ def build_admin_add_handler() -> ConversationHandler:
                 MessageHandler(filters.TEXT & ~filters.COMMAND, collect_description),
                 CallbackQueryHandler(skip_description, pattern=r"^adm:skip_desc$"),
             ],
-            PRICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_price)],
+            PRICE_USD: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, collect_price_usd),
+                CallbackQueryHandler(skip_price_usd, pattern=r"^adm:skip_price_usd$"),
+            ],
+            PRICE_UAH: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, collect_price_uah),
+                CallbackQueryHandler(skip_price_uah, pattern=r"^adm:skip_price_uah$"),
+            ],
             BRAND: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, collect_brand),
                 CallbackQueryHandler(skip_brand, pattern=r"^adm:skip_brand$"),

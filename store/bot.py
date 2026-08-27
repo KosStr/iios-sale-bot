@@ -26,6 +26,7 @@ from store.handlers.admin_products import (
 )
 from store.handlers.booking import build_booking_handler
 from store.handlers.cart import add_to_cart, clear_cart, remove_from_cart, show_cart
+from store.services import cart as cart_service
 from store.handlers.catalog import show_catalog, show_product
 from store.handlers.checkout import build_checkout_handler
 from store.handlers.filters import (
@@ -81,10 +82,11 @@ HELP = "\n".join(
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    cart_count = cart_service.get_cart(update.effective_user.id).total_qty
     await update.message.reply_text(
         WELCOME,
         parse_mode=ParseMode.MARKDOWN,
-        reply_markup=main_menu_keyboard(admin=is_admin(update, context)),
+        reply_markup=main_menu_keyboard(admin=is_admin(update, context), cart_count=cart_count),
     )
 
 
@@ -128,7 +130,7 @@ def create_application(config: Config) -> Application:
 
     # Reply-keyboard buttons (plain text)
     app.add_handler(MessageHandler(filters.Regex(rf"^{re.escape(BTN_CATALOG)}$"), open_filter_for_catalog))
-    app.add_handler(MessageHandler(filters.Regex(rf"^{re.escape(BTN_CART)}$"), show_cart))
+    app.add_handler(MessageHandler(filters.Regex(rf"^{re.escape(BTN_CART)}"), show_cart))
     app.add_handler(MessageHandler(filters.Regex(rf"^{re.escape(BTN_CONTACTS)}$"), show_contacts))
     app.add_handler(MessageHandler(filters.Regex(rf"^{re.escape(BTN_LOCATION)}$"), show_location))
     app.add_handler(MessageHandler(filters.Regex(rf"^{re.escape(BTN_HELP)}$"), help_command))

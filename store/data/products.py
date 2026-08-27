@@ -48,7 +48,7 @@ class Product:
     id: str
     brand: str
     name: str
-    price: int  # regular price, in USD
+    price: int  # USD price; 0 means "not set"
     storage: str
     color: str
     stock: int
@@ -65,6 +65,8 @@ class Product:
     # Optional link to a Telegram channel post (e.g. https://t.me/iios_cv/42).
     # When set, a "View in channel" button appears on the product card.
     channel_post_url: str = ""
+    # UAH price; None means "not set". At least one of price/price_uah must be non-zero.
+    price_uah: int | None = None
 
 
 PRODUCTS: list[Product] = [

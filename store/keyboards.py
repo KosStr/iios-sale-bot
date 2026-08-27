@@ -36,9 +36,13 @@ BTN_ADMIN_ADD = "➕ Додати товар"
 BTN_ADMIN_PRODUCTS = "📋 Товари"
 
 
-def main_menu_keyboard(admin: bool = False) -> ReplyKeyboardMarkup:
+def _cart_btn_label(cart_count: int) -> str:
+    return f"{BTN_CART} ({cart_count})" if cart_count > 0 else BTN_CART
+
+
+def main_menu_keyboard(admin: bool = False, cart_count: int = 0) -> ReplyKeyboardMarkup:
     rows = [
-        [KeyboardButton(BTN_CATALOG), KeyboardButton(BTN_CART)],
+        [KeyboardButton(BTN_CATALOG), KeyboardButton(_cart_btn_label(cart_count))],
         [KeyboardButton(BTN_CONTACTS), KeyboardButton(BTN_LOCATION)],
         [KeyboardButton(BTN_HELP)],
     ]
@@ -146,13 +150,13 @@ def _group_row(group: Group, currency: str) -> list[InlineKeyboardButton]:
 
 
 def catalog_results_keyboard(
-    groups: list[Group], currency: str
+    groups: list[Group], currency: str, cart_count: int = 0
 ) -> InlineKeyboardMarkup:
     rows = [_group_row(group, currency) for group in groups]
     rows.append(
         [
             InlineKeyboardButton("🔍 Фільтр", callback_data="flt:open"),
-            InlineKeyboardButton("🛒 Кошик", callback_data="cart:view"),
+            InlineKeyboardButton(_cart_btn_label(cart_count), callback_data="cart:view"),
         ]
     )
     return InlineKeyboardMarkup(rows)
@@ -173,7 +177,7 @@ def group_variants_keyboard(group: Group, currency: str) -> InlineKeyboardMarkup
     return InlineKeyboardMarkup(rows)
 
 
-def product_keyboard(product: Product) -> InlineKeyboardMarkup:
+def product_keyboard(product: Product, cart_count: int = 0) -> InlineKeyboardMarkup:
     rows: list[list[InlineKeyboardButton]] = []
     if product.stock > 0:
         rows.append(
@@ -186,7 +190,7 @@ def product_keyboard(product: Product) -> InlineKeyboardMarkup:
     rows.append(
         [
             InlineKeyboardButton("⬅️ Назад до каталогу", callback_data="catalog:view"),
-            InlineKeyboardButton("🛒 Кошик", callback_data="cart:view"),
+            InlineKeyboardButton(_cart_btn_label(cart_count), callback_data="cart:view"),
         ]
     )
     return InlineKeyboardMarkup(rows)

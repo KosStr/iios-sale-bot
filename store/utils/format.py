@@ -11,7 +11,6 @@ from html import escape
 
 from store.data.products import Product, is_on_sale, sale_time_left
 from store.services.cart import Cart
-from store.services.catalog_filter import format_price
 
 
 def format_timeleft(delta: timedelta) -> str:
@@ -29,19 +28,39 @@ def format_timeleft(delta: timedelta) -> str:
     return f"{minutes} хв."
 
 
-def _price_block(product: Product, currency: str) -> list[str]:
+def _fmt_price(product: Product) -> str:
+    """Short price string using whichever price fields are set."""
+    uah = product.price_uah
+    usd = product.price if product.price else None
+    if uah and usd:
+        return f"{uah} грн (${usd})"
+    if uah:
+        return f"{uah} грн"
+    if usd:
+        return f"${usd}"
+    return "—"
+
+
+def _price_block(product: Product) -> list[str]:
     """HTML price lines. On sale: old price struck through, new price after it."""
     if is_on_sale(product):
         left = sale_time_left(product)
         until = product.sale_until.strftime("%d.%m %H:%M")
-        old = escape(format_price(product.price, currency))
-        new = escape(format_price(product.sale_price, currency))
+        old = escape(_fmt_price(product))
+        sale_usd = product.sale_price
+        sale_uah = product.price_uah
+        if sale_uah and sale_usd:
+            new = escape(f"{sale_uah} грн (${sale_usd})")
+        elif sale_usd:
+            new = escape(f"${sale_usd}")
+        else:
+            new = "—"
         return [
             "🔥 <b>АКЦІЯ</b>",
             f"💰 Ціна: <s>{old}</s> → <b>{new}</b>",
             f"⏳ Діє до {escape(until)} (залишилось {escape(format_timeleft(left))})",
         ]
-    return [f"💰 Ціна: <b>{escape(format_price(product.price, currency))}</b>"]
+    return [f"💰 Ціна: <b>{escape(_fmt_price(product))}</b>"]
 
 
 def product_summary(product: Product, currency: str = "UAH") -> str:
@@ -54,7 +73,7 @@ def product_summary(product: Product, currency: str = "UAH") -> str:
             "",
             escape(product.description),
             "",
-            *_price_block(product, currency),
+            *_price_block(product),
             stock,
         ]
     )
