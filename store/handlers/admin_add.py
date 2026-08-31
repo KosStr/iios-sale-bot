@@ -35,7 +35,7 @@ from store.utils.admin import is_admin
 logger = logging.getLogger(__name__)
 
 # ── State constants (order = wizard step order) ──────────────────────────────
-CATEGORY, SUBCATEGORY, NAME, GROUP, DESCRIPTION, PRICE_USD, PRICE_UAH, BRAND, STORAGE, COLOR, STOCK, CHANNEL, PHOTO, CONFIRM = range(14)
+CATEGORY, SUBCATEGORY, NAME, GROUP, DESCRIPTION, PRICE_USD, PRICE_UAH, WARRANTY, BRAND, STORAGE, COLOR, STOCK, CHANNEL, PHOTO, CONFIRM = range(15)
 
 # Existing models offered as buttons on the GROUP step.
 _GROUP_CHOICE_LIMIT = 8
@@ -103,6 +103,13 @@ _PRICE_USD_SKIP = InlineKeyboardMarkup(
 _PRICE_UAH_SKIP = InlineKeyboardMarkup(
     [
         [InlineKeyboardButton("⏭ Без ціни в UAH", callback_data="adm:skip_price_uah")],
+        [InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")],
+    ]
+)
+
+_WARRANTY_SKIP = InlineKeyboardMarkup(
+    [
+        [InlineKeyboardButton("⏭ Пропустити (без гарантії)", callback_data="adm:skip_warranty")],
         [InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")],
     ]
 )
@@ -208,6 +215,7 @@ def _preview(draft: dict) -> str:
             f"Специфікація: {escape(draft.get('storage', '—'))}",
             f"Колір: {escape(draft.get('color', '—'))}",
             f"Ціна: <b>{escape(_price_preview(draft))}</b>",
+            f"Гарантія: {draft['warranty_days']} дн." if draft.get('warranty_days') else "Гарантія: —",
             f"Категорія: {escape(cat)}",
             f"Підкатегорія: {escape(str(sub))}",
             f"На складі: {draft.get('stock', 0)}",
@@ -233,6 +241,7 @@ def _build_product(draft: dict) -> Product:
         group=draft.get("group", ""),
         channel_post_url=draft.get("channel_post_url", ""),
         price_uah=draft.get("price_uah"),
+        warranty_days=draft.get("warranty_days"),
     )
 
 
@@ -473,7 +482,7 @@ async def collect_price_uah(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         return PRICE_UAH
 
     _draft(context)["price_uah"] = price
-    return await _ask_brand(update, context)
+    return await _ask_warranty(update, context)
 
 
 async def skip_price_uah(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -488,6 +497,42 @@ async def skip_price_uah(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             reply_markup=_PRICE_USD_SKIP,
         )
         return PRICE_USD
+    return await _ask_warranty(update, context)
+
+
+# ── Step 6d: warranty days → brand ───────────────────────────────────────────
+
+async def _ask_warranty(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    prompt = "Кількість *днів гарантії* (напр. `90`). Якщо немає — пропустіть:"
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_WARRANTY_SKIP
+        )
+    else:
+        await update.message.reply_text(
+            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_WARRANTY_SKIP
+        )
+    return WARRANTY
+
+
+async def collect_warranty(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    raw = update.message.text.strip()
+    if not raw.isdigit():
+        await update.message.reply_text("Введіть ціле число, наприклад: 90")
+        return WARRANTY
+
+    days = int(raw)
+    if days <= 0:
+        await update.message.reply_text("Кількість днів має бути більше нуля.")
+        return WARRANTY
+
+    _draft(context)["warranty_days"] = days
+    return await _ask_brand(update, context)
+
+
+async def skip_warranty(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.callback_query.answer()
+    _draft(context)["warranty_days"] = None
     return await _ask_brand(update, context)
 
 
@@ -858,6 +903,10 @@ def build_admin_add_handler() -> ConversationHandler:
             PRICE_UAH: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, collect_price_uah),
                 CallbackQueryHandler(skip_price_uah, pattern=r"^adm:skip_price_uah$"),
+            ],
+            WARRANTY: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, collect_warranty),
+                CallbackQueryHandler(skip_warranty, pattern=r"^adm:skip_warranty$"),
             ],
             BRAND: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, collect_brand),

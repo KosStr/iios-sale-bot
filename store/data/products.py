@@ -67,6 +67,8 @@ class Product:
     channel_post_url: str = ""
     # UAH price; None means "not set". At least one of price/price_uah must be non-zero.
     price_uah: int | None = None
+    # Warranty in days shown in the channel post (e.g. 90). None = not set.
+    warranty_days: int | None = None
 
 
 PRODUCTS: list[Product] = [

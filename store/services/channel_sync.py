@@ -83,9 +83,10 @@ def _post_text(product: Product) -> str:
         escape(v) for v in (product.color, product.storage)
         if v and v not in ("—", "")
     )
-    header = f"<b>{escape(product.name)}</b>"
     if specs:
-        header += f"  {specs}"
+        header = f"<b>{escape(product.name)}  {specs}</b>"
+    else:
+        header = f"<b>{escape(product.name)}</b>"
     parts = [header]
 
     # Condition line (brand used as condition: "Вживаний", "Новий", etc.)
@@ -104,7 +105,8 @@ def _post_text(product: Product) -> str:
             parts += [""] + bullets
 
     # Warranty line
-    parts += ["", "🛡 90 днів гарантії від IIOS"]
+    if product.warranty_days:
+        parts += ["", f"🛡 {product.warranty_days} днів гарантії від IIOS"]
 
     # Price (sale price takes priority when active)
     if is_on_sale(product):

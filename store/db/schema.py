@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 _TABLES = """
 CREATE TABLE IF NOT EXISTS schema_meta (
@@ -125,11 +125,20 @@ def _ensure_price_uah_column(conn: sqlite3.Connection) -> None:
     conn.execute("ALTER TABLE products ADD COLUMN price_uah INTEGER")
 
 
+def _ensure_warranty_days_column(conn: sqlite3.Connection) -> None:
+    """Add warranty_days column to databases created before schema v5."""
+    if "warranty_days" in _table_columns(conn, "products"):
+        return
+
+    conn.execute("ALTER TABLE products ADD COLUMN warranty_days INTEGER")
+
+
 def apply_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(_TABLES)
     _ensure_subcategory_column(conn)
     _ensure_channel_post_url_column(conn)
     _ensure_price_uah_column(conn)
+    _ensure_warranty_days_column(conn)
     conn.executescript(_INDEXES)
     conn.execute(
         """

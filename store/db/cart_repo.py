@@ -66,3 +66,11 @@ def is_empty(user_id: int) -> bool:
             (user_id,),
         ).fetchone()[0]
     return count == 0
+
+
+def count_users_with_product(product_id: str) -> int:
+    with db_connection() as conn:
+        return conn.execute(
+            "SELECT COUNT(DISTINCT user_id) FROM cart_items WHERE product_id = ?",
+            (product_id,),
+        ).fetchone()[0]

@@ -19,7 +19,7 @@ from telegram.ext import (
 from html import escape
 
 from store.data.products import get_all_products
-from store.db import products_repo
+from store.db import cart_repo, products_repo
 from store.handlers.admin_ui import (
     PAGE_SIZE,
     delete_confirm_keyboard,
@@ -160,9 +160,16 @@ async def ask_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         await query.edit_message_text("Товар не знайдено.")
         return
 
+    in_carts = cart_repo.count_users_with_product(product_id)
+    cart_note = (
+        f"\n\n⚠️ Товар є в кошику у <b>{in_carts}</b> користувача(-ів). "
+        "Він буде автоматично видалений з їхніх кошиків."
+        if in_carts > 0
+        else ""
+    )
     await query.edit_message_text(
         f"🗑 <b>Видалити товар?</b>\n\n<b>{escape(product.name)}</b>\n"
-        f"<code>{escape(product.id)}</code>\n\nЦю дію не можна скасувати.",
+        f"<code>{escape(product.id)}</code>\n\nЦю дію не можна скасувати.{cart_note}",
         parse_mode=ParseMode.HTML,
         reply_markup=delete_confirm_keyboard(product_id),
     )
