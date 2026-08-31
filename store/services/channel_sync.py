@@ -79,7 +79,14 @@ def _price_line(product: Product) -> str:
 
 def _post_text(product: Product) -> str:
     """HTML caption for a channel post, styled to match the IIOS channel format."""
-    parts = [f"<b>{escape(product.name)}</b>"]
+    specs = "  ".join(
+        escape(v) for v in (product.color, product.storage)
+        if v and v not in ("—", "")
+    )
+    header = f"<b>{escape(product.name)}</b>"
+    if specs:
+        header += f"  {specs}"
+    parts = [header]
 
     # Condition line (brand used as condition: "Вживаний", "Новий", etc.)
     if product.brand and product.brand not in ("—", ""):
