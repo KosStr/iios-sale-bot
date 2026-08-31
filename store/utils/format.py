@@ -79,6 +79,18 @@ def product_summary(product: Product, currency: str = "UAH") -> str:
     )
 
 
+def _item_total_str(item) -> str:
+    p = item.product
+    uah = (p.price_uah or 0) * item.qty
+    usd = (p.price or 0) * item.qty
+    parts = []
+    if uah:
+        parts.append(f"{uah} грн")
+    if usd:
+        parts.append(f"${usd}")
+    return " / ".join(parts) if parts else "—"
+
+
 def cart_summary(cart: Cart, currency: str = "UAH") -> str:
     if cart.is_empty:
         return "Ваш кошик порожній."
@@ -86,7 +98,15 @@ def cart_summary(cart: Cart, currency: str = "UAH") -> str:
     for item in cart.items:
         mark = " 🔥" if is_on_sale(item.product) else ""
         lines.append(
-            f"• {item.product.name} ×{item.qty} — {format_price(item.line_total, currency)}{mark}"
+            f"• {item.product.name} ×{item.qty} — {_item_total_str(item)}{mark}"
         )
-    lines.extend(["", f"*Разом: {format_price(cart.total, currency)}*"])
+    total_uah = sum((i.product.price_uah or 0) * i.qty for i in cart.items)
+    total_usd = sum((i.product.price or 0) * i.qty for i in cart.items)
+    total_parts = []
+    if total_uah:
+        total_parts.append(f"{total_uah} грн")
+    if total_usd:
+        total_parts.append(f"${total_usd}")
+    total_str = " / ".join(total_parts) if total_parts else "—"
+    lines.extend(["", f"*Разом: {total_str}*"])
     return "\n".join(lines)
