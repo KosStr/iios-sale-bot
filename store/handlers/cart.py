@@ -41,6 +41,15 @@ async def add_to_cart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         await query.answer("На жаль, цього товару немає в наявності.", show_alert=True)
         return
 
+    cart = cart_service.get_cart(update.effective_user.id)
+    in_cart = next((item.qty for item in cart.items if item.product.id == product_id), 0)
+    if in_cart >= product.stock:
+        await query.answer(
+            f"У кошику вже {in_cart} шт. — це максимум за наявністю.",
+            show_alert=True,
+        )
+        return
+
     cart_service.add_item(update.effective_user.id, product_id, 1)
     cart = cart_service.get_cart(update.effective_user.id)
     count = cart.total_qty
