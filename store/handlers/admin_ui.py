@@ -137,3 +137,16 @@ def delete_confirm_keyboard(product_id: str) -> InlineKeyboardMarkup:
     )
 
 
+def force_delete_keyboard(product_id: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "🗑 Все одно видалити", callback_data=f"adm:delforce:{product_id}"
+                ),
+            ],
+            [InlineKeyboardButton("✖️ Скасувати", callback_data=f"adm:view:{product_id}")],
+        ]
+    )
+
+

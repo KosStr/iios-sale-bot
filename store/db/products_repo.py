@@ -160,3 +160,15 @@ def update(product_id: str, **fields: object) -> None:
 def delete(product_id: str) -> None:
     with db_connection() as conn:
         conn.execute("DELETE FROM products WHERE id = ?", (product_id,))
+
+
+def force_delete(product_id: str) -> None:
+    """Delete a product even if it is referenced by orders or bookings.
+
+    Clears order_items and bookings rows referencing this product first,
+    then deletes the product (cart_items cascade automatically).
+    """
+    with db_connection() as conn:
+        conn.execute("DELETE FROM order_items WHERE product_id = ?", (product_id,))
+        conn.execute("DELETE FROM bookings WHERE product_id = ?", (product_id,))
+        conn.execute("DELETE FROM products WHERE id = ?", (product_id,))

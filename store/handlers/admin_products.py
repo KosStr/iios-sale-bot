@@ -26,6 +26,7 @@ from store.handlers.admin_ui import (
     edit_category_keyboard,
     edit_menu_keyboard,
     edit_subcategory_keyboard,
+    force_delete_keyboard,
     product_detail_keyboard,
     product_detail_text,
     product_list_keyboard,
@@ -190,13 +191,40 @@ async def confirm_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     try:
         products_repo.delete(product_id)
     except sqlite3.IntegrityError:
+        name = escape(product_to_delete.name) if product_to_delete else escape(product_id)
         await query.edit_message_text(
-            "❌ Не можна видалити: товар є в замовленнях або бронюваннях.\n"
-            "Зменшіть склад до 0 або залиште в каталозі."
+            f"⚠️ Товар <b>{name}</b> є в замовленнях або бронюваннях.\n\n"
+            "Видалити все одно? Пов'язані записи в замовленнях і бронюваннях будуть очищені.",
+            parse_mode=ParseMode.HTML,
+            reply_markup=force_delete_keyboard(product_id),
         )
         return
     except Exception:  # noqa: BLE001
         logger.exception("Failed to delete product %s", product_id)
+        await query.edit_message_text("❌ Не вдалося видалити товар.")
+        return
+
+    if product_to_delete:
+        await delete_product_post(context.bot, product_to_delete)
+
+    await _send_product_list(update, context, page=0)
+
+
+async def force_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not is_admin(update, context):
+        await _deny(update, context)
+        return
+
+    query = update.callback_query
+    await query.answer()
+    product_id = query.data.split(":", 2)[2]
+
+    product_to_delete = products_repo.fetch_by_id(product_id)
+
+    try:
+        products_repo.force_delete(product_id)
+    except Exception:  # noqa: BLE001
+        logger.exception("Failed to force-delete product %s", product_id)
         await query.edit_message_text("❌ Не вдалося видалити товар.")
         return
 
@@ -421,6 +449,7 @@ def build_admin_product_handlers() -> list:
         CallbackQueryHandler(open_edit_menu, pattern=r"^adm:edit:"),
         CallbackQueryHandler(ask_delete, pattern=r"^adm:del:[^:]+$"),
         CallbackQueryHandler(confirm_delete, pattern=r"^adm:delok:"),
+        CallbackQueryHandler(force_delete, pattern=r"^adm:delforce:"),
         CallbackQueryHandler(edit_category_menu, pattern=r"^adm:ecat:"),
         CallbackQueryHandler(edit_subcategory, pattern=r"^adm:esub:"),
     ]
