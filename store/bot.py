@@ -31,6 +31,7 @@ from store.handlers.catalog import show_catalog, show_product
 from store.handlers.checkout import build_checkout_handler
 from store.handlers.filters import (
     back_to_main_filter,
+    open_category_deeplink,
     open_filter_for_catalog,
     reopen_filter,
     set_filter_value,
@@ -81,6 +82,17 @@ HELP = "\n".join(
 )
 
 
+# Deep-link payloads from the landing page, e.g. t.me/<bot>?start=cat_phone
+# opens straight into that category's catalog filter.
+CATEGORY_DEEPLINKS = {
+    "cat_phone": "phone",
+    "cat_watch": "watch",
+    "cat_headphones": "headphones",
+    "cat_laptop": "laptop",
+    "cat_accessories": "accessories",
+}
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     cart_count = cart_service.get_cart(update.effective_user.id).total_qty
     await update.message.reply_text(
@@ -88,6 +100,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=main_menu_keyboard(admin=is_admin(update, context), cart_count=cart_count),
     )
+    if context.args:
+        category = CATEGORY_DEEPLINKS.get(context.args[0])
+        if category:
+            await open_category_deeplink(update, context, category)
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

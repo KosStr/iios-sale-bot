@@ -25,6 +25,7 @@ from store.services.catalog_filter import (
     subcategory_options,
 )
 from store.services.grouping import Group
+from store.utils.format import join_specs
 
 # Reply-keyboard button labels (also used as router patterns in bot.py)
 BTN_CATALOG = "🛍 Каталог"
@@ -164,15 +165,17 @@ def catalog_results_keyboard(
 
 def group_variants_keyboard(group: Group, currency: str) -> InlineKeyboardMarkup:
     """List the variants of a grouped model."""
-    rows = [
-        [
-            InlineKeyboardButton(
-                f"{variant.storage} • {variant.color} — {button_price(variant, currency)}",
-                callback_data=f"product:{variant.id}",
-            )
-        ]
-        for variant in group.variants
-    ]
+    rows = []
+    for variant in group.variants:
+        specs = join_specs(variant.storage, variant.color)
+        label = (
+            f"{specs} — {button_price(variant, currency)}"
+            if specs
+            else f"{variant.name} — {button_price(variant, currency)}"
+        )
+        rows.append(
+            [InlineKeyboardButton(label, callback_data=f"product:{variant.id}")]
+        )
     rows.append([InlineKeyboardButton("⬅️ Назад", callback_data="flt:show")])
     return InlineKeyboardMarkup(rows)
 

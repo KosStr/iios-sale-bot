@@ -228,11 +228,11 @@ def _preview(draft: dict) -> str:
 def _build_product(draft: dict) -> Product:
     return Product(
         id=draft["id"],
-        brand=draft.get("brand", "—"),
+        brand=draft.get("brand", ""),
         name=draft["name"],
         price=draft.get("price", 0),
-        storage=draft.get("storage", "—"),
-        color=draft.get("color", "—"),
+        storage=draft.get("storage", ""),
+        color=draft.get("color", ""),
         stock=draft.get("stock", 0),
         description=draft.get("description", draft["name"]),
         category=draft["category"],
@@ -577,7 +577,7 @@ async def collect_brand(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
 async def skip_brand(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.callback_query.answer()
-    _draft(context)["brand"] = "—"
+    _draft(context)["brand"] = ""
     return await _ask_storage(update, context)
 
 
@@ -608,7 +608,7 @@ async def collect_storage(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 async def skip_storage(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.callback_query.answer()
-    _draft(context)["storage"] = "—"
+    _draft(context)["storage"] = ""
     return await _ask_color(update, context)
 
 
@@ -639,7 +639,7 @@ async def collect_color(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
 async def skip_color(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.callback_query.answer()
-    _draft(context)["color"] = "—"
+    _draft(context)["color"] = ""
     return await _ask_stock(update, context)
 
 

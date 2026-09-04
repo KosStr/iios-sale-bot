@@ -12,6 +12,25 @@ from html import escape
 from store.data.products import Product, is_on_sale, sale_time_left
 from store.services.cart import Cart
 
+_BLANK_SPECS = frozenset({"", "—", "-"})
+
+
+def present_values(*parts: str | None) -> list[str]:
+    """Keep only real spec values; skip empty placeholders like '—'."""
+    values: list[str] = []
+    for part in parts:
+        if not part:
+            continue
+        text = part.strip()
+        if text and text not in _BLANK_SPECS:
+            values.append(text)
+    return values
+
+
+def join_specs(*parts: str | None, sep: str = " • ") -> str:
+    """Join brand/storage/color, omitting blanks so leftover separators never show."""
+    return sep.join(present_values(*parts))
+
 
 def format_timeleft(delta: timedelta) -> str:
     """Short Ukrainian 'time left' label, e.g. '1 дн. 5 год.' or '40 хв.'."""
@@ -66,10 +85,12 @@ def _price_block(product: Product) -> list[str]:
 def product_summary(product: Product, currency: str = "UAH") -> str:
     """HTML product card text."""
     stock = f"В наявності: {product.stock}" if product.stock > 0 else "Немає в наявності"
-    return "\n".join(
+    lines = [f"<b>{escape(product.name)}</b>"]
+    specs = join_specs(product.brand, product.storage, product.color)
+    if specs:
+        lines.append(escape(specs))
+    lines.extend(
         [
-            f"<b>{escape(product.name)}</b>",
-            f"{escape(product.brand)} • {escape(product.storage)} • {escape(product.color)}",
             "",
             escape(product.description),
             "",
@@ -77,6 +98,7 @@ def product_summary(product: Product, currency: str = "UAH") -> str:
             stock,
         ]
     )
+    return "\n".join(lines)
 
 
 def _item_total_str(item) -> str:

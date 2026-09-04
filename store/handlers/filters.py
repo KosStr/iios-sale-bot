@@ -79,6 +79,22 @@ async def open_filter_for_catalog(
     await _send_filter(update, flt)
 
 
+async def open_category_deeplink(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, category: str
+) -> None:
+    """Jump straight into a category from a /start deep link (landing page cards)."""
+    if category not in CATEGORY_LABELS:
+        return
+    flt = get_filter(context)
+    flt["category"] = category
+    flt["subcategory"] = "all"
+    if category_has_subcategories(category):
+        flt["ui"] = "sub"
+        await _send_filter(update, flt)
+    else:
+        await _advance_after_category(update, context, flt)
+
+
 @throttle
 async def reopen_filter(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Reopen the filter at the most relevant step for the current selection."""
