@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from store.data.products import get_product_by_id
 from store.db.connection import db_connection
+from store.db.products_repo import fetch_by_ids
 from store.models.cart import Cart, CartItem
 
 
@@ -51,9 +51,12 @@ def get_cart(user_id: int) -> Cart:
             (user_id,),
         ).fetchall()
 
+    # Resolve every product in a single query (instead of one per row) and keep
+    # the rows' order; drop items whose product no longer exists.
+    products = fetch_by_ids([row["product_id"] for row in rows])
     items: list[CartItem] = []
     for row in rows:
-        product = get_product_by_id(row["product_id"])
+        product = products.get(row["product_id"])
         if product:
             items.append(CartItem(product=product, qty=row["qty"]))
     return Cart(items=items)

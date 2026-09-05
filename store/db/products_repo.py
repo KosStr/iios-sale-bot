@@ -118,6 +118,25 @@ def fetch_by_id(product_id: str) -> Product | None:
     return _row_to_product(row) if row else None
 
 
+def fetch_by_ids(product_ids: list[str]) -> dict[str, Product]:
+    """Fetch several products in one query, keyed by id.
+
+    Lets callers (e.g. the cart) resolve many product ids without issuing a
+    separate query per id. Missing ids are simply absent from the result.
+    """
+    if not product_ids:
+        return {}
+    # De-duplicate while keeping the query small; order is irrelevant since
+    # the caller looks products up by id.
+    unique_ids = list(dict.fromkeys(product_ids))
+    placeholders = ", ".join("?" for _ in unique_ids)
+    with db_connection() as conn:
+        rows = conn.execute(
+            f"{_SELECT} WHERE id IN ({placeholders})", unique_ids
+        ).fetchall()
+    return {row["id"]: _row_to_product(row) for row in rows}
+
+
 def distinct_groups(category: str = "") -> list[str]:
     """Existing non-empty model groups, optionally limited to one category."""
     sql = "SELECT DISTINCT product_group FROM products WHERE product_group != ''"

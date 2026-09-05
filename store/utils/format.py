@@ -47,17 +47,29 @@ def format_timeleft(delta: timedelta) -> str:
     return f"{minutes} хв."
 
 
-def _fmt_price(product: Product) -> str:
-    """Short price string using whichever price fields are set."""
-    uah = product.price_uah
-    usd = product.price if product.price else None
-    if uah and usd:
-        return f"{uah} грн (${usd})"
+def _price_parts(uah: int | None, usd: int | None) -> list[str]:
+    """Rendered non-zero price components, e.g. ['1000 грн', '$25'].
+
+    Zero/None values are skipped so a product priced in only one currency
+    never shows an empty or dangling amount.
+    """
+    parts: list[str] = []
     if uah:
-        return f"{uah} грн"
+        parts.append(f"{uah} грн")
     if usd:
-        return f"${usd}"
-    return "—"
+        parts.append(f"${usd}")
+    return parts
+
+
+def _fmt_price(product: Product) -> str:
+    """Short price string using whichever price fields are set.
+
+    Both currencies render as "<uah> грн ($<usd>)"; a single one renders alone.
+    """
+    parts = _price_parts(product.price_uah, product.price)
+    if len(parts) == 2:
+        return f"{parts[0]} ({parts[1]})"
+    return parts[0] if parts else "—"
 
 
 def _price_block(product: Product) -> list[str]:
@@ -102,14 +114,9 @@ def product_summary(product: Product, currency: str = "UAH") -> str:
 
 
 def _item_total_str(item) -> str:
+    """Line total for a cart item, e.g. '2000 грн / $50'."""
     p = item.product
-    uah = (p.price_uah or 0) * item.qty
-    usd = (p.price or 0) * item.qty
-    parts = []
-    if uah:
-        parts.append(f"{uah} грн")
-    if usd:
-        parts.append(f"${usd}")
+    parts = _price_parts((p.price_uah or 0) * item.qty, (p.price or 0) * item.qty)
     return " / ".join(parts) if parts else "—"
 
 
@@ -124,11 +131,7 @@ def cart_summary(cart: Cart, currency: str = "UAH") -> str:
         )
     total_uah = sum((i.product.price_uah or 0) * i.qty for i in cart.items)
     total_usd = sum((i.product.price or 0) * i.qty for i in cart.items)
-    total_parts = []
-    if total_uah:
-        total_parts.append(f"{total_uah} грн")
-    if total_usd:
-        total_parts.append(f"${total_usd}")
+    total_parts = _price_parts(total_uah, total_usd)
     total_str = " / ".join(total_parts) if total_parts else "—"
     lines.extend(["", f"*Разом: {total_str}*"])
     return "\n".join(lines)
