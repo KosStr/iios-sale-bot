@@ -25,11 +25,28 @@ INSERT INTO products (
 """
 
 
+def _slug_base(text: str) -> str:
+    """Core slug transform: ASCII-fold, lowercase, hyphenate, cap at 48 chars.
+
+    May return "" when the input has no usable letters/digits (e.g. all
+    Cyrillic that folds away). Callers decide how to handle an empty result.
+    """
+    ascii_text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^a-z0-9]+", "-", ascii_text.lower()).strip("-")[:48]
+
+
 def _slugify(name: str) -> str:
-    text = unicodedata.normalize("NFKD", name)
-    text = text.encode("ascii", "ignore").decode("ascii")
-    text = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
-    return text[:48] or "product"
+    """Slug for a product id, always non-empty (falls back to 'product')."""
+    return _slug_base(name) or "product"
+
+
+def normalize_id(text: str) -> str | None:
+    """Normalize an admin-typed id to the same slug format as generated ids.
+
+    Returns None when nothing usable remains, so the caller can reject the
+    input instead of silently storing the "product" fallback.
+    """
+    return _slug_base(text) or None
 
 
 def make_unique_id(name: str) -> str:

@@ -51,10 +51,12 @@ def product_detail_keyboard(product_id: str) -> InlineKeyboardMarkup:
 def product_list_keyboard(products: list[Product], page: int) -> InlineKeyboardMarkup:
     start = page * PAGE_SIZE
     chunk = products[start : start + PAGE_SIZE]
+    # Show the id next to the (truncated) name so admins can identify a
+    # product at a glance without opening its detail screen.
     rows = [
         [
             InlineKeyboardButton(
-                f"{p.name[:28]} — {format_price(p.price, 'USD')}",
+                f"{p.name[:22]} · {p.id} — {format_price(p.price, 'USD')}",
                 callback_data=f"adm:view:{p.id}",
             )
         ]

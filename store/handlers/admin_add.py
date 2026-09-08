@@ -35,7 +35,7 @@ from store.utils.admin import is_admin
 logger = logging.getLogger(__name__)
 
 # ── State constants (order = wizard step order) ──────────────────────────────
-CATEGORY, SUBCATEGORY, NAME, GROUP, DESCRIPTION, PRICE_USD, PRICE_UAH, WARRANTY, BRAND, STORAGE, COLOR, STOCK, CHANNEL, PHOTO, CONFIRM = range(15)
+CATEGORY, SUBCATEGORY, NAME, PRODUCT_ID, GROUP, DESCRIPTION, PRICE_USD, PRICE_UAH, WARRANTY, BRAND, STORAGE, COLOR, STOCK, CHANNEL, PHOTO, CONFIRM = range(16)
 
 # Existing models offered as buttons on the GROUP step.
 _GROUP_CHOICE_LIMIT = 8
@@ -47,6 +47,13 @@ _CANCEL = InlineKeyboardMarkup(
 _PHOTO_KEYBOARD = InlineKeyboardMarkup(
     [
         [InlineKeyboardButton("⏭ Пропустити (без фото)", callback_data="adm:skip_photo")],
+        [InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")],
+    ]
+)
+
+_ID_SKIP = InlineKeyboardMarkup(
+    [
+        [InlineKeyboardButton("🎲 Згенерувати автоматично", callback_data="adm:gen_id")],
         [InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")],
     ]
 )
@@ -322,9 +329,66 @@ async def collect_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         await update.message.reply_text("Назва занадто коротка. Спробуйте ще раз.")
         return NAME
 
+    _draft(context)["name"] = name
+    return await _ask_product_id(update, context)
+
+
+# ── Step 4b: product ID (manual, or auto-generated on skip) ──────────────────
+
+async def _ask_product_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    suggestion = products_repo.make_unique_id(_draft(context)["name"])
+    prompt = (
+        "Надішліть *ID товару* (латиниця, цифри, дефіс) — він використовується "
+        "у посиланнях і назві фото.\n\n"
+        f"Пропозиція: `{suggestion}`\n\n"
+        "Або натисніть «Згенерувати автоматично»."
+    )
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_ID_SKIP
+        )
+    else:
+        await update.message.reply_text(
+            prompt, parse_mode=ParseMode.MARKDOWN, reply_markup=_ID_SKIP
+        )
+    return PRODUCT_ID
+
+
+async def collect_product_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Admin typed a custom id: normalize it, reject empties/duplicates."""
+    product_id = products_repo.normalize_id(update.message.text)
+    if not product_id:
+        await update.message.reply_text(
+            "Некоректний ID. Використайте латиницю, цифри та дефіс (напр. `iphone-15-pro`), "
+            "або натисніть «Згенерувати автоматично».",
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=_ID_SKIP,
+        )
+        return PRODUCT_ID
+    if products_repo.exists(product_id):
+        await update.message.reply_text(
+            f"ID `{product_id}` вже зайнятий. Введіть інший або натисніть «Згенерувати автоматично».",
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=_ID_SKIP,
+        )
+        return PRODUCT_ID
+
+    _draft(context)["id"] = product_id
+    return await _after_id(update, context)
+
+
+async def skip_product_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Admin skipped: derive a unique id from the name automatically."""
+    await update.callback_query.answer()
     draft = _draft(context)
-    draft["name"] = name
-    draft["id"] = products_repo.make_unique_id(name)
+    draft["id"] = products_repo.make_unique_id(draft["name"])
+    return await _after_id(update, context)
+
+
+async def _after_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Id is set: offer to join an existing model, else go to description."""
+    draft = _draft(context)
+    name = draft["name"]
 
     # Variants of one model share a group and are shown as a single catalog row.
     choices = products_repo.distinct_groups(draft.get("category", ""))
@@ -333,12 +397,19 @@ async def collect_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         return await _ask_description(update, context)
 
     draft["group_choices"] = choices[:_GROUP_CHOICE_LIMIT]
-    await update.message.reply_text(
+    text = (
         "Це варіант існуючої *моделі*?\n"
-        "Варіанти однієї моделі покупець бачить одним рядком у каталозі.",
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=_group_keyboard(draft),
+        "Варіанти однієї моделі покупець бачить одним рядком у каталозі."
     )
+    keyboard = _group_keyboard(draft)
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard
+        )
+    else:
+        await update.message.reply_text(
+            text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard
+        )
     return GROUP
 
 
@@ -887,6 +958,10 @@ def build_admin_add_handler() -> ConversationHandler:
                 CallbackQueryHandler(pick_subcategory, pattern=r"^adm:sub:"),
             ],
             NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_name)],
+            PRODUCT_ID: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, collect_product_id),
+                CallbackQueryHandler(skip_product_id, pattern=r"^adm:gen_id$"),
+            ],
             GROUP: [
                 CallbackQueryHandler(pick_group, pattern=r"^adm:grp:\d+$"),
                 CallbackQueryHandler(new_group, pattern=r"^adm:grp_new$"),
