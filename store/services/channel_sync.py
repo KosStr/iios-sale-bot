@@ -89,26 +89,7 @@ def _post_text(product: Product) -> str:
         header = f"<b>{escape(product.name)}</b>"
     parts = [header]
 
-    # Condition line (brand used as condition: "Вживаний", "Новий", etc.)
-    if product.brand and product.brand not in ("—", ""):
-        parts += ["", escape(product.brand)]
-
-    # Description: each non-empty line becomes a ▪ bullet
-    desc = (product.description or "").strip()
-    if desc and desc != product.name:
-        bullets = [
-            f"▪ {escape(line.strip())}"
-            for line in desc.splitlines()
-            if line.strip()
-        ]
-        if bullets:
-            parts += [""] + bullets
-
-    # Warranty line
-    if product.warranty_days:
-        parts += ["", f"🛡 {product.warranty_days} днів гарантії від IIOS"]
-
-    # Price (sale price takes priority when active)
+    # Price first — right under the header. Sale price takes priority.
     if is_on_sale(product):
         regular = _price_line(product)
         sale_usd = product.sale_price
@@ -130,6 +111,29 @@ def _post_text(product: Product) -> str:
         if price:
             parts += ["", price]
 
+    # Condition (brand) + stock, one line below the price, joined by a separator
+    stock_label = "В наявності" if product.stock and product.stock > 0 else "Немає в наявності"
+    condition_bits = []
+    if product.brand and product.brand not in ("—", ""):
+        condition_bits.append(escape(product.brand))
+    condition_bits.append(stock_label)
+    parts.append(" | ".join(condition_bits))
+
+    # Description: each non-empty line becomes a ▪ bullet
+    desc = (product.description or "").strip()
+    if desc and desc != product.name:
+        bullets = [
+            f"▪ {escape(line.strip())}"
+            for line in desc.splitlines()
+            if line.strip()
+        ]
+        if bullets:
+            parts += [""] + bullets
+
+    # Warranty line
+    if product.warranty_days:
+        parts += ["", f"🛡 {product.warranty_days} днів гарантії від IIOS"]
+
     # Divider + payment block
     parts += [
         "",
@@ -145,7 +149,7 @@ def _post_text(product: Product) -> str:
     ]
 
     # Contact info from env vars
-    manager = os.getenv("STORE_TELEGRAM", "").strip()
+    manager = os.getenv("STORE_MANAGER", "@iios_manager").strip()
     phone = os.getenv("STORE_PHONE", "").strip()
     if manager:
         parts.append(f"✉ Direct {escape(manager)}")
