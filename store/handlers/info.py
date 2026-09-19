@@ -21,21 +21,29 @@ def _env(name: str, default: str = "") -> str:
     return os.getenv(name, default).strip()
 
 
-def _instagram_link() -> str:
-    """Return an HTML link for the Instagram handle, or ''."""
-    handle = _env("STORE_INSTAGRAM", "@iios.store")
-    if not handle:
-        return ""
-    user = handle.lstrip("@")
-    return f'<a href="https://instagram.com/{escape(user)}">@{escape(user)}</a>'
+def _instagram_links() -> str:
+    """Return HTML links for the store's Instagram accounts, or ''."""
+    handles = [
+        _env("STORE_INSTAGRAM", "@iios_cv"),
+        _env("STORE_INSTAGRAM2", "@iios_tehnika"),
+    ]
+    links = []
+    for handle in handles:
+        if not handle:
+            continue
+        user = handle.lstrip("@")
+        links.append(
+            f'<a href="https://instagram.com/{escape(user)}">@{escape(user)}</a>'
+        )
+    return " · ".join(links)
 
 
 def _contacts_text() -> str:
     lines = ["📞 <b>Контакти</b>", ""]
     name = _env("STORE_NAME", "IIOS Store")
-    phone = _env("STORE_PHONE", "+380 99 123 45 67")
+    phone = _env("STORE_PHONE", "+380 95 340 77 54")
     telegram = _env("STORE_TELEGRAM", "@iios_cv")
-    instagram = _instagram_link()
+    instagram = _instagram_links()
     website = _env("STORE_WEBSITE", "https://iios.store")
 
     if name:
@@ -60,12 +68,15 @@ async def show_contacts(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 async def show_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    address = _env("STORE_ADDRESS", "м. Чернівці, вул. Головна, 1")
-    latitude = float(_env("STORE_LATITUDE", "48.291839"))
-    longitude = float(_env("STORE_LONGITUDE", "25.935355"))
+    address = _env("STORE_ADDRESS", "м. Чернівці, вул. Заньковецької")
+    map_url = _env("STORE_MAP_URL", "https://maps.app.goo.gl/8AZcqV7XxU1495Ns6")
+
+    lines = ["📍 <b>Локація</b>", "", escape(address)]
+    if map_url:
+        lines.append(f'🗺 <a href="{escape(map_url)}">Відкрити на мапі</a>')
+    lines += ["", "Ми поряд — заходьте!"]
 
     await update.message.reply_text(
-        f"📍 <b>Локація</b>\n\n{escape(address)}\nМи поряд — заходьте!",
+        "\n".join(lines),
         parse_mode=ParseMode.HTML,
     )
-    await update.message.reply_location(latitude=latitude, longitude=longitude)

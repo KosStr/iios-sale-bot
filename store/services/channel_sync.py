@@ -152,11 +152,18 @@ def _post_text(product: Product) -> str:
     if phone:
         parts.append(f"📞 {escape(phone)}")
 
-    # Instagram
-    instagram = os.getenv("STORE_INSTAGRAM", "").strip()
-    if instagram:
-        user = instagram.lstrip("@")
-        parts += ["", "Інстаграм", f"https://instagram.com/{escape(user)}"]
+    # Instagram (both store accounts, if configured)
+    insta_handles = [
+        os.getenv("STORE_INSTAGRAM", "@iios_cv").strip(),
+        os.getenv("STORE_INSTAGRAM2", "@iios_tehnika").strip(),
+    ]
+    insta_links = [
+        f"https://instagram.com/{escape(handle.lstrip('@'))}"
+        for handle in insta_handles
+        if handle
+    ]
+    if insta_links:
+        parts += ["", "Інстаграм"] + insta_links
 
     return "\n".join(parts)
 

@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import os
 from datetime import timedelta
 from html import escape
 
@@ -94,6 +95,23 @@ def _price_block(product: Product) -> list[str]:
     return [f"💰 Ціна: <b>{escape(_fmt_price(product))}</b>"]
 
 
+def _instagram_links() -> list[str]:
+    """HTML links for the store's Instagram accounts (from env), if any."""
+    handles = [
+        os.getenv("STORE_INSTAGRAM", "@iios_cv").strip(),
+        os.getenv("STORE_INSTAGRAM2", "@iios_tehnika").strip(),
+    ]
+    links: list[str] = []
+    for handle in handles:
+        if not handle:
+            continue
+        user = handle.lstrip("@")
+        links.append(
+            f'<a href="https://instagram.com/{escape(user)}">@{escape(user)}</a>'
+        )
+    return links
+
+
 def product_summary(product: Product, currency: str = "UAH") -> str:
     """HTML product card text."""
     stock = f"В наявності: {product.stock}" if product.stock > 0 else "Немає в наявності"
@@ -104,12 +122,15 @@ def product_summary(product: Product, currency: str = "UAH") -> str:
     lines.extend(
         [
             "",
-            escape(product.description),
-            "",
-            *_price_block(product),
             stock,
+            *_price_block(product),
+            "",
+            escape(product.description),
         ]
     )
+    insta = _instagram_links()
+    if insta:
+        lines += ["", "📸 Instagram: " + " · ".join(insta)]
     return "\n".join(lines)
 
 

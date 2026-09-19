@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Google Consent Mode v2: default = denied until the visitor accepts cookies. -->
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){ dataLayer.push(arguments); }
+    gtag('consent', 'default', {
+      ad_storage: 'denied',
+      ad_user_data: 'denied',
+      ad_personalization: 'denied',
+      analytics_storage: 'denied',
+      wait_for_update: 500
+    });
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="IIOS — iPhone, MacBook, AirPods, Apple Watch та аксесуари у Чернівцях. Замовляй прямо у Telegram за кілька хвилин." />
+  <meta property="og:title" content="IIOS — техніка Apple у Telegram" />
+  <meta property="og:description" content="iPhone, MacBook, AirPods та аксесуари. Замовляй у Telegram — ми зателефонуємо та домовимось про доставку." />
+  <meta property="og:image" content="https://iios.store/og-image.jpg" />
+  <meta property="og:url" content="https://iios.store" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <title>IIOS — Apple техніка у Telegram | Чернівці</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #f6f4ef;
+      --bg2:      #ffffff;
+      --bg3:      #eeeae0;
+      --border:   rgba(20,19,15,.09);
+      --border-strong: rgba(20,19,15,.16);
+      --text:     #17160f;
+      --muted:    #7c7869;
+      --accent:   #a3814f;
+      --accent2:  #8c6b3f;
+      --ink:      #121109;
+      --white:    #ffffff;
+      --danger:   #dd5b47;
+      --ok:       #2f9e5c;
+      --shadow:   0 20px 50px rgba(23,22,15,.08);
+      --shadow-sm:0 10px 24px rgba(23,22,15,.06);
+      --radius:   18px;
+      --radius-sm:12px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    img { display: block; max-width: 100%; }
+
+    /* ── Utilities ──────────────────────────────────────────── */
+    .container { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+    .tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--accent2);
+      background: rgba(163,129,79,.12);
+      border: 1px solid rgba(163,129,79,.28);
+      border-radius: 100px;
+      padding: 4px 12px;
+      margin-bottom: 16px;
+    }
+
+    /* ── NAV ────────────────────────────────────────────────── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(246,244,239,.78);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      transform: translateZ(0);
+      will-change: transform;
+    }
+    nav::after {
+      content: '';
+      position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent) 50%, transparent);
+      background-size: 200% 100%;
+      opacity: .7;
+      animation: nav-sheen 7s linear infinite;
+      pointer-events: none;
+    }
+    @keyframes nav-sheen {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .nav-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      height: 64px;
+    }
+    .nav-logo {
+      font-size: 21px; font-weight: 800; letter-spacing: .02em;
+    }
+    .nav-logo span { color: var(--accent); }
+    .nav-right { display: flex; align-items: center; gap: 18px; }
+    .nav-icons { display: flex; align-items: center; gap: 8px; }
+    .nav-icon {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      color: var(--accent2);
+      transition: transform .2s, border-color .2s, background .2s, color .2s;
+    }
+    .nav-icon svg { width: 17px; height: 17px; }
+    .nav-icon:hover { transform: translateY(-2px); border-color: var(--accent); background: var(--bg3); color: var(--ink); }
+    .nav-cta {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--ink);
+      color: var(--white);
+      font-size: 14px; font-weight: 700;
+      border-radius: 100px;
+      padding: 9px 20px;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .nav-cta:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+    .nav-cta svg { width: 16px; height: 16px; flex-shrink: 0; }
+    .nav-cta-text-short { display: none; }
+
+    /* ── HERO ───────────────────────────────────────────────── */
+    .hero {
+      min-height: 100svh;
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 110px 0 80px;
+      position: relative; overflow: hidden;
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+      position: relative; z-index: 1;
+    }
+    .hero-eyebrow {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 24px;
+    }
+    .live-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--ok);
+      position: relative;
+    }
+    .live-dot::after {
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: 50%;
+      background: var(--ok);
+      animation: ping 2s cubic-bezier(0,0,.2,1) infinite;
+    }
+    @keyframes ping {
+      0%   { opacity: .7; transform: scale(1); }
+      100% { opacity: 0;  transform: scale(2.8); }
+    }
+    .live-text {
+      font-size: 12px; font-weight: 700; color: var(--muted);
+      letter-spacing: .08em; text-transform: uppercase;
+    }
+    .hero h1 {
+      position: relative;
+      font-size: clamp(36px, 6vw, 68px);
+      font-weight: 800;
+      letter-spacing: -.03em;
+      line-height: 1.05;
+      margin-bottom: 20px;
+      text-shadow: 0 0 30px rgba(163,129,79,.22);
+    }
+    .hero h1::before {
+      content: '';
+      position: absolute;
+      left: -10%; right: -10%; top: -30%; bottom: -30%;
+      background: radial-gradient(ellipse 55% 55% at 32% 50%, rgba(163,129,79,.45), transparent 70%);
+      filter: blur(50px);
+      z-index: -1;
+      opacity: .5;
+      animation: aura-pulse 5s ease-in-out infinite;
+      pointer-events: none;
+      will-change: opacity, transform;
+    }
+    @keyframes aura-pulse {
+      0%,100% { opacity: .35; transform: scale(1); }
+      50%      { opacity: .65; transform: scale(1.07); }
+    }
+    .hero h1 em {
+      font-style: normal;
+      background: linear-gradient(100deg, var(--accent2), var(--accent) 55%, var(--ink));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 0 16px rgba(163,129,79,.5));
+    }
+    .hero-sub {
+      font-size: clamp(16px, 2vw, 20px);
+      color: var(--muted);
+      max-width: 480px;
+      margin-bottom: 36px;
+    }
+    .trust-badges { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 40px; }
+    .trust-badge {
+      display: inline-flex; align-items: center; gap: 10px;
+      font-size: 14px; font-weight: 800; color: var(--text);
+      background: var(--bg2);
+      border: 1px solid var(--border-strong);
+      border-radius: 100px;
+      padding: 8px 18px 8px 8px;
+      box-shadow: var(--shadow-sm);
+      opacity: 0;
+      animation: badge-in .5s ease forwards;
+      transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+    }
+    .trust-badge:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: var(--accent); }
+    .trust-badge:nth-child(1) { animation-delay: .1s; }
+    .trust-badge:nth-child(2) { animation-delay: .2s; }
+    .trust-badge:nth-child(3) { animation-delay: .3s; }
+    .trust-badge:nth-child(4) { animation-delay: .4s; }
+    @keyframes badge-in {
+      from { opacity: 0; transform: translateY(10px) scale(.9); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .trust-badge-icon {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      flex-shrink: 0;
+      box-shadow: 0 4px 10px rgba(163,129,79,.35);
+    }
+    .trust-badge-icon svg { width: 16px; height: 16px; color: var(--white); }
+    .btn-primary {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--ink);
+      color: var(--white);
+      font-size: 16px; font-weight: 700;
+      padding: 14px 28px;
+      border-radius: 100px;
+      position: relative;
+      overflow: hidden;
+      transition: transform .15s, box-shadow .2s;
+    }
+    .btn-primary::before {
+      content: '';
+      position: absolute; top: 0; left: -60%;
+      width: 40%; height: 100%;
+      background: linear-gradient(100deg, transparent, rgba(255,255,255,.35), transparent);
+      transform: skewX(-20deg);
+      transition: left .6s ease;
+    }
+    .btn-primary:hover::before { left: 130%; }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+    .btn-primary svg { width: 20px; height: 20px; }
+    .btn-secondary {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--bg2);
+      color: var(--text);
+      font-size: 16px; font-weight: 600;
+      padding: 14px 28px;
+      border-radius: 100px;
+      border: 1px solid var(--border-strong);
+      transition: border-color .2s, background .2s;
+    }
+    .btn-secondary:hover { border-color: var(--accent); background: var(--bg3); }
+
+    .hero-stats {
+      display: flex; gap: 40px; flex-wrap: wrap;
+    }
+    .stat { display: flex; flex-direction: column; }
+    .stat-n {
+      font-size: 26px; font-weight: 800; letter-spacing: -.03em;
+      color: var(--ink);
+    }
+    .stat-n span { color: var(--accent); }
+    .stat-l { font-size: 13px; color: var(--muted); }
+
+    /* ── Phone mock ─────────────────────────────────────────── */
+    .hero-visual {
+      display: flex; justify-content: center; align-items: center;
+      position: relative;
+    }
+    .phone-glow {
+      position: absolute;
+      width: 320px; height: 320px;
+      left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(circle, rgba(163,129,79,.4), transparent 70%);
+      filter: blur(50px);
+      z-index: 0;
+      opacity: .5;
+      animation: aura-pulse 6s ease-in-out infinite;
+      pointer-events: none;
+      will-change: opacity, transform;
+    }
+    .phone-frame {
+      width: 280px; max-width: 100%;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 40px;
+      overflow: hidden;
+      position: relative;
+      z-index: 1;
+      box-shadow: var(--shadow);
+      animation: phone-float 6s ease-in-out infinite;
+      will-change: transform;
+    }
+    @keyframes phone-float {
+      0%,100% { transform: translateY(0) rotate(0deg); }
+      50%      { transform: translateY(-12px) rotate(.6deg); }
+    }
+    .phone-notch {
+      width: 100px; height: 28px;
+      background: var(--ink);
+      border-radius: 0 0 20px 20px;
+      margin: 0 auto;
+    }
+    .phone-screen { padding: 8px 0 24px; }
+    .tg-header {
+      background: var(--bg3);
+      padding: 12px 16px;
+      display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+    .tg-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--ink);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800; color: var(--white);
+      flex-shrink: 0;
+    }
+    .tg-name { font-size: 13px; font-weight: 700; }
+    .tg-status { font-size: 10px; color: var(--ok); display: flex; align-items: center; gap: 5px; }
+    .tg-status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); position: relative; }
+    .tg-status-dot::after {
+      content: ''; position: absolute; inset: 0; border-radius: 50%;
+      background: var(--ok);
+      animation: ping 2s cubic-bezier(0,0,.2,1) infinite;
+    }
+    .msg {
+      margin: 0 12px 8px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      font-size: 12px;
+      line-height: 1.45;
+      max-width: 85%;
+      opacity: 0;
+      animation: msg-in .5s ease forwards;
+    }
+    .msg-bot {
+      background: var(--bg3);
+      border-bottom-left-radius: 4px;
+      align-self: flex-start;
+      animation-delay: .3s;
+    }
+    .msg-product {
+      background: var(--bg2);
+      border-bottom-left-radius: 4px;
+      margin: 0 12px 8px;
+      opacity: 0;
+      animation: msg-in .5s ease forwards;
+      animation-delay: .9s;
+    }
+    @keyframes msg-in {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .prod-img-placeholder {
+      width: 100%; height: 90px;
+      background: linear-gradient(135deg, var(--bg3), #e2ddce);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px;
+      margin-bottom: 8px;
+      overflow: hidden;
+    }
+    .prod-img-placeholder img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+      animation: prod-img-zoom 8s ease-in-out infinite;
+    }
+    @keyframes prod-img-zoom {
+      0%,100% { transform: scale(1); }
+      50%      { transform: scale(1.12); }
+    }
+    .prod-name { font-size: 12px; font-weight: 700; }
+    .prod-price { font-size: 13px; font-weight: 800; color: var(--accent2); }
+    .prod-old { font-size: 10px; color: var(--muted); text-decoration: line-through; }
+    .tg-btns {
+      display: flex; flex-direction: column; gap: 4px;
+      padding: 0 12px;
+      opacity: 0;
+      animation: msg-in .5s ease forwards;
+      animation-delay: 1.4s;
+    }
+    .tg-btn {
+      background: rgba(163,129,79,.1);
+      border: 1px solid rgba(163,129,79,.3);
+      border-radius: 10px;
+      padding: 7px 12px;
+      font-size: 11px; font-weight: 700;
+      color: var(--accent2);
+      text-align: center;
+      transition: background .2s, border-color .2s;
+    }
+    .tg-btns .tg-btn:first-child {
+      animation: btn-pulse 2.6s ease-in-out infinite;
+      animation-delay: 1.9s;
+    }
+    @keyframes btn-pulse {
+      0%,100% { box-shadow: 0 0 0 rgba(163,129,79,0); }
+      50%      { box-shadow: 0 0 0 6px rgba(163,129,79,.12); }
+    }
+
+    /* Floating badges */
+    .badge {
+      position: absolute;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 12px;
+      white-space: nowrap;
+      box-shadow: var(--shadow-sm);
+    }
+    .badge-tl { top: 60px; left: -40px; animation: float 5s ease-in-out infinite; }
+    .badge-br { bottom: 60px; right: -40px; animation: float 5s ease-in-out infinite 1.2s; }
+    @keyframes float {
+      0%,100% { transform: translateY(0); }
+      50%      { transform: translateY(-8px); }
+    }
+    .badge-icon { font-size: 18px; margin-bottom: 2px; }
+    .badge strong { display: block; font-size: 15px; font-weight: 800; }
+
+    /* grid texture */
+    .grid-texture {
+      position: absolute; inset: 0;
+      background-image: radial-gradient(rgba(23,22,15,.07) 1px, transparent 1px);
+      background-size: 26px 26px;
+      -webkit-mask-image: radial-gradient(ellipse 75% 55% at 50% 25%, black 40%, transparent 85%);
+      mask-image: radial-gradient(ellipse 75% 55% at 50% 25%, black 40%, transparent 85%);
+      pointer-events: none;
+    }
+    .grid-texture.invert {
+      background-image: radial-gradient(rgba(255,255,255,.09) 1px, transparent 1px);
+    }
+
+    /* glow */
+    .glow {
+      position: absolute; border-radius: 50%; filter: blur(120px); pointer-events: none;
+    }
+    .glow-1 {
+      width: 520px; height: 520px;
+      background: rgba(163,129,79,.16);
+      top: -140px; right: -120px;
+      animation: drift-1 14s ease-in-out infinite;
+    }
+    .glow-2 {
+      width: 420px; height: 420px;
+      background: rgba(140,107,63,.12);
+      bottom: -140px; left: -120px;
+      animation: drift-2 18s ease-in-out infinite;
+    }
+    @keyframes drift-1 {
+      0%,100% { transform: translate(0,0) scale(1); }
+      50%      { transform: translate(-40px, 30px) scale(1.1); }
+    }
+    @keyframes drift-2 {
+      0%,100% { transform: translate(0,0) scale(1); }
+      50%      { transform: translate(30px, -30px) scale(1.08); }
+    }
+
+    /* ── CATEGORIES ─────────────────────────────────────────── */
+    .section { padding: 84px 0; }
+    .section.band { background: var(--bg2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .section-head { text-align: center; margin-bottom: 44px; }
+    .section-head h2 {
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: 800; letter-spacing: -.03em; margin-bottom: 12px;
+    }
+    .section-head p { font-size: 17px; color: var(--muted); max-width: 520px; margin: 0 auto; }
+
+    .cats {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+    }
+    .cat {
+      position: relative;
+      display: block;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 26px 14px;
+      text-align: center;
+      transition: transform .2s, box-shadow .2s;
+      cursor: pointer;
+    }
+    .cat::before {
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(135deg, var(--accent), transparent 45%, var(--accent2) 100%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      opacity: 0;
+      transition: opacity .3s ease;
+      pointer-events: none;
+    }
+    .cat:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+    .cat:hover::before { opacity: 1; }
+    .cat-icon {
+      width: 52px; height: 52px; margin: 0 auto 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; line-height: 1;
+      border-radius: 15px;
+      background: linear-gradient(135deg, rgba(163,129,79,.16), rgba(163,129,79,.04));
+      border: 1px solid rgba(163,129,79,.2);
+      transition: transform .3s ease;
+    }
+    .cat:hover .cat-icon { transform: scale(1.12) rotate(-6deg); }
+    .cat-name { font-size: 13px; font-weight: 700; }
+
+    /* ── HOT DEALS CAROUSEL (single slide, autoplay) ───────────── */
+    .deals-carousel { max-width: 900px; margin: 0 auto; }
+    .deals-viewport {
+      position: relative;
+      overflow: hidden;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--bg2);
+    }
+    .deals-track {
+      display: flex;
+      transition: transform .5s cubic-bezier(.4,0,.2,1);
+      touch-action: pan-y;
+    }
+    .deal-slide { position: relative; flex: 0 0 100%; }
+    .deal-badge {
+      position: absolute; top: 14px; left: 14px; z-index: 1;
+      background: var(--danger); color: var(--white);
+      font-size: 12px; font-weight: 800;
+      padding: 4px 10px; border-radius: 100px;
+    }
+    .deal-img {
+      width: 100%; aspect-ratio: 1 / 1;
+      background: linear-gradient(135deg, var(--bg3), #e2ddce);
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    .deal-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .deal-body { padding: 20px; }
+    .deal-name { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+    .deal-price-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+    .deal-price-old { font-size: 14px; color: var(--muted); text-decoration: line-through; }
+    .deal-price-new { font-size: 22px; font-weight: 800; color: var(--accent2); }
+    .deal-nav {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      width: 38px; height: 38px; border-radius: 50%;
+      background: var(--bg2); border: 1px solid var(--border-strong);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; box-shadow: var(--shadow-sm);
+      transition: background .2s ease, border-color .2s ease;
+      z-index: 2;
+    }
+    .deal-nav:hover { background: var(--bg3); border-color: var(--accent); }
+    .deal-nav svg { width: 18px; height: 18px; color: var(--text); }
+    .deal-nav-prev { left: 10px; }
+    .deal-nav-next { right: 10px; }
+    .deals-dots { display: flex; justify-content: center; gap: 8px; margin-top: 18px; }
+    .deal-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--border-strong); border: none; padding: 0;
+      cursor: pointer;
+      transition: background .2s ease, transform .2s ease;
+    }
+    .deal-dot.active { background: var(--accent2); transform: scale(1.3); }
+    @media (min-width: 701px) {
+      .deal-slide { display: flex; align-items: stretch; }
+      .deal-img { width: 50%; aspect-ratio: auto; }
+      .deal-body { width: 50%; display: flex; flex-direction: column; justify-content: center; padding: 40px 48px; }
+      .deal-name { font-size: 22px; margin-bottom: 14px; }
+      .deal-price-old { font-size: 16px; }
+      .deal-price-new { font-size: 30px; }
+    }
+
+    /* ── HOW IT WORKS (compact accordion) ──────────────────────── */
+    .steps { position: relative; display: flex; flex-direction: column; gap: 10px; max-width: 640px; margin: 0 auto; }
+    .steps::before {
+      content: '';
+      position: absolute; left: 35px; top: 0; bottom: 0; width: 2px;
+      background: repeating-linear-gradient(180deg, var(--border-strong) 0 6px, transparent 6px 13px);
+    }
+    .step {
+      position: relative;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(14px);
+      transition: opacity .5s ease, transform .5s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+    .reveal.visible .step { opacity: 1; transform: translateY(0); }
+    .reveal.visible .step:nth-child(1) { transition-delay: .05s; }
+    .reveal.visible .step:nth-child(2) { transition-delay: .16s; }
+    .reveal.visible .step:nth-child(3) { transition-delay: .27s; }
+    .reveal.visible .step:nth-child(4) { transition-delay: .38s; }
+    .step[open] { border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
+    .step-summary {
+      list-style: none;
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 18px;
+      cursor: pointer;
+      font-weight: 700; font-size: 15px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .step-summary::-webkit-details-marker { display: none; }
+    .step-icon {
+      width: 34px; height: 34px; border-radius: 10px;
+      background: rgba(163,129,79,.1);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: transform .25s ease, background .3s ease;
+    }
+    .step-icon svg { width: 17px; height: 17px; color: var(--accent2); transition: color .3s ease; }
+    .step-summary:hover .step-icon { transform: scale(1.08) rotate(-4deg); }
+    .step[open] .step-icon {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      animation: step-icon-pulse 2.2s ease-in-out infinite;
+    }
+    .step[open] .step-icon svg { color: var(--white); }
+    @keyframes step-icon-pulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(163,129,79,.35); }
+      50%      { box-shadow: 0 0 0 8px rgba(163,129,79,0); }
+    }
+    .step-title { flex: 1; }
+    .step-chevron { width: 18px; height: 18px; color: var(--muted); flex-shrink: 0; transition: transform .25s ease; }
+    .step[open] .step-chevron { transform: rotate(180deg); }
+    .step p { font-size: 14px; color: var(--muted); line-height: 1.6; padding: 0 18px 16px 66px; }
+    .steps-note {
+      text-align: center; font-size: 13px; font-weight: 700;
+      color: var(--muted); text-transform: uppercase; letter-spacing: .06em;
+      margin: 32px 0 16px;
+    }
+    .extra-links { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 560px; margin: 0 auto; }
+    .extra-link {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 20px;
+      transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease;
+    }
+    .extra-link:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+    .extra-link-icon {
+      width: 40px; height: 40px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: var(--white);
+    }
+    .extra-link-icon svg { width: 19px; height: 19px; }
+    .extra-link strong { display: block; font-size: 14px; font-weight: 800; }
+    .extra-link-sub { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* ── CTA BAND ───────────────────────────────────────────── */
+    .cta-band {
+      padding: 72px 0 48px;
+      position: relative;
+      overflow: hidden;
+      background: var(--ink);
+      color: var(--white);
+    }
+    .cta-glow {
+      position: absolute; left: 70%; top: 40%;
+      width: 700px; height: 700px;
+      background: radial-gradient(circle, rgba(163,129,79,.35), transparent 70%);
+      transform: translate(-50%, -50%);
+      animation: pulse-glow 6s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .cta-glow-2 {
+      position: absolute; left: 8%; top: 20%;
+      width: 340px; height: 340px;
+      background: radial-gradient(circle, rgba(163,129,79,.28), transparent 70%);
+      animation: pulse-glow-2 9s ease-in-out infinite 1s;
+      pointer-events: none;
+    }
+    @keyframes pulse-glow {
+      0%,100% { opacity: .55; transform: translate(-50%, -50%) scale(1); }
+      50%      { opacity: .9;  transform: translate(-50%, -50%) scale(1.15); }
+    }
+    @keyframes pulse-glow-2 {
+      0%,100% { opacity: .4; transform: scale(1); }
+      50%      { opacity: .75; transform: scale(1.2); }
+    }
+    .cta-band .container { position: relative; z-index: 1; }
+    .cta-hero { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+    .cta-hero-text { text-align: left; }
+    .cta-band .tag { color: var(--accent); background: rgba(163,129,79,.18); border-color: rgba(163,129,79,.4); }
+    .cta-hero-text h2 {
+      font-size: clamp(30px, 4.2vw, 52px);
+      font-weight: 800; letter-spacing: -.03em;
+      margin-bottom: 16px;
+      color: var(--white);
+    }
+    .cta-hero-text h2 em {
+      font-style: normal;
+      background: linear-gradient(100deg, var(--accent), #e8c896 55%, var(--white));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      filter: drop-shadow(0 0 18px rgba(163,129,79,.6));
+    }
+    .cta-hero-text p { font-size: 17px; color: rgba(255,255,255,.62); max-width: 440px; margin-bottom: 22px; }
+    .cta-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 26px; }
+    .cta-band .btn-primary { background: var(--white); color: var(--ink); }
+    .cta-band .btn-primary:hover { box-shadow: 0 20px 50px rgba(0,0,0,.35); }
+    .cta-band .btn-secondary { background: transparent; color: var(--white); border-color: rgba(255,255,255,.25); }
+    .cta-band .btn-secondary:hover { border-color: var(--accent); background: rgba(255,255,255,.06); }
+    .cta-features { display: flex; flex-wrap: wrap; gap: 24px; }
+    .cta-feature { display: flex; align-items: center; gap: 12px; }
+    .cta-feature-icon {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .cta-feature-icon svg { width: 18px; height: 18px; color: var(--white); }
+    .cta-feature strong { display: block; font-size: 14px; font-weight: 800; }
+    .cta-feature div span { display: block; font-size: 12px; color: rgba(255,255,255,.5); }
+
+    .cta-hero-visual { position: relative; display: flex; justify-content: center; align-items: center; min-height: 300px; }
+
+    .cta-orbit {
+      position: absolute;
+      width: 400px; height: 400px;
+      border: 1px dashed rgba(163,129,79,.35);
+      border-radius: 50%;
+      animation: orbit-spin 34s linear infinite;
+      pointer-events: none;
+    }
+    .cta-orbit::before, .cta-orbit::after {
+      content: ''; position: absolute;
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 14px 3px rgba(163,129,79,.85);
+    }
+    .cta-orbit::before { top: -3px; left: 50%; margin-left: -3px; }
+    .cta-orbit::after { bottom: 12%; right: -3px; }
+    @keyframes orbit-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    .device-stack { position: relative; width: 100%; max-width: 400px; height: 290px; z-index: 1; }
+
+    .device { position: absolute; filter: drop-shadow(0 26px 46px rgba(0,0,0,.5)); }
+
+    .device-laptop {
+      top: 4px; right: 0;
+      width: 280px;
+      animation: laptop-float 6s ease-in-out infinite;
+    }
+    @keyframes laptop-float {
+      0%,100% { transform: rotate(-4deg) translateY(0); }
+      50%      { transform: rotate(-4deg) translateY(-10px); }
+    }
+    .laptop-cam { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.35); margin: 0 auto 8px; position: relative; z-index: 1; }
+    .laptop-screen {
+      background: linear-gradient(160deg, #242015, #17150e);
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 16px 16px 5px 5px;
+      padding: 12px 12px 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .laptop-screen::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(120deg, rgba(255,255,255,.1), transparent 45%);
+      pointer-events: none;
+    }
+    .laptop-dots { display: flex; gap: 5px; margin-bottom: 10px; position: relative; z-index: 1; }
+    .laptop-dots span { width: 7px; height: 7px; border-radius: 50%; }
+    .laptop-dots span:nth-child(1) { background: #ff5f57; }
+    .laptop-dots span:nth-child(2) { background: #febc2e; }
+    .laptop-dots span:nth-child(3) { background: #28c840; }
+    .laptop-card {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 10px;
+      padding: 10px;
+      position: relative;
+      z-index: 1;
+    }
+    .laptop-card-img { width: 54px; height: 54px; border-radius: 8px; overflow: hidden; flex-shrink: 0; background: #000; }
+    .laptop-card-img img { width: 100%; height: 100%; object-fit: cover; }
+    .laptop-card-body strong { display: block; font-size: 12px; font-weight: 700; color: var(--white); margin-bottom: 4px; }
+    .laptop-card-price { font-size: 14px; font-weight: 800; color: var(--accent); }
+    .laptop-base {
+      width: 44px; height: 20px;
+      margin: 0 auto;
+      background: linear-gradient(180deg, #2a2619, #17150e);
+      clip-path: polygon(38% 0, 62% 0, 78% 100%, 22% 100%);
+    }
+    .laptop-base::after {
+      content: '';
+      display: block;
+      margin: 3px auto 0;
+      width: 104px; height: 6px;
+      background: linear-gradient(180deg, #2a2619, #17150e);
+      border-radius: 3px;
+    }
+
+    .device-phone {
+      bottom: -6px; left: 4px;
+      width: 138px;
+      z-index: 2;
+      animation: phone-float-cta 6s ease-in-out infinite 1s;
+    }
+    @keyframes phone-float-cta {
+      0%,100% { transform: rotate(5deg) translateY(0); }
+      50%      { transform: rotate(5deg) translateY(-14px); }
+    }
+    .phone-frame-cta {
+      background: #1c1a13;
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 24px;
+      padding: 10px 8px 8px;
+    }
+    .phone-notch-cta { width: 46px; height: 13px; background: #000; border-radius: 0 0 9px 9px; margin: 0 auto 8px; }
+    .phone-card-img-cta { width: 100%; aspect-ratio: 1/1; border-radius: 8px; overflow: hidden; margin-bottom: 7px; }
+    .phone-card-img-cta img { width: 100%; height: 100%; object-fit: cover; }
+    .phone-card-name-cta { font-size: 10px; font-weight: 700; color: var(--white); }
+    .phone-card-price-cta { font-size: 12px; font-weight: 800; color: var(--accent); margin: 2px 0 8px; }
+    .phone-mini-btn-cta {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: var(--white);
+      font-size: 10px; font-weight: 700; text-align: center;
+      padding: 7px; border-radius: 20px;
+      animation: btn-pulse 2.6s ease-in-out infinite;
+    }
+
+    .device-airpods {
+      bottom: -10px; left: 128px;
+      width: 66px;
+      z-index: 3;
+      animation: airpods-float 6s ease-in-out infinite .6s;
+    }
+    @keyframes airpods-float {
+      0%,100% { transform: translateY(0) rotate(-3deg); }
+      50%      { transform: translateY(-9px) rotate(-3deg); }
+    }
+    .airpods-frame {
+      width: 66px; height: 66px;
+      background: linear-gradient(160deg, #242015, #17150e);
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 18px;
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .airpods-frame::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(120deg, rgba(255,255,255,.1), transparent 45%);
+      pointer-events: none;
+    }
+    .airpods-frame svg { width: 30px; height: 30px; color: var(--accent); position: relative; z-index: 1; }
+
+    .cta-chip {
+      position: absolute;
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.18);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 100px;
+      padding: 10px 16px;
+      font-size: 12px; font-weight: 700; color: var(--white);
+      box-shadow: 0 14px 30px rgba(0,0,0,.4);
+      white-space: nowrap;
+      z-index: 3;
+    }
+    .chip-1 { top: 4%;  left: -4%;  animation: float 5s ease-in-out infinite; }
+    .chip-2 { top: 42%; right: -8%; animation: float 5s ease-in-out infinite 1.1s; }
+    .chip-3 { bottom: 2%; left: 8%; animation: float 5s ease-in-out infinite 2.2s; }
+
+    .cta-tagline {
+      display: flex; align-items: center; justify-content: center; gap: 16px;
+      margin-top: 36px;
+      text-align: center;
+      font-size: 11px; font-weight: 700; letter-spacing: .3em; text-transform: uppercase;
+      color: rgba(255,255,255,.35);
+    }
+    .cta-tagline::before, .cta-tagline::after { content: ''; height: 1px; width: 60px; background: rgba(255,255,255,.15); }
+
+    @media (max-width: 900px) {
+      .cta-hero { grid-template-columns: 1fr; gap: 28px; }
+      .cta-hero-text { text-align: center; }
+      .cta-hero-text p { margin-left: auto; margin-right: auto; }
+      .cta-actions, .cta-features { justify-content: center; }
+      .device-stack { max-width: 300px; height: 270px; margin: 0 auto; }
+      .device-laptop { width: 220px; }
+      .laptop-card-img { width: 44px; height: 44px; }
+      .device-phone { width: 108px; left: 0; }
+      .device-airpods { left: 100px; bottom: -8px; }
+      .cta-orbit { width: 260px; height: 260px; }
+      .cta-chip { font-size: 11px; padding: 8px 12px; }
+      .chip-1 { top: 2%; left: 0; }
+      .chip-2 { top: auto; bottom: 34%; right: 0; }
+      .chip-3 { bottom: 6%; left: auto; right: 2%; }
+    }
+
+    /* ── FOOTER ─────────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 0;
+    }
+    .footer-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 16px;
+    }
+    .footer-logo { font-size: 18px; font-weight: 700; }
+    .footer-logo span { color: var(--accent); }
+    .footer-links { display: flex; gap: 24px; flex-wrap: wrap; }
+    .footer-links a { font-size: 13px; color: var(--muted); transition: color .15s; }
+    .footer-links a:hover { color: var(--text); }
+    .footer-copy { font-size: 12px; color: var(--muted); }
+
+    /* ── COOKIE CONSENT ─────────────────────────────────────── */
+    .cookie-banner {
+      position: fixed; left: 16px; right: 16px; bottom: 16px;
+      max-width: 620px; margin: 0 auto;
+      background: var(--bg2);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 22px 24px;
+      z-index: 200;
+      transform: translateY(140%);
+      opacity: 0;
+      transition: transform .5s cubic-bezier(.2,.8,.2,1), opacity .4s ease;
+    }
+    .cookie-banner.visible { transform: translateY(0); opacity: 1; }
+    .cookie-banner p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+    .cookie-banner strong { color: var(--text); }
+    .cookie-toggle {
+      background: none; border: none; padding: 0; margin-top: 8px;
+      font: inherit; font-size: 12px; font-weight: 700; color: var(--accent2);
+      text-decoration: underline; cursor: pointer;
+    }
+    .cookie-details {
+      font-size: 12px; color: var(--muted); line-height: 1.7;
+      max-height: 0; overflow: hidden; transition: max-height .3s ease;
+    }
+    .cookie-details.open { max-height: 200px; margin-top: 10px; }
+    .cookie-details ul { padding-left: 18px; }
+    .cookie-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+    .cookie-actions button {
+      font-family: inherit; border: none; cursor: pointer;
+      padding: 10px 20px; font-size: 14px;
+    }
+
+    /* ── Scroll reveal ──────────────────────────────────────── */
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity .6s ease, transform .6s ease; }
+    .reveal.visible { opacity: 1; transform: none; }
+
+    /* ── RESPONSIVE ─────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .hero-grid { grid-template-columns: 1fr; gap: 48px; }
+      .cats { grid-template-columns: repeat(3, 1fr); }
+      .badge-tl, .badge-br { display: none; }
+    }
+    @media (max-width: 600px) {
+      .nav-right { gap: 10px; }
+      .nav-icons { gap: 6px; }
+      .nav-icon { width: 32px; height: 32px; }
+      .nav-icon svg { width: 15px; height: 15px; }
+      .nav-cta { padding: 9px 16px 9px 12px; }
+      .nav-cta-text { display: none; }
+      .nav-cta-text-short { display: inline; }
+      .hero { padding: 90px 0 60px; }
+      .cats { grid-template-columns: repeat(2, 1fr); }
+      .cats .cat:last-child { grid-column: span 2; }
+      .hero-stats { gap: 20px; }
+      .section { padding: 64px 0; }
+      .footer-inner { flex-direction: column; text-align: center; }
+      .extra-links { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <div class="container nav-inner">
+      <div class="nav-logo">IIOS<span>.</span></div>
+      <div class="nav-right">
+        <div class="nav-icons">
+          <a href="https://www.instagram.com/iios_cv?igsi=OGFmYWt3cDd4YXgw" class="nav-icon" target="_blank" rel="noopener" aria-label="Instagram">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+          </a>
+          <a href="https://t.me/IIOS_cv" class="nav-icon" target="_blank" rel="noopener" aria-label="Telegram-канал (новини та акції)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+          </a>
+          <a href="https://maps.app.goo.gl/8AZcqV7XxU1495Ns6?g_st=ic" class="nav-icon" target="_blank" rel="noopener" aria-label="Адреса на мапі">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          </a>
+        </div>
+        <a href="https://t.me/iios_cv_bot" class="nav-cta" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.93 7.003-1.67 7.87c-.125.558-.455.695-.92.432l-2.54-1.872-1.225 1.178c-.135.135-.25.25-.512.25l.182-2.594 4.705-4.25c.204-.182-.044-.283-.317-.1l-5.812 3.66-2.502-.782c-.543-.17-.554-.543.114-.803l9.76-3.762c.452-.164.849.11.738.773z"/></svg>
+          <span class="nav-cta-text">Відкрити бот</span>
+          <span class="nav-cta-text-short">Бот</span>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="grid-texture"></div>
+    <div class="glow glow-1"></div>
+    <div class="glow glow-2"></div>
+    <div class="container hero-grid">
+
+      <div>
+        <div class="hero-eyebrow">
+          <span class="live-dot"></span>
+          <span class="live-text">Магазин у Чернівцях — працює щодня</span>
+        </div>
+        <h1>Apple техніка<br />у <em>Telegram</em>.<br />Просто й швидко.</h1>
+        <p class="hero-sub">iPhone, MacBook, AirPods, Apple Watch та аксесуари — обирайте й замовляйте прямо в чаті.</p>
+        <div class="trust-badges">
+          <span class="trust-badge">
+            <span class="trust-badge-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24L4 3a1 1 0 0 0-1 1l.24 5.59a2 2 0 0 0 .59 1.41l9.58 9.59a2 2 0 0 0 2.83 0l4.35-4.35a2 2 0 0 0 0-2.83z"/><circle cx="8.5" cy="8.5" r="1.5"/></svg></span>
+            Найнижчі ціни
+          </span>
+          <span class="trust-badge">
+            <span class="trust-badge-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+            Офіційна гарантія
+          </span>
+          <span class="trust-badge">
+            <span class="trust-badge-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+            Швидка відповідь
+          </span>
+          <span class="trust-badge">
+            <span class="trust-badge-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+            UAH / USD
+          </span>
+        </div>
+        <div class="hero-stats">
+          <div class="stat">
+            <span class="stat-n">500<span>+</span></span>
+            <span class="stat-l">Товарів у каталозі</span>
+          </div>
+          <div class="stat">
+            <span class="stat-n">2<span>хв</span></span>
+            <span class="stat-l">Середній час замовлення</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-visual">
+        <div class="badge badge-tl reveal">
+          <div class="badge-icon">🔥</div>
+          <div style="color:var(--muted);font-size:11px;">Гаряча ціна</div>
+          <strong>iPhone 15 Pro</strong>
+        </div>
+        <div class="phone-glow"></div>
+        <div class="phone-frame">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="tg-header">
+              <div class="tg-avatar">II</div>
+              <div>
+                <div class="tg-name">IIOS</div>
+                <div class="tg-status"><span class="tg-status-dot"></span>онлайн</div>
+              </div>
+            </div>
+            <div class="msg msg-bot">
+              Ласкаво просимо до <strong>IIOS!</strong><br/>
+              Оберіть категорію або скористайтеся пошуком.
+            </div>
+            <div class="msg-product">
+              <div class="prod-img-placeholder"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.jpg" alt="iPhone 15 Pro 256GB"></div>
+              <div class="prod-name">iPhone 15 Pro 256GB</div>
+              <div style="font-size:10px;color:var(--muted);margin:2px 0 6px">Natural Titanium</div>
+              <div style="display:flex;align-items:baseline;gap:6px">
+                <div class="prod-price">40 995 ₴</div>
+                <div class="prod-old">44 500 ₴</div>
+              </div>
+            </div>
+            <div class="tg-btns">
+              <div class="tg-btn">Додати в кошик</div>
+              <div class="tg-btn">Забронювати модель</div>
+            </div>
+          </div>
+        </div>
+        <div class="badge badge-br reveal">
+          <div style="color:var(--muted);font-size:11px;">Ваше замовлення</div>
+          <strong style="color:var(--ok)">Підтверджено ✓</strong>
+          <div style="font-size:11px;color:var(--muted)">Ми зателефонуємо</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CATEGORIES -->
+  <section class="section">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="tag">Каталог</div>
+        <h2>Все що потрібно — в одному боті</h2>
+        <p>П'ять категорій з фільтрами по ціні, бренду та кольору. Знайдіть свій пристрій за секунди.</p>
+      </div>
+      <div class="cats reveal">
+        <a href="https://t.me/iios_cv_bot?start=cat_phone" class="cat" target="_blank" rel="noopener">
+          <div class="cat-icon">📱</div>
+          <div class="cat-name">iPhone</div>
+        </a>
+        <a href="https://t.me/iios_cv_bot?start=cat_watch" class="cat" target="_blank" rel="noopener">
+          <div class="cat-icon">⌚</div>
+          <div class="cat-name">Apple Watch</div>
+        </a>
+        <a href="https://t.me/iios_cv_bot?start=cat_headphones" class="cat" target="_blank" rel="noopener">
+          <div class="cat-icon">🎧</div>
+          <div class="cat-name">Навушники</div>
+        </a>
+        <a href="https://t.me/iios_cv_bot?start=cat_laptop" class="cat" target="_blank" rel="noopener">
+          <div class="cat-icon">💻</div>
+          <div class="cat-name">MacBook</div>
+        </a>
+        <a href="https://t.me/iios_cv_bot?start=cat_accessories" class="cat" target="_blank" rel="noopener">
+          <div class="cat-icon">🔌</div>
+          <div class="cat-name">Аксесуари</div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOT DEALS -->
+  <section class="section">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="tag">Гарячі пропозиції</div>
+        <h2>Знижки тижня</h2>
+        <p>Обмежена кількість за спеціальною ціною.</p>
+      </div>
+      <div class="deals-carousel reveal" id="deals-carousel">
+        <div class="deals-viewport">
+          <div class="deals-track" id="deals-track">
+            <div class="deal-slide">
+              <div class="deal-badge">-9%</div>
+              <div class="deal-img">
+                <img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.jpg" alt="iPhone 15 Pro 256GB">
+              </div>
+              <div class="deal-body">
+                <div class="deal-name">iPhone 15 Pro 256GB</div>
+                <div class="deal-price-row">
+                  <span class="deal-price-old">44 500 ₴</span>
+                  <span class="deal-price-new">40 995 ₴</span>
+                </div>
+              </div>
+            </div>
+            <div class="deal-slide">
+              <div class="deal-badge">-18%</div>
+              <div class="deal-img">
+                <img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_watch.jpg" alt="Apple Watch Series 9">
+              </div>
+              <div class="deal-body">
+                <div class="deal-name">Apple Watch Series 9</div>
+                <div class="deal-price-row">
+                  <span class="deal-price-old">16 565 ₴</span>
+                  <span class="deal-price-new">13 645 ₴</span>
+                </div>
+              </div>
+            </div>
+            <div class="deal-slide">
+              <div class="deal-badge">-10%</div>
+              <div class="deal-img">
+                <img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone_2.jpg" alt="iPhone 15 Pro Max 256GB">
+              </div>
+              <div class="deal-body">
+                <!-- TODO: confirm exact model/name and prices for this second iPhone deal -->
+                <div class="deal-name">iPhone 15 Pro Max 256GB</div>
+                <div class="deal-price-row">
+                  <span class="deal-price-old">49 900 ₴</span>
+                  <span class="deal-price-new">44 900 ₴</span>
+                </div>
+              </div>
+            </div>
+            <div class="deal-slide">
+              <div class="deal-badge">-12%</div>
+              <div class="deal-img">
+                <img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_mac.jpg" alt="MacBook Air 13&quot; M3">
+              </div>
+              <div class="deal-body">
+                <div class="deal-name">MacBook Air 13" M3</div>
+                <div class="deal-price-row">
+                  <span class="deal-price-old">52 000 ₴</span>
+                  <span class="deal-price-new">45 600 ₴</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button class="deal-nav deal-nav-prev" id="deals-prev" type="button" aria-label="Попередній товар">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <button class="deal-nav deal-nav-next" id="deals-next" type="button" aria-label="Наступний товар">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+        <div class="deals-dots" id="deals-dots">
+          <button class="deal-dot active" type="button" aria-label="Слайд 1"></button>
+          <button class="deal-dot" type="button" aria-label="Слайд 2"></button>
+          <button class="deal-dot" type="button" aria-label="Слайд 3"></button>
+          <button class="deal-dot" type="button" aria-label="Слайд 4"></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="section band">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="tag">Як це працює</div>
+        <h2>Замовлення за чотири кроки</h2>
+        <p>Жодних форм і реєстрацій. Прямо в Telegram — швидко і зручно.</p>
+      </div>
+      <div class="steps reveal">
+        <details class="step" open>
+          <summary class="step-summary">
+            <span class="step-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>
+            </span>
+            <span class="step-title">Відкрийте бот</span>
+            <svg class="step-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </summary>
+          <p>Кнопка «Відкрити в Telegram» — і ви вже в каталозі.</p>
+        </details>
+        <details class="step">
+          <summary class="step-summary">
+            <span class="step-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 4 21 4 14 12.5 14 19 10 21 10 12.5 3 4"/></svg>
+            </span>
+            <span class="step-title">Оберіть модель</span>
+            <svg class="step-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </summary>
+          <p>Фільтруйте за ціною, кольором і категорією — знайдете модель за секунди.</p>
+        </details>
+        <details class="step">
+          <summary class="step-summary">
+            <span class="step-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+            </span>
+            <span class="step-title">Оформіть замовлення</span>
+            <svg class="step-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </summary>
+          <p>Додайте в кошик, залиште ім'я, телефон і адресу доставки.</p>
+        </details>
+        <details class="step">
+          <summary class="step-summary">
+            <span class="step-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.14 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.05 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 17z"/></svg>
+            </span>
+            <span class="step-title">Ми зателефонуємо</span>
+            <svg class="step-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </summary>
+          <p>Підтвердимо деталі й домовимось про доставку.</p>
+        </details>
+      </div>
+      <div class="steps-note reveal">Ще не готові замовляти?</div>
+      <div class="extra-links reveal">
+        <a href="https://t.me/IIOS_cv" class="extra-link" target="_blank" rel="noopener">
+          <span class="extra-link-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+          </span>
+          <span>
+            <strong>Telegram-канал</strong>
+            <span class="extra-link-sub">Знижки та новинки першими</span>
+          </span>
+        </a>
+        <a href="https://www.instagram.com/iios_cv?igsi=OGFmYWt3cDd4YXgw" class="extra-link" target="_blank" rel="noopener">
+          <span class="extra-link-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+          </span>
+          <span>
+            <strong>Instagram</strong>
+            <span class="extra-link-sub">Фото товарів та відгуки клієнтів</span>
+          </span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA BAND -->
+  <section class="cta-band">
+    <div class="grid-texture invert"></div>
+    <div class="cta-glow"></div>
+    <div class="cta-glow-2"></div>
+    <div class="container reveal">
+      <div class="cta-hero">
+        <div class="cta-hero-text">
+          <div class="tag">Починайте прямо зараз</div>
+          <h2>iPhone і <em>MacBook</em><br />вже чекають у каталозі</h2>
+          <p>Телефони, ноутбуки, годинники та аксесуари Apple — обирайте в Telegram і оформлюйте замовлення за кілька натискань.</p>
+          <div class="cta-actions">
+            <a href="https://t.me/iios_cv_bot" class="btn-primary" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:20px;height:20px;"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.93 7.003-1.67 7.87c-.125.558-.455.695-.92.432l-2.54-1.872-1.225 1.178c-.135.135-.25.25-.512.25l.182-2.594 4.705-4.25c.204-.182-.044-.283-.317-.1l-5.812 3.66-2.502-.782c-.543-.17-.554-.543.114-.803l9.76-3.762c.452-.164.849.11.738.773z"/></svg>
+              Відкрити в Telegram
+            </a>
+            <a href="https://t.me/IIOS_cv" class="btn-secondary" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+              Наш Telegram-канал
+            </a>
+          </div>
+          <div class="cta-features">
+            <div class="cta-feature">
+              <span class="cta-feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span>
+              <div><strong>Весь модельний ряд</strong><span>iPhone, Mac, Watch</span></div>
+            </div>
+            <div class="cta-feature">
+              <span class="cta-feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 12 15 16 10"/></svg></span>
+              <div><strong>Зручно</strong><span>Без реєстрації</span></div>
+            </div>
+            <div class="cta-feature">
+              <span class="cta-feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+              <div><strong>Надійно</strong><span>Офіційна техніка</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="cta-hero-visual">
+          <div class="cta-orbit"></div>
+          <div class="device-stack">
+            <div class="device device-laptop">
+              <div class="laptop-cam"></div>
+              <div class="laptop-screen">
+                <div class="laptop-dots"><span></span><span></span><span></span></div>
+                <div class="laptop-card">
+                  <div class="laptop-card-img"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_mac.jpg" alt="MacBook Air 13&quot; M3"></div>
+                  <div class="laptop-card-body">
+                    <strong>MacBook Air 13" M3</strong>
+                    <span class="laptop-card-price">45 600 ₴</span>
+                  </div>
+                </div>
+              </div>
+              <div class="laptop-base"></div>
+            </div>
+            <div class="device device-phone">
+              <div class="phone-frame-cta">
+                <div class="phone-notch-cta"></div>
+                <div class="phone-card-img-cta"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.jpg" alt="iPhone 15 Pro 256GB"></div>
+                <div class="phone-card-name-cta">iPhone 15 Pro</div>
+                <div class="phone-card-price-cta">40 995 ₴</div>
+                <div class="phone-mini-btn-cta">Додати в кошик</div>
+              </div>
+            </div>
+            <div class="device device-airpods">
+              <div class="airpods-frame">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M7.5 2a3 3 0 0 1 3 3v4.5a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
+                  <path d="M7.5 9.5V18a2.5 2.5 0 0 0 2.5 2.5"/>
+                  <path d="M16.5 2a3 3 0 0 1 3 3v4.5a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
+                  <path d="M16.5 9.5V18a2.5 2.5 0 0 1-2.5 2.5"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+          <div class="cta-chip chip-1">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--accent)"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            Доставка по Україні
+          </div>
+          <div class="cta-chip chip-2">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--accent)"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Офіційна гарантія
+          </div>
+          <div class="cta-chip chip-3">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--accent)"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            Безпечна оплата
+          </div>
+        </div>
+      </div>
+      <div class="cta-tagline">Apple техніка у вашому Telegram</div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="container footer-inner">
+      <div class="footer-logo">IIOS<span>.</span></div>
+      <div class="footer-links">
+        <a href="https://t.me/IIOS_cv" target="_blank">Telegram</a>
+        <a href="https://www.instagram.com/iios_cv?igsi=OGFmYWt3cDd4YXgw" target="_blank">Instagram</a>
+        <a href="#" id="cookie-settings-link">Cookie-налаштування</a>
+      </div>
+      <div class="footer-copy">© 2026 IIOS · Чернівці</div>
+    </div>
+  </footer>
+
+  <!-- COOKIE CONSENT BANNER -->
+  <div class="cookie-banner" id="cookie-banner">
+    <p><strong>Ми використовуємо cookie-файли</strong> для аналітики та реклами (Meta, Google), щоб покращувати сайт і оцінювати ефективність реклами, яка веде на цю сторінку.</p>
+    <button class="cookie-toggle" id="cookie-details-toggle" type="button">Детальніше</button>
+    <div class="cookie-details" id="cookie-details">
+      <ul>
+        <li><strong>Необхідні</strong> — робота сайту, завжди активні.</li>
+        <li><strong>Аналітика</strong> — Google Analytics, для розуміння відвідуваності.</li>
+        <li><strong>Реклама</strong> — Meta Pixel і Google Ads, для оцінки реклами та ретаргетингу.</li>
+      </ul>
+    </div>
+    <div class="cookie-actions">
+      <button class="btn-primary" id="cookie-accept" type="button">Прийняти всі</button>
+      <button class="btn-secondary" id="cookie-decline" type="button">Лише необхідні</button>
+    </div>
+  </div>
+
+  <script>
+    // Scroll reveal
+    const observer = new IntersectionObserver(
+      (entries) => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); }),
+      { threshold: 0.12 }
+    );
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+    // Hot deals carousel — one slide at a time, 10s autoplay, swipe + buttons + dots
+    (function () {
+      const track = document.getElementById('deals-track');
+      if (!track) return;
+      const slides = [...track.children];
+      const dots = [...(document.getElementById('deals-dots')?.children || [])];
+      const carousel = document.getElementById('deals-carousel');
+      let index = 0;
+      let timer = null;
+
+      function goTo(i) {
+        index = (i + slides.length) % slides.length;
+        track.style.transform = `translateX(-${index * 100}%)`;
+        dots.forEach((d, di) => d.classList.toggle('active', di === index));
+      }
+      function next() { goTo(index + 1); }
+      function prev() { goTo(index - 1); }
+      function startAutoplay() {
+        stopAutoplay();
+        timer = setInterval(next, 10000);
+      }
+      function stopAutoplay() {
+        if (timer) clearInterval(timer);
+      }
+      function restartAutoplay() { startAutoplay(); }
+
+      document.getElementById('deals-next')?.addEventListener('click', () => { next(); restartAutoplay(); });
+      document.getElementById('deals-prev')?.addEventListener('click', () => { prev(); restartAutoplay(); });
+      dots.forEach((dot, di) => dot.addEventListener('click', () => { goTo(di); restartAutoplay(); }));
+
+      // Swipe (touch)
+      let touchStartX = 0;
+      track.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; }, { passive: true });
+      track.addEventListener('touchend', (e) => {
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        if (Math.abs(dx) > 40) { dx < 0 ? next() : prev(); restartAutoplay(); }
+      });
+
+      carousel?.addEventListener('mouseenter', stopAutoplay);
+      carousel?.addEventListener('mouseleave', startAutoplay);
+
+      goTo(0);
+      startAutoplay();
+    })();
+
+    // ── Cookie consent + consent-gated tracking ────────────────
+    // TODO: replace these with your real IDs before launching the campaign.
+    // Until replaced, the loaders below no-op (nothing is ever sent anywhere).
+    const META_PIXEL_ID = 'REPLACE_WITH_META_PIXEL_ID';
+    const GA_MEASUREMENT_ID = 'REPLACE_WITH_GA_ID'; // e.g. "G-XXXXXXXXXX" (GA4) or "AW-XXXXXXXXX" (Google Ads)
+
+    function loadGoogleTag() {
+      if (GA_MEASUREMENT_ID.startsWith('REPLACE') || document.getElementById('ga-src')) return;
+      const s = document.createElement('script');
+      s.id = 'ga-src'; s.async = true;
+      s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_MEASUREMENT_ID;
+      document.head.appendChild(s);
+      gtag('js', new Date());
+      gtag('config', GA_MEASUREMENT_ID);
+    }
+
+    function loadMetaPixel() {
+      if (META_PIXEL_ID.startsWith('REPLACE') || window.fbq) return;
+      !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+      n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+      n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+      t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+      document,'script','https://connect.facebook.net/en_US/fbevents.js');
+      fbq('init', META_PIXEL_ID);
+      fbq('track', 'PageView');
+    }
+
+    function applyConsent(granted) {
+      gtag('consent', 'update', {
+        ad_storage: granted ? 'granted' : 'denied',
+        ad_user_data: granted ? 'granted' : 'denied',
+        ad_personalization: granted ? 'granted' : 'denied',
+        analytics_storage: granted ? 'granted' : 'denied'
+      });
+      if (granted) { loadGoogleTag(); loadMetaPixel(); }
+    }
+
+    // Wrapped in try/catch: private-mode Safari and some in-app browsers
+    // (incl. Instagram's/Telegram's own webview — exactly where this traffic
+    // comes from) can throw on localStorage access instead of just no-op'ing.
+    function getStoredConsent() {
+      try { return localStorage.getItem('iios_cookie_consent'); } catch (e) { return null; }
+    }
+    function setStoredConsent(value) {
+      try { localStorage.setItem('iios_cookie_consent', value); } catch (e) { /* storage unavailable this session */ }
+    }
+
+    const cookieBanner = document.getElementById('cookie-banner');
+    const storedConsent = getStoredConsent();
+
+    if (storedConsent === 'granted') {
+      applyConsent(true);
+    } else if (storedConsent !== 'denied') {
+      cookieBanner.classList.add('visible');
+    }
+
+    document.getElementById('cookie-accept').addEventListener('click', () => {
+      setStoredConsent('granted');
+      applyConsent(true);
+      cookieBanner.classList.remove('visible');
+    });
+    document.getElementById('cookie-decline').addEventListener('click', () => {
+      setStoredConsent('denied');
+      applyConsent(false);
+      cookieBanner.classList.remove('visible');
+    });
+    document.getElementById('cookie-details-toggle').addEventListener('click', () => {
+      document.getElementById('cookie-details').classList.toggle('open');
+    });
+    document.getElementById('cookie-settings-link').addEventListener('click', (e) => {
+      e.preventDefault();
+      cookieBanner.classList.add('visible');
+    });
+  </script>
+</body>
+</html>
