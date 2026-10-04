@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from telegram import Update
 from telegram.constants import ParseMode
+from telegram.error import BadRequest
 from telegram.ext import ContextTypes
 
 from store.data.products import get_product_by_id
@@ -72,3 +73,32 @@ async def show_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         photo=photo_source(product),
         parse_mode=ParseMode.HTML,
     )
+
+
+async def open_product_deeplink(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, product_id: str
+) -> bool:
+    """Open a product card from a /start deep link (landing page deals).
+
+    Returns False when the product no longer exists, so the caller can fall
+    back to the catalog instead of leaving the visitor at a dead end.
+    """
+    product = get_product_by_id(product_id)
+    if not product:
+        return False
+
+    currency = get_filter(context).get("currency", "UAH")
+    text = product_summary(product, currency)
+    cart_count = cart_service.get_cart(update.effective_user.id).total_qty
+    keyboard = product_keyboard(product, cart_count)
+    photo = photo_source(product)
+    if photo is not None:
+        try:
+            await update.message.reply_photo(
+                photo=photo, caption=text, parse_mode=ParseMode.HTML, reply_markup=keyboard
+            )
+            return True
+        except BadRequest:
+            pass  # fall through to text
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML, reply_markup=keyboard)
+    return True
