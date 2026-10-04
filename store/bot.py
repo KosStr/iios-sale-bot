@@ -27,7 +27,7 @@ from store.handlers.admin_products import (
 from store.handlers.booking import build_booking_handler
 from store.handlers.cart import add_to_cart, clear_cart, remove_from_cart, show_cart
 from store.services import cart as cart_service
-from store.handlers.catalog import show_catalog, show_product
+from store.handlers.catalog import open_product_deeplink, show_catalog, show_product
 from store.handlers.checkout import build_checkout_handler
 from store.handlers.filters import (
     back_to_main_filter,
@@ -92,6 +92,9 @@ CATEGORY_DEEPLINKS = {
     "cat_accessories": "accessories",
 }
 
+# t.me/<bot>?start=prod_<product id> opens that product's card (landing deals).
+PRODUCT_DEEPLINK_PREFIX = "prod_"
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     cart_count = cart_service.get_cart(update.effective_user.id).total_qty
@@ -101,9 +104,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         reply_markup=main_menu_keyboard(admin=is_admin(update, context), cart_count=cart_count),
     )
     if context.args:
-        category = CATEGORY_DEEPLINKS.get(context.args[0])
+        payload = context.args[0]
+        category = CATEGORY_DEEPLINKS.get(payload)
         if category:
             await open_category_deeplink(update, context, category)
+        elif payload.startswith(PRODUCT_DEEPLINK_PREFIX):
+            product_id = payload[len(PRODUCT_DEEPLINK_PREFIX):]
+            if not await open_product_deeplink(update, context, product_id):
+                await update.message.reply_text(
+                    "Ця пропозиція вже завершилась — ось актуальний каталог 👇"
+                )
+                await open_filter_for_catalog(update, context)
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

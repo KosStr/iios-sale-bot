@@ -57,6 +57,7 @@
 
     a { color: inherit; text-decoration: none; }
     img { display: block; max-width: 100%; }
+    picture { display: contents; }
 
     /* ── Utilities ──────────────────────────────────────────── */
     .container { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
@@ -281,6 +282,13 @@
     }
     .stat-n span { color: var(--accent); }
     .stat-l { font-size: 13px; color: var(--muted); }
+
+    .hero-actions {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 12px 18px;
+      margin: -12px 0 28px;
+    }
+    .hero-cta { font-size: 17px; padding: 16px 32px; box-shadow: var(--shadow); }
+    .hero-cta-note { font-size: 13px; font-weight: 600; color: var(--muted); }
 
     /* ── Phone mock ─────────────────────────────────────────── */
     .hero-visual {
@@ -563,6 +571,7 @@
     .deal-price-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
     .deal-price-old { font-size: 14px; color: var(--muted); text-decoration: line-through; }
     .deal-price-new { font-size: 22px; font-weight: 800; color: var(--accent2); }
+    .deal-cta { align-self: flex-start; display: inline-flex; margin-top: 18px; padding: 12px 28px; }
     .deal-nav {
       position: absolute; top: 50%; transform: translateY(-50%);
       width: 38px; height: 38px; border-radius: 50%;
@@ -591,6 +600,66 @@
       .deal-name { font-size: 22px; margin-bottom: 14px; }
       .deal-price-old { font-size: 16px; }
       .deal-price-new { font-size: 30px; }
+    }
+
+    /* ── PAYMENT & DELIVERY ─────────────────────────────────── */
+    .pay-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; max-width: 900px; margin: 0 auto; }
+    .pay-card {
+      display: flex; align-items: flex-start; gap: 14px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+    }
+    .pay-card-accent { border-color: rgba(163,129,79,.4); background: linear-gradient(135deg, rgba(163,129,79,.1), var(--bg2) 60%); }
+    .pay-icon {
+      width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: var(--white);
+    }
+    .pay-icon svg { width: 19px; height: 19px; }
+    .pay-card strong { display: block; font-size: 15px; font-weight: 800; }
+    .pay-card div > span { display: block; font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+    /* ── FAQ ────────────────────────────────────────────────── */
+    .faq { display: flex; flex-direction: column; gap: 10px; max-width: 720px; margin: 0 auto; }
+    .faq-item {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      transition: border-color .2s ease, box-shadow .2s ease;
+    }
+    .faq-item[open] { border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
+    .faq-item summary {
+      list-style: none;
+      display: flex; align-items: center; justify-content: space-between; gap: 14px;
+      padding: 16px 20px;
+      font-size: 15px; font-weight: 700;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .faq-item summary::-webkit-details-marker { display: none; }
+    .faq-item[open] .step-chevron { transform: rotate(180deg); }
+    .faq-item p { font-size: 14px; color: var(--muted); line-height: 1.6; padding: 0 20px 18px; }
+
+    /* ── STICKY MOBILE CTA ──────────────────────────────────── */
+    .sticky-cta { display: none; }
+    @media (max-width: 700px) {
+      .sticky-cta {
+        display: block;
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 150;
+        padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+        background: rgba(246,244,239,.9);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-top: 1px solid var(--border);
+        transform: translateY(110%);
+        transition: transform .3s ease;
+      }
+      .sticky-cta.visible { transform: none; }
+      .sticky-cta .btn-primary { justify-content: center; width: 100%; padding: 14px 20px; }
+      body { padding-bottom: 76px; }
     }
 
     /* ── HOW IT WORKS (compact accordion) ──────────────────────── */
@@ -993,6 +1062,41 @@
       .section { padding: 64px 0; }
       .footer-inner { flex-direction: column; text-align: center; }
       .extra-links { grid-template-columns: 1fr; }
+
+      /* First screen: headline + button + 3 benefits, smaller phone mock below */
+      .hero { min-height: auto; padding: 88px 0 48px; }
+      .hero-grid { gap: 32px; }
+      .hero-eyebrow { margin-bottom: 14px; }
+      .hero h1 { font-size: 38px; margin-bottom: 12px; }
+      .h1-extra { display: none; }
+      .hero-sub { font-size: 16px; margin-bottom: 20px; }
+      .hero-actions { margin: 0 0 18px; gap: 8px; }
+      .hero-cta { width: 100%; justify-content: center; }
+      .hero-cta-note { width: 100%; text-align: center; font-size: 12px; }
+      .trust-badges { gap: 6px; margin-bottom: 0; }
+      .trust-badge { font-size: 12px; padding: 5px 12px 5px 5px; gap: 7px; }
+      .trust-badge-icon { width: 24px; height: 24px; }
+      .trust-badge-icon svg { width: 13px; height: 13px; }
+      .trust-badge:nth-child(4) { display: none; }
+      .hero-stats { display: none; }
+      .phone-frame { width: 230px; }
+
+      .pay-grid { grid-template-columns: 1fr; }
+      .deal-cta { display: flex; justify-content: center; }
+    }
+
+    /* ── Reduced motion ─────────────────────────────────────── */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        animation-delay: 0s !important;
+        transition-delay: 0s !important;
+        transition-duration: .01ms !important;
+        scroll-behavior: auto !important;
+      }
+      html { scroll-behavior: auto; }
+      .reveal, .step { opacity: 1; transform: none; }
     }
   </style>
 </head>
@@ -1014,7 +1118,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
           </a>
         </div>
-        <a href="https://t.me/iios_cv_bot" class="nav-cta" target="_blank" rel="noopener">
+        <a href="https://t.me/iios_cv_bot" class="nav-cta" target="_blank" rel="noopener" data-cta="nav">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.93 7.003-1.67 7.87c-.125.558-.455.695-.92.432l-2.54-1.872-1.225 1.178c-.135.135-.25.25-.512.25l.182-2.594 4.705-4.25c.204-.182-.044-.283-.317-.1l-5.812 3.66-2.502-.782c-.543-.17-.554-.543.114-.803l9.76-3.762c.452-.164.849.11.738.773z"/></svg>
           <span class="nav-cta-text">Відкрити бот</span>
           <span class="nav-cta-text-short">Бот</span>
@@ -1035,8 +1139,15 @@
           <span class="live-dot"></span>
           <span class="live-text">Магазин у Чернівцях — працює щодня</span>
         </div>
-        <h1>Apple техніка<br />у <em>Telegram</em>.<br />Просто й швидко.</h1>
+        <h1>Apple техніка<br />у <em>Telegram</em>.<span class="h1-extra"><br />Просто й швидко.</span></h1>
         <p class="hero-sub">iPhone, MacBook, AirPods, Apple Watch та аксесуари — обирайте й замовляйте прямо в чаті.</p>
+        <div class="hero-actions" id="hero-actions">
+          <a href="https://t.me/iios_cv_bot" class="btn-primary hero-cta" target="_blank" rel="noopener" data-cta="hero">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.93 7.003-1.67 7.87c-.125.558-.455.695-.92.432l-2.54-1.872-1.225 1.178c-.135.135-.25.25-.512.25l.182-2.594 4.705-4.25c.204-.182-.044-.283-.317-.1l-5.812 3.66-2.502-.782c-.543-.17-.554-.543.114-.803l9.76-3.762c.452-.164.849.11.738.773z"/></svg>
+            Обрати в Telegram
+          </a>
+          <span class="hero-cta-note">Без реєстрації · Післяплата · Розтермінування</span>
+        </div>
         <div class="trust-badges">
           <span class="trust-badge">
             <span class="trust-badge-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24L4 3a1 1 0 0 0-1 1l.24 5.59a2 2 0 0 0 .59 1.41l9.58 9.59a2 2 0 0 0 2.83 0l4.35-4.35a2 2 0 0 0 0-2.83z"/><circle cx="8.5" cy="8.5" r="1.5"/></svg></span>
@@ -1089,7 +1200,7 @@
               Оберіть категорію або скористайтеся пошуком.
             </div>
             <div class="msg-product">
-              <div class="prod-img-placeholder"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.jpg" alt="iPhone 15 Pro 256GB"></div>
+              <div class="prod-img-placeholder"><picture><source srcset="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.webp" type="image/webp"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.jpg" alt="iPhone 15 Pro 256GB" width="960" height="1280" decoding="async" onerror="this.onerror=null;var s=this.parentNode.querySelector('source');if(s)s.remove();"></picture></div>
               <div class="prod-name">iPhone 15 Pro 256GB</div>
               <div style="font-size:10px;color:var(--muted);margin:2px 0 6px">Natural Titanium</div>
               <div style="display:flex;align-items:baseline;gap:6px">
@@ -1121,23 +1232,23 @@
         <p>П'ять категорій з фільтрами по ціні, бренду та кольору. Знайдіть свій пристрій за секунди.</p>
       </div>
       <div class="cats reveal">
-        <a href="https://t.me/iios_cv_bot?start=cat_phone" class="cat" target="_blank" rel="noopener">
+        <a href="https://t.me/iios_cv_bot?start=cat_phone" class="cat" target="_blank" rel="noopener" data-cta="category">
           <div class="cat-icon">📱</div>
           <div class="cat-name">iPhone</div>
         </a>
-        <a href="https://t.me/iios_cv_bot?start=cat_watch" class="cat" target="_blank" rel="noopener">
+        <a href="https://t.me/iios_cv_bot?start=cat_watch" class="cat" target="_blank" rel="noopener" data-cta="category">
           <div class="cat-icon">⌚</div>
           <div class="cat-name">Apple Watch</div>
         </a>
-        <a href="https://t.me/iios_cv_bot?start=cat_headphones" class="cat" target="_blank" rel="noopener">
+        <a href="https://t.me/iios_cv_bot?start=cat_headphones" class="cat" target="_blank" rel="noopener" data-cta="category">
           <div class="cat-icon">🎧</div>
           <div class="cat-name">Навушники</div>
         </a>
-        <a href="https://t.me/iios_cv_bot?start=cat_laptop" class="cat" target="_blank" rel="noopener">
+        <a href="https://t.me/iios_cv_bot?start=cat_laptop" class="cat" target="_blank" rel="noopener" data-cta="category">
           <div class="cat-icon">💻</div>
           <div class="cat-name">MacBook</div>
         </a>
-        <a href="https://t.me/iios_cv_bot?start=cat_accessories" class="cat" target="_blank" rel="noopener">
+        <a href="https://t.me/iios_cv_bot?start=cat_accessories" class="cat" target="_blank" rel="noopener" data-cta="category">
           <div class="cat-icon">🔌</div>
           <div class="cat-name">Аксесуари</div>
         </a>
@@ -1155,11 +1266,13 @@
       </div>
       <div class="deals-carousel reveal" id="deals-carousel">
         <div class="deals-viewport">
+          <!-- TODO: replace prod_<id> in each "Хочу цей" link with the real product id
+               from the bot (/products). Unknown ids fall back to the catalog. -->
           <div class="deals-track" id="deals-track">
             <div class="deal-slide">
               <div class="deal-badge">-9%</div>
               <div class="deal-img">
-                <img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.jpg" alt="iPhone 15 Pro 256GB">
+                <picture><source srcset="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.webp" type="image/webp"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.jpg" alt="iPhone 15 Pro 256GB" width="960" height="1280" loading="lazy" decoding="async" onerror="this.onerror=null;var s=this.parentNode.querySelector('source');if(s)s.remove();"></picture>
               </div>
               <div class="deal-body">
                 <div class="deal-name">iPhone 15 Pro 256GB</div>
@@ -1167,12 +1280,13 @@
                   <span class="deal-price-old">44 500 ₴</span>
                   <span class="deal-price-new">40 995 ₴</span>
                 </div>
+                <a href="https://t.me/iios_cv_bot?start=prod_iphone-15-pro-256gb" class="btn-primary deal-cta" target="_blank" rel="noopener" data-cta="deal">Хочу цей</a>
               </div>
             </div>
             <div class="deal-slide">
               <div class="deal-badge">-18%</div>
               <div class="deal-img">
-                <img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_watch.jpg" alt="Apple Watch Series 9">
+                <picture><source srcset="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_watch.webp" type="image/webp"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_watch.jpg" alt="Apple Watch Series 9" width="960" height="1280" loading="lazy" decoding="async" onerror="this.onerror=null;var s=this.parentNode.querySelector('source');if(s)s.remove();"></picture>
               </div>
               <div class="deal-body">
                 <div class="deal-name">Apple Watch Series 9</div>
@@ -1180,12 +1294,13 @@
                   <span class="deal-price-old">16 565 ₴</span>
                   <span class="deal-price-new">13 645 ₴</span>
                 </div>
+                <a href="https://t.me/iios_cv_bot?start=prod_apple-watch-series-9" class="btn-primary deal-cta" target="_blank" rel="noopener" data-cta="deal">Хочу цей</a>
               </div>
             </div>
             <div class="deal-slide">
               <div class="deal-badge">-10%</div>
               <div class="deal-img">
-                <img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone_2.jpg" alt="iPhone 15 Pro Max 256GB">
+                <picture><source srcset="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone_2.webp" type="image/webp"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone_2.jpg" alt="iPhone 15 Pro Max 256GB" width="960" height="1280" loading="lazy" decoding="async" onerror="this.onerror=null;var s=this.parentNode.querySelector('source');if(s)s.remove();"></picture>
               </div>
               <div class="deal-body">
                 <!-- TODO: confirm exact model/name and prices for this second iPhone deal -->
@@ -1194,12 +1309,13 @@
                   <span class="deal-price-old">49 900 ₴</span>
                   <span class="deal-price-new">44 900 ₴</span>
                 </div>
+                <a href="https://t.me/iios_cv_bot?start=prod_iphone-15-pro-max-256gb" class="btn-primary deal-cta" target="_blank" rel="noopener" data-cta="deal">Хочу цей</a>
               </div>
             </div>
             <div class="deal-slide">
               <div class="deal-badge">-12%</div>
               <div class="deal-img">
-                <img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_mac.jpg" alt="MacBook Air 13&quot; M3">
+                <picture><source srcset="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_mac.webp" type="image/webp"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_mac.jpg" alt="MacBook Air 13&quot; M3" width="960" height="1280" loading="lazy" decoding="async" onerror="this.onerror=null;var s=this.parentNode.querySelector('source');if(s)s.remove();"></picture>
               </div>
               <div class="deal-body">
                 <div class="deal-name">MacBook Air 13" M3</div>
@@ -1207,6 +1323,7 @@
                   <span class="deal-price-old">52 000 ₴</span>
                   <span class="deal-price-new">45 600 ₴</span>
                 </div>
+                <a href="https://t.me/iios_cv_bot?start=prod_macbook-air-13-m3" class="btn-primary deal-cta" target="_blank" rel="noopener" data-cta="deal">Хочу цей</a>
               </div>
             </div>
           </div>
@@ -1222,6 +1339,47 @@
           <button class="deal-dot" type="button" aria-label="Слайд 2"></button>
           <button class="deal-dot" type="button" aria-label="Слайд 3"></button>
           <button class="deal-dot" type="button" aria-label="Слайд 4"></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PAYMENT & DELIVERY -->
+  <section class="section" id="payment">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="tag">Оплата і доставка</div>
+        <h2>Зручно платити, швидко отримати</h2>
+        <p>Обирайте спосіб, який підходить саме вам.</p>
+      </div>
+      <div class="pay-grid reveal">
+        <div class="pay-card">
+          <span class="pay-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></span>
+          <div>
+            <strong>Оплата ₴ / $ / €</strong>
+            <span>Готівкою або на картку Приват, Моно, A Bank, ПУМБ</span>
+          </div>
+        </div>
+        <div class="pay-card pay-card-accent">
+          <span class="pay-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+          <div>
+            <strong>Післяплата і розтермінування</strong>
+            <span>Оплачуйте при отриманні або частинами</span>
+          </div>
+        </div>
+        <div class="pay-card pay-card-accent">
+          <span class="pay-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span>
+          <div>
+            <strong>Trade-in / Обмін</strong>
+            <span>Здайте старий пристрій у рахунок нового</span>
+          </div>
+        </div>
+        <div class="pay-card">
+          <span class="pay-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span>
+          <div>
+            <strong>Доставка Новою поштою</strong>
+            <span>По всій Україні або самовивіз у Чернівцях</span>
+          </div>
         </div>
       </div>
     </div>
@@ -1301,6 +1459,43 @@
     </div>
   </section>
 
+  <!-- FAQ -->
+  <!-- TODO: confirm answers with the store (check on delivery, installment and Trade-in terms). -->
+  <section class="section" id="faq">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="tag">Питання</div>
+        <h2>Часті запитання</h2>
+      </div>
+      <div class="faq reveal">
+        <details class="faq-item">
+          <summary>Техніка нова чи вживана?<svg class="step-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
+          <p>Є і нові (зокрема запечатані), і вживані пристрої. Стан кожного товару чесно вказаний у його картці в боті та в пості в каналі.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Яка гарантія і хто її дає?<svg class="step-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
+          <p>Гарантію надає магазин IIOS. Її термін вказаний у картці кожного товару — у разі питань звертайтесь до нас у Telegram або приходьте в магазин у Чернівцях.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Чи можна перевірити товар при отриманні?<svg class="step-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
+          <p>Так. У магазині ви оглядаєте пристрій перед оплатою, а при доставці Новою поштою з післяплатою — можете перевірити його у відділенні до оплати.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Як працює розтермінування?<svg class="step-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
+          <p>Ви оформлюєте покупку частинами через банк і сплачуєте її щомісяця. Доступні банки, кількість платежів і умови менеджер підкаже під конкретний товар.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Які умови Trade-in?<svg class="step-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
+          <p>Надішліть нам модель, обсяг пам'яті та фото вашого пристрою — ми оцінимо його, і цю суму буде зараховано в оплату нового.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Як швидко ви відповідаєте?<svg class="step-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
+          <p>Після замовлення в боті менеджер зв'язується з вами, щоб підтвердити деталі, оплату та доставку.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
   <!-- CTA BAND -->
   <section class="cta-band">
     <div class="grid-texture invert"></div>
@@ -1313,7 +1508,7 @@
           <h2>iPhone і <em>MacBook</em><br />вже чекають у каталозі</h2>
           <p>Телефони, ноутбуки, годинники та аксесуари Apple — обирайте в Telegram і оформлюйте замовлення за кілька натискань.</p>
           <div class="cta-actions">
-            <a href="https://t.me/iios_cv_bot" class="btn-primary" target="_blank" rel="noopener">
+            <a href="https://t.me/iios_cv_bot" class="btn-primary" target="_blank" rel="noopener" data-cta="cta_band">
               <svg viewBox="0 0 24 24" fill="currentColor" style="width:20px;height:20px;"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.93 7.003-1.67 7.87c-.125.558-.455.695-.92.432l-2.54-1.872-1.225 1.178c-.135.135-.25.25-.512.25l.182-2.594 4.705-4.25c.204-.182-.044-.283-.317-.1l-5.812 3.66-2.502-.782c-.543-.17-.554-.543.114-.803l9.76-3.762c.452-.164.849.11.738.773z"/></svg>
               Відкрити в Telegram
             </a>
@@ -1345,7 +1540,7 @@
               <div class="laptop-screen">
                 <div class="laptop-dots"><span></span><span></span><span></span></div>
                 <div class="laptop-card">
-                  <div class="laptop-card-img"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_mac.jpg" alt="MacBook Air 13&quot; M3"></div>
+                  <div class="laptop-card-img"><picture><source srcset="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_mac.webp" type="image/webp"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_mac.jpg" alt="MacBook Air 13&quot; M3" width="960" height="1280" loading="lazy" decoding="async" onerror="this.onerror=null;var s=this.parentNode.querySelector('source');if(s)s.remove();"></picture></div>
                   <div class="laptop-card-body">
                     <strong>MacBook Air 13" M3</strong>
                     <span class="laptop-card-price">45 600 ₴</span>
@@ -1357,7 +1552,7 @@
             <div class="device device-phone">
               <div class="phone-frame-cta">
                 <div class="phone-notch-cta"></div>
-                <div class="phone-card-img-cta"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.jpg" alt="iPhone 15 Pro 256GB"></div>
+                <div class="phone-card-img-cta"><picture><source srcset="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.webp" type="image/webp"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.jpg" alt="iPhone 15 Pro 256GB" width="960" height="1280" loading="lazy" decoding="async" onerror="this.onerror=null;var s=this.parentNode.querySelector('source');if(s)s.remove();"></picture></div>
                 <div class="phone-card-name-cta">iPhone 15 Pro</div>
                 <div class="phone-card-price-cta">40 995 ₴</div>
                 <div class="phone-mini-btn-cta">Додати в кошик</div>
@@ -1405,6 +1600,14 @@
     </div>
   </footer>
 
+  <!-- STICKY MOBILE CTA (shown once the hero button scrolls out of view) -->
+  <div class="sticky-cta" id="sticky-cta">
+    <a href="https://t.me/iios_cv_bot" class="btn-primary" target="_blank" rel="noopener" data-cta="sticky">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.93 7.003-1.67 7.87c-.125.558-.455.695-.92.432l-2.54-1.872-1.225 1.178c-.135.135-.25.25-.512.25l.182-2.594 4.705-4.25c.204-.182-.044-.283-.317-.1l-5.812 3.66-2.502-.782c-.543-.17-.554-.543.114-.803l9.76-3.762c.452-.164.849.11.738.773z"/></svg>
+      Обрати в Telegram
+    </a>
+  </div>
+
   <!-- COOKIE CONSENT BANNER -->
   <div class="cookie-banner" id="cookie-banner">
     <p><strong>Ми використовуємо cookie-файли</strong> для аналітики та реклами (Meta, Google), щоб покращувати сайт і оцінювати ефективність реклами, яка веде на цю сторінку.</p>
@@ -1447,8 +1650,10 @@
       }
       function next() { goTo(index + 1); }
       function prev() { goTo(index - 1); }
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       function startAutoplay() {
         stopAutoplay();
+        if (reduceMotion) return;
         timer = setInterval(next, 10000);
       }
       function stopAutoplay() {
@@ -1471,9 +1676,53 @@
       carousel?.addEventListener('mouseenter', stopAutoplay);
       carousel?.addEventListener('mouseleave', startAutoplay);
 
+      // Slides sit off-screen inside overflow:hidden, so native lazy-loading would only
+      // fetch them on first swipe. Load them all once the carousel nears the viewport.
+      new IntersectionObserver((entries, obs) => {
+        if (!entries[0].isIntersecting) return;
+        track.querySelectorAll('img[loading="lazy"]').forEach(img => { img.loading = 'eager'; });
+        obs.disconnect();
+      }, { rootMargin: '300px' }).observe(track);
+
       goTo(0);
       startAutoplay();
     })();
+
+    // Sticky mobile CTA: show once the hero button has scrolled out of view
+    (function () {
+      const sticky = document.getElementById('sticky-cta');
+      const heroActions = document.getElementById('hero-actions');
+      if (!sticky || !heroActions) return;
+      new IntersectionObserver(([entry]) => {
+        sticky.classList.toggle('visible', !entry.isIntersecting && entry.boundingClientRect.top < 0);
+      }).observe(heroActions);
+    })();
+
+    // ── Click conversions ───────────────────────────────────────
+    // The sale itself happens in Telegram, so on the site the conversion is
+    // the click into the bot (Lead). Channel/Instagram/map clicks are tracked
+    // as a weaker, separate event. fbq/gtag only send anything after consent.
+    function trackOutbound(link) {
+      const href = link.href;
+      const cta = link.dataset.cta || 'other';
+      if (/t\.me\/iios_cv_bot/i.test(href)) {
+        const payload = (href.split('start=')[1] || '').split('&')[0];
+        if (window.fbq) fbq('track', 'Lead', { content_name: payload || 'bot', content_category: cta });
+        gtag('event', 'generate_lead', { link_url: href, cta_position: cta, start_param: payload, transport_type: 'beacon' });
+        return;
+      }
+      let network = null;
+      if (/t\.me\//i.test(href)) network = 'telegram_channel';
+      else if (/instagram\.com/i.test(href)) network = 'instagram';
+      else if (/maps\.app\.goo\.gl|google\.[a-z.]+\/maps/i.test(href)) network = 'map';
+      if (!network) return;
+      if (window.fbq) fbq('trackCustom', 'SocialClick', { network: network });
+      gtag('event', 'social_click', { network: network, link_url: href, transport_type: 'beacon' });
+    }
+    document.addEventListener('click', (e) => {
+      const link = e.target.closest('a[href]');
+      if (link) trackOutbound(link);
+    });
 
     // ── Cookie consent + consent-gated tracking ────────────────
     // TODO: replace these with your real IDs before launching the campaign.
