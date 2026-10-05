@@ -250,7 +250,14 @@ Cloudflare → R2 → bucket → **Settings** → **CORS Policy**:
 ```json
 [
   {
-    "AllowedOrigins": ["https://store.iios.workers.dev", "https://iios.store", "https://www.iios.store"],
+    "AllowedOrigins": [
+      "https://store.iios.workers.dev",
+      "https://iios.store",
+      "https://www.iios.store",
+      "http://localhost:8000",
+      "http://localhost:5500",
+      "http://127.0.0.1:5500"
+    ],
     "AllowedMethods": ["GET"],
     "AllowedHeaders": ["*"],
     "MaxAgeSeconds": 86400
