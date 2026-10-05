@@ -167,7 +167,6 @@ fly secrets set `
   STORE_EMAIL="info@iios.store" `
   STORE_TELEGRAM="@iios_cv" `
   STORE_INSTAGRAM="@iios.store" `
-  STORE_WEBSITE="https://iios.store" `
   STORE_HOURS="Пн–Нд, 10:00–20:00"
 ```
 

@@ -44,7 +44,6 @@ def _contacts_text() -> str:
     phone = _env("STORE_PHONE", "+380 95 340 77 54")
     telegram = _env("STORE_TELEGRAM", "@iios_cv")
     instagram = _instagram_links()
-    website = _env("STORE_WEBSITE", "https://iios.store")
 
     if name:
         lines.append(f"🏪 {escape(name)}")
@@ -54,8 +53,6 @@ def _contacts_text() -> str:
         lines.append(f"💬 Telegram: {escape(telegram)}")
     if instagram:
         lines.append(f"📸 Instagram: {instagram}")
-    if website:
-        lines.append(f'🌐 Сайт: <a href="{escape(website)}">{escape(website)}</a>')
     return "\n".join(lines)
 
 
