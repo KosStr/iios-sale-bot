@@ -242,7 +242,10 @@ Admins mark products as hot in the bot (`/products` → product → ✏️ Ре�
 
 Needs **both** options above: the R2 write credentials (to upload the file) and
 `R2_PUBLIC_BASE_URL` (so the JSON has photo URLs). Only in-stock products are
-published; "Стара ціна" (UAH) adds the struck-through price and the `-N%` badge.
+published. "Акційна ціна" is typed in the product's main currency (UAH if set,
+otherwise USD; the other one is scaled by the same discount). It strikes through
+the regular price and adds a `-N%` badge on the landing, and the bot card, channel
+post, cart and orders use the sale price too.
 
 The browser fetches `hot.json` from another origin, so allow it once in
 Cloudflare → R2 → bucket → **Settings** → **CORS Policy**:

@@ -18,7 +18,12 @@ from telegram.ext import (
 
 from html import escape
 
-from store.data.products import get_all_products
+from store.data.products import (
+    Product,
+    get_all_products,
+    is_on_sale,
+    synced_sale_prices,
+)
 from store.db import cart_repo, products_repo
 from store.handlers.admin_ui import (
     PAGE_SIZE,
@@ -54,11 +59,50 @@ _FIELD_PROMPTS = {
         "одним рядком у каталозі.\nНадішліть `-`, щоб зробити товар окремим:"
     ),
     "photo": "Надішліть нове *фото* товару:",
-    "old": (
-        "Надішліть *стару ціну в грн* — на лендінгу вона буде закреслена "
-        "поруч з актуальною.\nНадішліть `-`, щоб прибрати:"
-    ),
 }
+
+
+def _sale_prompt(product: Product) -> str:
+    if product.price_uah:
+        currency = "в грн"
+        other = " Ціну в USD буде перераховано з тією ж знижкою." if product.price else ""
+    else:
+        currency = "в USD"
+        other = ""
+    return (
+        f"Надішліть *акційну ціну {currency}* (менше за звичайну). Звичайна ціна "
+        f"буде закреслена в боті, каналі та на сайті.{other}\n"
+        "Надішліть `-`, щоб прибрати акцію:"
+    )
+
+
+def _resync_sale(product_id: str) -> str:
+    """Keep the sale consistent after a regular price changed.
+
+    The sale amount in the main currency stays as typed; the other currency is
+    recomputed from the new prices. Returns a note for the admin, or "".
+    """
+    product = products_repo.fetch_by_id(product_id)
+    if not product or not is_on_sale(product):
+        return ""
+    if product.price_uah and product.sale_price_uah:
+        amount = product.sale_price_uah
+    elif product.price_uah and product.sale_price and product.price:
+        amount = round(product.price_uah * product.sale_price / product.price)
+    elif not product.price_uah and product.sale_price:
+        amount = product.sale_price
+    else:
+        amount = None
+    regular = product.price_uah or product.price
+    if amount is None:
+        products_repo.update(product_id, sale_price=None, sale_price_uah=None, sale_until=None)
+        return "\n⚠️ Змінилась валюта ціни — акцію прибрано, задайте акційну ціну знову."
+    if amount >= regular:
+        products_repo.update(product_id, sale_price=None, sale_price_uah=None, sale_until=None)
+        return "\n⚠️ Акційна ціна вже не менша за звичайну — акцію прибрано."
+    sale_usd, sale_uah = synced_sale_prices(product, amount)
+    products_repo.update(product_id, sale_price=sale_usd, sale_price_uah=sale_uah)
+    return ""
 
 _LANDING_FAILED = "\n\n⚠️ Не вдалося оновити лендінг (R2). Спробуйте /hot → 🔄 Оновити лендінг."
 
@@ -376,7 +420,8 @@ async def start_edit_field(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     await query.answer()
     _, _, product_id, field = query.data.split(":", 3)
 
-    if not products_repo.fetch_by_id(product_id):
+    product = products_repo.fetch_by_id(product_id)
+    if not product:
         await query.edit_message_text("Товар не знайдено.")
         return ConversationHandler.END
 
@@ -385,7 +430,7 @@ async def start_edit_field(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     state["field"] = field
 
     await query.message.reply_text(
-        _FIELD_PROMPTS[field],
+        _sale_prompt(product) if field == "sale" else _FIELD_PROMPTS[field],
         parse_mode=ParseMode.MARKDOWN,
     )
     return EDIT_INPUT
@@ -442,7 +487,7 @@ async def apply_edit_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                     await update.message.reply_text("Ціна має бути більше нуля.")
                     return EDIT_INPUT
                 products_repo.update(product_id, price=price)
-                message = "✅ Ціну оновлено."
+                message = "✅ Ціну оновлено." + _resync_sale(product_id)
             elif field == "stock":
                 if not text.isdigit():
                     await update.message.reply_text("Введіть ціле число.")
@@ -458,7 +503,7 @@ async def apply_edit_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                     return EDIT_INPUT
                 products_repo.update(product_id, product_group=group)
                 message = "✅ Модель оновлено."
-            elif field in ("uah", "old"):
+            elif field in ("uah", "sale"):
                 if text == "-":
                     amount = None
                 else:
@@ -473,10 +518,24 @@ async def apply_edit_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                         )
                         return EDIT_INPUT
                     products_repo.update(product_id, price_uah=amount)
-                    message = "✅ Ціну в грн оновлено."
+                    message = "✅ Ціну в грн оновлено." + _resync_sale(product_id)
+                elif amount is None:
+                    products_repo.update(
+                        product_id, sale_price=None, sale_price_uah=None, sale_until=None
+                    )
+                    message = "✅ Акцію прибрано."
                 else:
-                    products_repo.update(product_id, hot_old_price_uah=amount)
-                    message = "✅ Стару ціну оновлено."
+                    regular = product.price_uah or product.price
+                    if amount >= regular:
+                        await update.message.reply_text(
+                            "Акційна ціна має бути меншою за звичайну. Спробуйте ще раз або /cancel."
+                        )
+                        return EDIT_INPUT
+                    sale_usd, sale_uah = synced_sale_prices(product, amount)
+                    products_repo.update(
+                        product_id, sale_price=sale_usd, sale_price_uah=sale_uah, sale_until=None
+                    )
+                    message = "✅ Акційну ціну оновлено."
             else:
                 await update.message.reply_text("Невідоме поле.")
                 _clear_edit(context)
@@ -514,7 +573,7 @@ def build_admin_edit_handler() -> ConversationHandler:
         entry_points=[
             CallbackQueryHandler(
                 start_edit_field,
-                pattern=r"^adm:efld:[^:]+:(name|price|uah|stock|group|photo|old)$",
+                pattern=r"^adm:efld:[^:]+:(name|price|uah|stock|group|photo|sale)$",
             ),
         ],
         states={

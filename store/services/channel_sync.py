@@ -28,7 +28,12 @@ from telegram import Bot
 from telegram.constants import ParseMode
 from telegram.error import TelegramError
 
-from store.data.products import Product, is_on_sale
+from store.data.products import (
+    Product,
+    effective_price,
+    effective_price_uah,
+    is_on_sale,
+)
 from store.services.images import get_image_bytes, image_url
 
 logger = logging.getLogger(__name__)
@@ -92,10 +97,12 @@ def _post_text(product: Product) -> str:
     # Price first — right under the header. Sale price takes priority.
     if is_on_sale(product):
         regular = _price_line(product)
-        sale_usd = product.sale_price
-        sale_uah = product.price_uah  # UAH sale price not tracked separately
+        sale_usd = effective_price(product) or None
+        sale_uah = effective_price_uah(product)
         if sale_uah and sale_usd:
             sale_line = f"<b>{sale_uah}  грн  ( {sale_usd}$ )</b>"
+        elif sale_uah:
+            sale_line = f"<b>{sale_uah}  грн</b>"
         elif sale_usd:
             sale_line = f"<b>{sale_usd}$</b>"
         else:

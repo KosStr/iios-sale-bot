@@ -136,12 +136,12 @@ def _ensure_warranty_days_column(conn: sqlite3.Connection) -> None:
 
 
 def _ensure_hot_columns(conn: sqlite3.Connection) -> None:
-    """Add is_hot / hot_old_price_uah columns to databases created before schema v6."""
+    """Add is_hot / sale_price_uah columns to databases created before schema v6."""
     columns = _table_columns(conn, "products")
     if "is_hot" not in columns:
         conn.execute("ALTER TABLE products ADD COLUMN is_hot INTEGER NOT NULL DEFAULT 0")
-    if "hot_old_price_uah" not in columns:
-        conn.execute("ALTER TABLE products ADD COLUMN hot_old_price_uah INTEGER")
+    if "sale_price_uah" not in columns:
+        conn.execute("ALTER TABLE products ADD COLUMN sale_price_uah INTEGER")
 
 
 def apply_schema(conn: sqlite3.Connection) -> None:

@@ -10,7 +10,13 @@ import os
 from datetime import timedelta
 from html import escape
 
-from store.data.products import Product, is_on_sale, sale_time_left
+from store.data.products import (
+    Product,
+    effective_price,
+    effective_price_uah,
+    is_on_sale,
+    sale_time_left,
+)
 from store.services.cart import Cart
 
 _BLANK_SPECS = frozenset({"", "—", "-"})
@@ -62,36 +68,35 @@ def _price_parts(uah: int | None, usd: int | None) -> list[str]:
     return parts
 
 
-def _fmt_price(product: Product) -> str:
-    """Short price string using whichever price fields are set.
-
-    Both currencies render as "<uah> грн ($<usd>)"; a single one renders alone.
-    """
-    parts = _price_parts(product.price_uah, product.price)
+def _fmt_amounts(uah: int | None, usd: int | None) -> str:
+    """Both currencies render as "<uah> грн ($<usd>)"; a single one renders alone."""
+    parts = _price_parts(uah, usd)
     if len(parts) == 2:
         return f"{parts[0]} ({parts[1]})"
     return parts[0] if parts else "—"
 
 
+def _fmt_price(product: Product) -> str:
+    """Short regular-price string using whichever price fields are set."""
+    return _fmt_amounts(product.price_uah, product.price)
+
+
 def _price_block(product: Product) -> list[str]:
     """HTML price lines. On sale: old price struck through, new price after it."""
     if is_on_sale(product):
-        left = sale_time_left(product)
-        until = product.sale_until.strftime("%d.%m %H:%M")
         old = escape(_fmt_price(product))
-        sale_usd = product.sale_price
-        sale_uah = product.price_uah
-        if sale_uah and sale_usd:
-            new = escape(f"{sale_uah} грн (${sale_usd})")
-        elif sale_usd:
-            new = escape(f"${sale_usd}")
-        else:
-            new = "—"
-        return [
+        new = escape(_fmt_amounts(effective_price_uah(product), effective_price(product)))
+        lines = [
             "🔥 <b>АКЦІЯ</b>",
             f"💰 Ціна: <s>{old}</s> → <b>{new}</b>",
-            f"⏳ Діє до {escape(until)} (залишилось {escape(format_timeleft(left))})",
         ]
+        left = sale_time_left(product)
+        if left is not None:
+            until = product.sale_until.strftime("%d.%m %H:%M")
+            lines.append(
+                f"⏳ Діє до {escape(until)} (залишилось {escape(format_timeleft(left))})"
+            )
+        return lines
     return [f"💰 Ціна: <b>{escape(_fmt_price(product))}</b>"]
 
 
@@ -137,7 +142,9 @@ def product_summary(product: Product, currency: str = "UAH") -> str:
 def _item_total_str(item) -> str:
     """Line total for a cart item, e.g. '2000 грн / $50'."""
     p = item.product
-    parts = _price_parts((p.price_uah or 0) * item.qty, (p.price or 0) * item.qty)
+    parts = _price_parts(
+        (effective_price_uah(p) or 0) * item.qty, (effective_price(p) or 0) * item.qty
+    )
     return " / ".join(parts) if parts else "—"
 
 
@@ -150,8 +157,8 @@ def cart_summary(cart: Cart, currency: str = "UAH") -> str:
         lines.append(
             f"• {item.product.name} ×{item.qty} — {_item_total_str(item)}{mark}"
         )
-    total_uah = sum((i.product.price_uah or 0) * i.qty for i in cart.items)
-    total_usd = sum((i.product.price or 0) * i.qty for i in cart.items)
+    total_uah = sum((effective_price_uah(i.product) or 0) * i.qty for i in cart.items)
+    total_usd = sum((effective_price(i.product) or 0) * i.qty for i in cart.items)
     total_parts = _price_parts(total_uah, total_usd)
     total_str = " / ".join(total_parts) if total_parts else "—"
     lines.extend(["", f"*Разом: {total_str}*"])

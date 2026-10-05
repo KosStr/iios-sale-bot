@@ -17,7 +17,7 @@ import logging
 import os
 import time
 
-from store.data.products import Product
+from store.data.products import Product, is_on_sale
 from store.db import products_repo
 from store.services.images import image_url, r2_write_enabled, upload_object
 
@@ -36,14 +36,16 @@ def _deal(product: Product, version: int) -> dict:
     if image:
         # Photos are overwritten under the same key, so bust browser/CDN caches.
         image = f"{image}{'&' if '?' in image else '?'}v={version}"
-    old = product.hot_old_price_uah
-    current = product.price_uah
+    on_sale = is_on_sale(product)
     return {
         "id": product.id,
         "name": product.name,
-        "price_uah": current or None,
+        # Regular prices; the landing shows UAH when set, otherwise USD.
+        "price_uah": product.price_uah or None,
         "price_usd": product.price or None,
-        "old_price_uah": old if old and current and old > current else None,
+        # Sale prices in the same currencies (struck-through regular price + badge).
+        "sale_price_uah": (product.sale_price_uah or None) if on_sale else None,
+        "sale_price_usd": (product.sale_price or None) if on_sale else None,
         "image": image,
     }
 

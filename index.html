@@ -1708,14 +1708,23 @@
         if (text != null) node.textContent = text;
         return node;
       }
-      function uah(n) { return n.toLocaleString('uk-UA') + ' ₴'; }
+      // One currency per slide: UAH when the product has a UAH price, else USD.
+      // The sale price is shown in that same currency, so the struck-through
+      // regular price and the new price always compare like with like.
+      function dealPrices(deal) {
+        const fmt = deal.price_uah
+          ? n => n.toLocaleString('uk-UA') + ' ₴'
+          : n => '$' + n.toLocaleString('en-US');
+        const regular = deal.price_uah || deal.price_usd || null;
+        const sale = deal.price_uah ? deal.sale_price_uah : deal.sale_price_usd;
+        return { fmt, regular, sale: sale && regular && sale < regular ? sale : null };
+      }
 
       function renderSlide(deal) {
         const slide = el('div', 'deal-slide');
-        const oldPrice = deal.old_price_uah;
-        const newPrice = deal.price_uah;
-        if (oldPrice && newPrice) {
-          slide.append(el('div', 'deal-badge', `-${Math.round((1 - newPrice / oldPrice) * 100)}%`));
+        const { fmt, regular, sale } = dealPrices(deal);
+        if (sale) {
+          slide.append(el('div', 'deal-badge', `-${Math.round((1 - sale / regular) * 100)}%`));
         }
         const imgWrap = el('div', 'deal-img');
         if (deal.image) {
@@ -1730,9 +1739,11 @@
         const body = el('div', 'deal-body');
         body.append(el('div', 'deal-name', deal.name));
         const priceRow = el('div', 'deal-price-row');
-        if (oldPrice && newPrice) priceRow.append(el('span', 'deal-price-old', uah(oldPrice)));
-        if (newPrice) priceRow.append(el('span', 'deal-price-new', uah(newPrice)));
-        else if (deal.price_usd) priceRow.append(el('span', 'deal-price-new', `$${deal.price_usd}`));
+        if (sale) {
+          priceRow.append(el('span', 'deal-price-old', fmt(regular)), el('span', 'deal-price-new', fmt(sale)));
+        } else if (regular) {
+          priceRow.append(el('span', 'deal-price-new', fmt(regular)));
+        }
         body.append(priceRow);
         const cta = el('a', 'btn-primary deal-cta', 'Хочу цей');
         cta.href = `${BOT_URL}?start=prod_${encodeURIComponent(deal.id)}`;

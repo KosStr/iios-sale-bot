@@ -6,7 +6,7 @@ from html import escape
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-from store.data.products import Product
+from store.data.products import Product, is_on_sale
 from store.services.catalog_filter import (
     CATEGORIES,
     CATEGORY_LABELS,
@@ -22,7 +22,14 @@ def product_detail_text(product: Product) -> str:
     sub = product.subcategory or "—"
     photo = product.image or "—"
     hot = "так" if product.is_hot else "ні"
-    old_price = f"{product.hot_old_price_uah} грн" if product.hot_old_price_uah else "—"
+    sale = "—"
+    if is_on_sale(product):
+        parts = []
+        if product.sale_price_uah:
+            parts.append(f"{product.sale_price_uah} грн")
+        if product.sale_price:
+            parts.append(f"${product.sale_price}")
+        sale = " / ".join(parts) or "—"
     return "\n".join(
         [
             f"📦 <b>{escape(product.name)}</b>",
@@ -36,7 +43,7 @@ def product_detail_text(product: Product) -> str:
             f"Підкатегорія: {escape(sub)}",
             f"Фото: <code>{escape(photo)}</code>",
             f"🔥 Гаряча пропозиція: <b>{hot}</b>",
-            f"Стара ціна (лендінг): {escape(old_price)}",
+            f"Акційна ціна: <b>{escape(sale)}</b>",
         ]
     )
 
@@ -99,7 +106,7 @@ def edit_menu_keyboard(product_id: str, is_hot: bool = False) -> InlineKeyboardM
             ],
             [
                 InlineKeyboardButton(hot_label, callback_data=f"adm:hot:{product_id}"),
-                InlineKeyboardButton("Стара ціна", callback_data=f"adm:efld:{product_id}:old"),
+                InlineKeyboardButton("Акційна ціна", callback_data=f"adm:efld:{product_id}:sale"),
             ],
             [InlineKeyboardButton("⬅️ Назад", callback_data=f"adm:view:{product_id}")],
         ]

@@ -11,6 +11,7 @@ import math
 from store.data.products import (
     Product,
     effective_price,
+    effective_price_uah,
     get_all_products,
     is_on_sale,
 )
@@ -187,7 +188,7 @@ def has_price_filter(flt: dict) -> bool:
 
 def _short_price(product: Product) -> str:
     """One-line price for catalog list buttons, using whichever fields are set."""
-    uah = product.price_uah
+    uah = effective_price_uah(product)
     usd = effective_price(product) if product.price else None
     if uah and usd:
         return f"{uah} грн (${usd})"
