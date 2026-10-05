@@ -20,6 +20,7 @@ import time
 from store.data.products import Product, is_on_sale
 from store.db import products_repo
 from store.services.images import image_url, r2_write_enabled, upload_object
+from store.utils.format import join_specs
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,8 @@ def _deal(product: Product, version: int) -> dict:
     return {
         "id": product.id,
         "name": product.name,
+        # Small grey line under the name in the hero phone mockup (e.g. the colour).
+        "subtitle": join_specs(product.color) or None,
         # Regular prices; the landing shows UAH when set, otherwise USD.
         "price_uah": product.price_uah or None,
         "price_usd": product.price or None,

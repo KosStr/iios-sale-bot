@@ -118,6 +118,37 @@
     }
     .nav-icon svg { width: 17px; height: 17px; }
     .nav-icon:hover { transform: translateY(-2px); border-color: var(--accent); background: var(--bg3); color: var(--ink); }
+    .nav-icon { position: relative; }
+    .nav-icon:hover svg { animation: nav-icon-wiggle .45s ease; }
+    @keyframes nav-icon-wiggle {
+      0%, 100% { transform: rotate(0) scale(1); }
+      35%      { transform: rotate(-10deg) scale(1.12); }
+      70%      { transform: rotate(6deg) scale(1.06); }
+    }
+    /* Name label under the icon (mouse/keyboard only — touch has no hover) */
+    .nav-icon[data-tip]::after {
+      content: attr(data-tip);
+      position: absolute; top: calc(100% + 10px); left: 50%;
+      transform: translate(-50%, -4px);
+      background: var(--ink); color: var(--white);
+      font-size: 12px; font-weight: 700; white-space: nowrap;
+      padding: 5px 10px; border-radius: 100px;
+      box-shadow: var(--shadow-sm);
+      opacity: 0; pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    .nav-icon[data-tip]::before {
+      content: '';
+      position: absolute; top: calc(100% + 5px); left: 50%;
+      transform: translate(-50%, -4px);
+      border: 5px solid transparent; border-top: 0; border-bottom-color: var(--ink);
+      opacity: 0; pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    @media (hover: hover) {
+      .nav-icon[data-tip]:hover::after, .nav-icon[data-tip]:hover::before { opacity: 1; transform: translate(-50%, 0); }
+    }
+    .nav-icon[data-tip]:focus-visible::after, .nav-icon[data-tip]:focus-visible::before { opacity: 1; transform: translate(-50%, 0); }
     .nav-cta {
       display: flex; align-items: center; gap: 8px;
       background: var(--ink);
@@ -1109,13 +1140,13 @@
       <div class="nav-logo">IIOS<span>.</span></div>
       <div class="nav-right">
         <div class="nav-icons">
-          <a href="https://www.instagram.com/iios_cv?igsi=OGFmYWt3cDd4YXgw" class="nav-icon" target="_blank" rel="noopener" aria-label="Instagram">
+          <a href="https://www.instagram.com/iios_cv?igsi=OGFmYWt3cDd4YXgw" class="nav-icon" target="_blank" rel="noopener" aria-label="Instagram" data-tip="Instagram">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
           </a>
-          <a href="https://t.me/IIOS_cv" class="nav-icon" target="_blank" rel="noopener" aria-label="Telegram-канал (новини та акції)">
+          <a href="https://t.me/IIOS_cv" class="nav-icon" target="_blank" rel="noopener" aria-label="Telegram-канал (новини та акції)" data-tip="Канал">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
           </a>
-          <a href="https://maps.app.goo.gl/8AZcqV7XxU1495Ns6?g_st=ic" class="nav-icon" target="_blank" rel="noopener" aria-label="Адреса на мапі">
+          <a href="https://maps.app.goo.gl/8AZcqV7XxU1495Ns6?g_st=ic" class="nav-icon" target="_blank" rel="noopener" aria-label="Адреса на мапі" data-tip="Геолокація">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
           </a>
         </div>
@@ -1200,13 +1231,14 @@
               Ласкаво просимо до <strong>IIOS!</strong><br/>
               Оберіть категорію або скористайтеся пошуком.
             </div>
-            <div class="msg-product">
-              <div class="prod-img-placeholder"><picture><source srcset="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.webp" type="image/webp"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.jpg" alt="iPhone 15 Pro 256GB" width="960" height="1280" decoding="async" onerror="this.onerror=null;var s=this.parentNode.querySelector('source');if(s)s.remove();"></picture></div>
-              <div class="prod-name">iPhone 15 Pro 256GB</div>
-              <div style="font-size:10px;color:var(--muted);margin:2px 0 6px">Natural Titanium</div>
+            <!-- Filled from the first hot deal in hot.json; static content is the fallback. -->
+            <div class="msg-product" id="hero-deal">
+              <div class="prod-img-placeholder" id="hero-deal-img"><picture><source srcset="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.webp" type="image/webp"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.jpg" alt="iPhone 15 Pro 256GB" width="960" height="1280" decoding="async" onerror="this.onerror=null;var s=this.parentNode.querySelector('source');if(s)s.remove();"></picture></div>
+              <div class="prod-name" id="hero-deal-name">iPhone 15 Pro 256GB</div>
+              <div id="hero-deal-sub" style="font-size:10px;color:var(--muted);margin:2px 0 6px">Natural Titanium</div>
               <div style="display:flex;align-items:baseline;gap:6px">
-                <div class="prod-price">40 995 ₴</div>
-                <div class="prod-old">44 500 ₴</div>
+                <div class="prod-price" id="hero-deal-price">40 995 ₴</div>
+                <div class="prod-old" id="hero-deal-old">44 500 ₴</div>
               </div>
             </div>
             <div class="tg-btns">
@@ -1755,10 +1787,34 @@
         return slide;
       }
 
+      // The hero phone mockup shows the first hot deal as a bot product card.
+      function renderHeroDeal(deal) {
+        const { fmt, regular, sale } = dealPrices(deal);
+        const name = document.getElementById('hero-deal-name');
+        const sub = document.getElementById('hero-deal-sub');
+        const price = document.getElementById('hero-deal-price');
+        const old = document.getElementById('hero-deal-old');
+        const imgWrap = document.getElementById('hero-deal-img');
+        if (!name || !price) return;
+        name.textContent = deal.name;
+        if (sub) { sub.textContent = deal.subtitle || ''; sub.hidden = !deal.subtitle; }
+        price.textContent = regular ? fmt(sale || regular) : '';
+        if (old) { old.textContent = sale ? fmt(regular) : ''; old.hidden = !sale; }
+        if (imgWrap && deal.image) {
+          const img = el('img');
+          img.alt = deal.name;
+          img.decoding = 'async';
+          // Swap only once the new photo has loaded, so the mockup never shows a gap.
+          img.onload = () => imgWrap.replaceChildren(img);
+          img.src = deal.image;
+        }
+      }
+
       fetch(HOT_DEALS_URL)
         .then(r => (r.ok ? r.json() : Promise.reject(r.status)))
         .then(data => {
           const deals = (data.deals || []).filter(d => d && d.id && d.name);
+          if (deals.length) renderHeroDeal(deals[0]);
           if (!deals.length) {
             // Admins removed every hot deal — hide the section rather than show stale ones.
             document.getElementById('deals')?.setAttribute('hidden', '');
