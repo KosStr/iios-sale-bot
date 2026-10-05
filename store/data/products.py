@@ -69,6 +69,10 @@ class Product:
     price_uah: int | None = None
     # Warranty in days shown in the channel post (e.g. 90). None = not set.
     warranty_days: int | None = None
+    # Hot deal: shown in the landing page carousel (published to R2 as hot.json).
+    is_hot: bool = False
+    # Optional "was" price (UAH) shown struck through on the landing slide.
+    hot_old_price_uah: int | None = None
 
 
 PRODUCTS: list[Product] = [

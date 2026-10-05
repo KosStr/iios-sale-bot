@@ -234,6 +234,34 @@ python -m scripts.upload_images
 
 Object keys default to `<product_id>.jpg` (see `store/services/images.py`).
 
+### Step 11. Hot deals on the landing page (optional)
+
+Admins mark products as hot in the bot (`/products` → product → ✏️ Редагувати →
+🔥 Зробити гарячою; `/hot` lists them). On every change the bot uploads
+`hot.json` to the bucket, and `index.html` builds the deals carousel from it.
+
+Needs **both** options above: the R2 write credentials (to upload the file) and
+`R2_PUBLIC_BASE_URL` (so the JSON has photo URLs). Only in-stock products are
+published; "Стара ціна" (UAH) adds the struck-through price and the `-N%` badge.
+
+The browser fetches `hot.json` from another origin, so allow it once in
+Cloudflare → R2 → bucket → **Settings** → **CORS Policy**:
+
+```json
+[
+  {
+    "AllowedOrigins": ["https://iios.store", "https://www.iios.store"],
+    "AllowedMethods": ["GET"],
+    "AllowedHeaders": ["*"],
+    "MaxAgeSeconds": 86400
+  }
+]
+```
+
+If the fetch fails, the landing keeps its built-in static slides. If the file
+has no deals, the section is hidden. The object key can be changed with the
+`HOT_DEALS_KEY` env var (default `hot.json`).
+
 ---
 
 ## Part 6 — Deploy

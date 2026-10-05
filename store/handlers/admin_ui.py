@@ -21,6 +21,8 @@ def product_detail_text(product: Product) -> str:
     cat = CATEGORY_LABELS.get(product.category, product.category)
     sub = product.subcategory or "—"
     photo = product.image or "—"
+    hot = "так" if product.is_hot else "ні"
+    old_price = f"{product.hot_old_price_uah} грн" if product.hot_old_price_uah else "—"
     return "\n".join(
         [
             f"📦 <b>{escape(product.name)}</b>",
@@ -28,10 +30,13 @@ def product_detail_text(product: Product) -> str:
             f"ID: <code>{escape(product.id)}</code>",
             f"Модель: {escape(product.group or '—')}",
             f"Ціна: <b>{escape(format_price(product.price, 'USD'))}</b>",
+            f"Ціна, грн: <b>{product.price_uah or '—'}</b>",
             f"На складі: <b>{product.stock}</b>",
             f"Категорія: {escape(cat)}",
             f"Підкатегорія: {escape(sub)}",
             f"Фото: <code>{escape(photo)}</code>",
+            f"🔥 Гаряча пропозиція: <b>{hot}</b>",
+            f"Стара ціна (лендінг): {escape(old_price)}",
         ]
     )
 
@@ -56,7 +61,7 @@ def product_list_keyboard(products: list[Product], page: int) -> InlineKeyboardM
     rows = [
         [
             InlineKeyboardButton(
-                f"{p.name[:22]} · {p.id} — {format_price(p.price, 'USD')}",
+                f"{'🔥 ' if p.is_hot else ''}{p.name[:22]} · {p.id} — {format_price(p.price, 'USD')}",
                 callback_data=f"adm:view:{p.id}",
             )
         ]
@@ -75,12 +80,14 @@ def product_list_keyboard(products: list[Product], page: int) -> InlineKeyboardM
     return InlineKeyboardMarkup(rows)
 
 
-def edit_menu_keyboard(product_id: str) -> InlineKeyboardMarkup:
+def edit_menu_keyboard(product_id: str, is_hot: bool = False) -> InlineKeyboardMarkup:
+    hot_label = "🔥 Прибрати з гарячих" if is_hot else "🔥 Зробити гарячою"
     return InlineKeyboardMarkup(
         [
             [
                 InlineKeyboardButton("Назва", callback_data=f"adm:efld:{product_id}:name"),
-                InlineKeyboardButton("Ціна", callback_data=f"adm:efld:{product_id}:price"),
+                InlineKeyboardButton("Ціна $", callback_data=f"adm:efld:{product_id}:price"),
+                InlineKeyboardButton("Ціна грн", callback_data=f"adm:efld:{product_id}:uah"),
             ],
             [
                 InlineKeyboardButton("Склад", callback_data=f"adm:efld:{product_id}:stock"),
@@ -90,9 +97,35 @@ def edit_menu_keyboard(product_id: str) -> InlineKeyboardMarkup:
                 InlineKeyboardButton("Модель", callback_data=f"adm:efld:{product_id}:group"),
                 InlineKeyboardButton("Фото", callback_data=f"adm:efld:{product_id}:photo"),
             ],
+            [
+                InlineKeyboardButton(hot_label, callback_data=f"adm:hot:{product_id}"),
+                InlineKeyboardButton("Стара ціна", callback_data=f"adm:efld:{product_id}:old"),
+            ],
             [InlineKeyboardButton("⬅️ Назад", callback_data=f"adm:view:{product_id}")],
         ]
     )
+
+
+def hot_list_text(products: list[Product]) -> str:
+    if not products:
+        return (
+            "🔥 <b>Гарячі пропозиції</b>\n\nПоки порожньо. Відкрийте товар у /products → "
+            "✏️ Редагувати → 🔥 Зробити гарячою."
+        )
+    lines = [f"🔥 <b>Гарячі пропозиції</b> ({len(products)})", ""]
+    for p in products:
+        note = "" if p.stock > 0 else " — <i>немає в наявності, на сайті не показується</i>"
+        lines.append(f"• {escape(p.name)} <code>{escape(p.id)}</code>{note}")
+    return "\n".join(lines)
+
+
+def hot_list_keyboard(products: list[Product]) -> InlineKeyboardMarkup:
+    rows = [
+        [InlineKeyboardButton(p.name[:40], callback_data=f"adm:view:{p.id}")]
+        for p in products
+    ]
+    rows.append([InlineKeyboardButton("🔄 Оновити лендінг", callback_data="adm:hotpub")])
+    return InlineKeyboardMarkup(rows)
 
 
 def edit_category_keyboard(product_id: str) -> InlineKeyboardMarkup:

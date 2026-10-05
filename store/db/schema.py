@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 _TABLES = """
 CREATE TABLE IF NOT EXISTS schema_meta (
@@ -79,6 +79,8 @@ CREATE INDEX IF NOT EXISTS idx_products_name ON products(name);
 CREATE INDEX IF NOT EXISTS idx_products_sale_until ON products(sale_until)
     WHERE sale_until IS NOT NULL;
 
+CREATE INDEX IF NOT EXISTS idx_products_hot ON products(is_hot) WHERE is_hot = 1;
+
 CREATE INDEX IF NOT EXISTS idx_cart_items_user ON cart_items(user_id);
 
 CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
@@ -133,12 +135,22 @@ def _ensure_warranty_days_column(conn: sqlite3.Connection) -> None:
     conn.execute("ALTER TABLE products ADD COLUMN warranty_days INTEGER")
 
 
+def _ensure_hot_columns(conn: sqlite3.Connection) -> None:
+    """Add is_hot / hot_old_price_uah columns to databases created before schema v6."""
+    columns = _table_columns(conn, "products")
+    if "is_hot" not in columns:
+        conn.execute("ALTER TABLE products ADD COLUMN is_hot INTEGER NOT NULL DEFAULT 0")
+    if "hot_old_price_uah" not in columns:
+        conn.execute("ALTER TABLE products ADD COLUMN hot_old_price_uah INTEGER")
+
+
 def apply_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(_TABLES)
     _ensure_subcategory_column(conn)
     _ensure_channel_post_url_column(conn)
     _ensure_price_uah_column(conn)
     _ensure_warranty_days_column(conn)
+    _ensure_hot_columns(conn)
     conn.executescript(_INDEXES)
     conn.execute(
         """

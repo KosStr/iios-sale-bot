@@ -593,6 +593,7 @@
       transition: background .2s ease, transform .2s ease;
     }
     .deal-dot.active { background: var(--accent2); transform: scale(1.3); }
+    .deal-nav[hidden], .deals-dots[hidden], #deals[hidden] { display: none; }
     @media (min-width: 701px) {
       .deal-slide { display: flex; align-items: stretch; }
       .deal-img { width: 50%; aspect-ratio: auto; }
@@ -1257,7 +1258,7 @@
   </section>
 
   <!-- HOT DEALS -->
-  <section class="section">
+  <section class="section" id="deals">
     <div class="container">
       <div class="section-head reveal">
         <div class="tag">Гарячі пропозиції</div>
@@ -1266,8 +1267,8 @@
       </div>
       <div class="deals-carousel reveal" id="deals-carousel">
         <div class="deals-viewport">
-          <!-- TODO: replace prod_<id> in each "Хочу цей" link with the real product id
-               from the bot (/products). Unknown ids fall back to the catalog. -->
+          <!-- Fallback slides. They are replaced at load time by the deals the admins
+               mark as hot in the bot (/products → 🔥), published to R2 as hot.json. -->
           <div class="deals-track" id="deals-track">
             <div class="deal-slide">
               <div class="deal-badge">-9%</div>
@@ -1637,11 +1638,13 @@
     (function () {
       const track = document.getElementById('deals-track');
       if (!track) return;
-      const slides = [...track.children];
-      const dots = [...(document.getElementById('deals-dots')?.children || [])];
+      const dotsWrap = document.getElementById('deals-dots');
+      let slides = [...track.children];
+      let dots = [...(dotsWrap?.children || [])];
       const carousel = document.getElementById('deals-carousel');
       let index = 0;
       let timer = null;
+      let nearViewport = false;
 
       function goTo(i) {
         index = (i + slides.length) % slides.length;
@@ -1663,7 +1666,10 @@
 
       document.getElementById('deals-next')?.addEventListener('click', () => { next(); restartAutoplay(); });
       document.getElementById('deals-prev')?.addEventListener('click', () => { prev(); restartAutoplay(); });
-      dots.forEach((dot, di) => dot.addEventListener('click', () => { goTo(di); restartAutoplay(); }));
+      function bindDots() {
+        dots.forEach((dot, di) => dot.addEventListener('click', () => { goTo(di); restartAutoplay(); }));
+      }
+      bindDots();
 
       // Swipe (touch)
       let touchStartX = 0;
@@ -1678,14 +1684,93 @@
 
       // Slides sit off-screen inside overflow:hidden, so native lazy-loading would only
       // fetch them on first swipe. Load them all once the carousel nears the viewport.
+      function loadAllImages() {
+        track.querySelectorAll('img[loading="lazy"]').forEach(img => { img.loading = 'eager'; });
+      }
       new IntersectionObserver((entries, obs) => {
         if (!entries[0].isIntersecting) return;
-        track.querySelectorAll('img[loading="lazy"]').forEach(img => { img.loading = 'eager'; });
+        nearViewport = true;
+        loadAllImages();
         obs.disconnect();
       }, { rootMargin: '300px' }).observe(track);
 
       goTo(0);
       startAutoplay();
+
+      // Live deals: admins mark products as hot in the bot, which publishes them
+      // to R2 as hot.json. The static slides above stay only if the fetch fails.
+      const HOT_DEALS_URL = 'https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/hot.json';
+      const BOT_URL = 'https://t.me/iios_cv_bot';
+
+      function el(tag, className, text) {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text != null) node.textContent = text;
+        return node;
+      }
+      function uah(n) { return n.toLocaleString('uk-UA') + ' ₴'; }
+
+      function renderSlide(deal) {
+        const slide = el('div', 'deal-slide');
+        const oldPrice = deal.old_price_uah;
+        const newPrice = deal.price_uah;
+        if (oldPrice && newPrice) {
+          slide.append(el('div', 'deal-badge', `-${Math.round((1 - newPrice / oldPrice) * 100)}%`));
+        }
+        const imgWrap = el('div', 'deal-img');
+        if (deal.image) {
+          const img = el('img');
+          img.src = deal.image;
+          img.alt = deal.name;
+          img.loading = nearViewport ? 'eager' : 'lazy';
+          img.decoding = 'async';
+          img.onerror = () => img.remove();
+          imgWrap.append(img);
+        }
+        const body = el('div', 'deal-body');
+        body.append(el('div', 'deal-name', deal.name));
+        const priceRow = el('div', 'deal-price-row');
+        if (oldPrice && newPrice) priceRow.append(el('span', 'deal-price-old', uah(oldPrice)));
+        if (newPrice) priceRow.append(el('span', 'deal-price-new', uah(newPrice)));
+        else if (deal.price_usd) priceRow.append(el('span', 'deal-price-new', `$${deal.price_usd}`));
+        body.append(priceRow);
+        const cta = el('a', 'btn-primary deal-cta', 'Хочу цей');
+        cta.href = `${BOT_URL}?start=prod_${encodeURIComponent(deal.id)}`;
+        cta.target = '_blank';
+        cta.rel = 'noopener';
+        cta.dataset.cta = 'deal';
+        body.append(cta);
+        slide.append(imgWrap, body);
+        return slide;
+      }
+
+      fetch(HOT_DEALS_URL)
+        .then(r => (r.ok ? r.json() : Promise.reject(r.status)))
+        .then(data => {
+          const deals = (data.deals || []).filter(d => d && d.id && d.name);
+          if (!deals.length) {
+            // Admins removed every hot deal — hide the section rather than show stale ones.
+            document.getElementById('deals')?.setAttribute('hidden', '');
+            stopAutoplay();
+            return;
+          }
+          track.replaceChildren(...deals.map(renderSlide));
+          dotsWrap?.replaceChildren(...deals.map((_, i) => {
+            const dot = el('button', 'deal-dot');
+            dot.type = 'button';
+            dot.setAttribute('aria-label', `Слайд ${i + 1}`);
+            return dot;
+          }));
+          slides = [...track.children];
+          dots = [...(dotsWrap?.children || [])];
+          bindDots();
+          const single = slides.length < 2;
+          ['deals-prev', 'deals-next'].forEach(id => { const b = document.getElementById(id); if (b) b.hidden = single; });
+          if (dotsWrap) dotsWrap.hidden = single;
+          goTo(0);
+          if (single) stopAutoplay(); else startAutoplay();
+        })
+        .catch(() => { /* keep the static fallback slides */ });
     })();
 
     // Sticky mobile CTA: show once the hero button has scrolled out of view
