@@ -118,7 +118,8 @@
     }
     .nav-icon svg { width: 17px; height: 17px; }
     .nav-icon:hover { transform: translateY(-2px); border-color: var(--accent); background: var(--bg3); color: var(--ink); }
-    .nav-icon { position: relative; }
+    /* z-index keeps the tooltip above the nav bottom line (nav::after) */
+    .nav-icon { position: relative; z-index: 1; }
     .nav-icon:hover svg { animation: nav-icon-wiggle .45s ease; }
     @keyframes nav-icon-wiggle {
       0%, 100% { transform: rotate(0) scale(1); }
@@ -128,7 +129,7 @@
     /* Name label under the icon (mouse/keyboard only — touch has no hover) */
     .nav-icon[data-tip]::after {
       content: attr(data-tip);
-      position: absolute; top: calc(100% + 10px); left: 50%;
+      position: absolute; top: calc(100% + 22px); left: 50%;
       transform: translate(-50%, -4px);
       background: var(--ink); color: var(--white);
       font-size: 12px; font-weight: 700; white-space: nowrap;
@@ -139,7 +140,7 @@
     }
     .nav-icon[data-tip]::before {
       content: '';
-      position: absolute; top: calc(100% + 5px); left: 50%;
+      position: absolute; top: calc(100% + 17px); left: 50%;
       transform: translate(-50%, -4px);
       border: 5px solid transparent; border-top: 0; border-bottom-color: var(--ink);
       opacity: 0; pointer-events: none;
