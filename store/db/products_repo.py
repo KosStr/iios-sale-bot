@@ -12,7 +12,7 @@ from store.db.connection import db_connection
 _SELECT = """
 SELECT id, brand, name, price, storage, color, stock, description,
        category, subcategory, image, product_group, sale_price, sale_until,
-       channel_post_url, price_uah, warranty_days
+       channel_post_url, price_uah, warranty_days, is_hot, hot_old_price_uah
 FROM products
 """
 
@@ -20,8 +20,8 @@ _INSERT = """
 INSERT INTO products (
     id, brand, name, price, storage, color, stock, description,
     category, subcategory, image, product_group, sale_price, sale_until,
-    channel_post_url, price_uah, warranty_days
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    channel_post_url, price_uah, warranty_days, is_hot, hot_old_price_uah
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 """
 
 
@@ -94,6 +94,8 @@ def insert(product: Product) -> None:
                 product.channel_post_url,
                 product.price_uah,
                 product.warranty_days,
+                int(product.is_hot),
+                product.hot_old_price_uah,
             ),
         )
 
@@ -120,12 +122,23 @@ def _row_to_product(row) -> Product:
         channel_post_url=row["channel_post_url"] or "",
         price_uah=row["price_uah"],
         warranty_days=row["warranty_days"],
+        is_hot=bool(row["is_hot"]),
+        hot_old_price_uah=row["hot_old_price_uah"],
     )
 
 
 def fetch_all() -> list[Product]:
     with db_connection() as conn:
         rows = conn.execute(f"{_SELECT} ORDER BY name, storage, color").fetchall()
+    return [_row_to_product(row) for row in rows]
+
+
+def fetch_hot() -> list[Product]:
+    """Products marked as hot deals, in catalog order."""
+    with db_connection() as conn:
+        rows = conn.execute(
+            f"{_SELECT} WHERE is_hot = 1 ORDER BY name, storage, color"
+        ).fetchall()
     return [_row_to_product(row) for row in rows]
 
 
@@ -182,6 +195,8 @@ def update(product_id: str, **fields: object) -> None:
         "color",
         "product_group",
         "channel_post_url",
+        "is_hot",
+        "hot_old_price_uah",
     }
     updates = {key: value for key, value in fields.items() if key in allowed}
     if not updates:

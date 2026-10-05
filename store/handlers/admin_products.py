@@ -27,6 +27,8 @@ from store.handlers.admin_ui import (
     edit_menu_keyboard,
     edit_subcategory_keyboard,
     force_delete_keyboard,
+    hot_list_keyboard,
+    hot_list_text,
     product_detail_keyboard,
     product_detail_text,
     product_list_keyboard,
@@ -34,6 +36,7 @@ from store.handlers.admin_ui import (
 from store.services.catalog_filter import category_has_subcategories
 from store.services.channel_sync import delete_product_post, sync_product_post
 from store.services.grouping import fits_group_key
+from store.services.hot_deals import publish_hot_deals, refresh_if_hot
 from store.services.images import upload_image
 from store.utils.admin import is_admin
 
@@ -44,13 +47,20 @@ EDIT_INPUT = 0
 _FIELD_PROMPTS = {
     "name": "Надішліть нову *назву* товару:",
     "price": "Надішліть нову *ціну в USD* (число):",
+    "uah": "Надішліть нову *ціну в грн* (число). Надішліть `-`, щоб прибрати:",
     "stock": "Надішліть нову *кількість на складі* (ціле число):",
     "group": (
         "Надішліть назву *моделі* — товари з однаковою моделлю показуються "
         "одним рядком у каталозі.\nНадішліть `-`, щоб зробити товар окремим:"
     ),
     "photo": "Надішліть нове *фото* товару:",
+    "old": (
+        "Надішліть *стару ціну в грн* — на лендінгу вона буде закреслена "
+        "поруч з актуальною.\nНадішліть `-`, щоб прибрати:"
+    ),
 }
+
+_LANDING_FAILED = "\n\n⚠️ Не вдалося оновити лендінг (R2). Спробуйте /hot → 🔄 Оновити лендінг."
 
 
 async def _deny(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -144,8 +154,62 @@ async def open_edit_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await query.edit_message_text(
         f"✏️ <b>Редагування</b>\n\n{product_detail_text(product)}\n\nЩо змінити?",
         parse_mode=ParseMode.HTML,
-        reply_markup=edit_menu_keyboard(product_id),
+        reply_markup=edit_menu_keyboard(product_id, product.is_hot),
     )
+
+
+async def toggle_hot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not is_admin(update, context):
+        await _deny(update, context)
+        return
+
+    query = update.callback_query
+    await query.answer()
+    product_id = query.data.split(":", 2)[2]
+    product = products_repo.fetch_by_id(product_id)
+    if not product:
+        await query.edit_message_text("Товар не знайдено.")
+        return
+
+    products_repo.update(product_id, is_hot=int(not product.is_hot))
+    if product.is_hot:
+        message = "✅ Прибрано з гарячих пропозицій."
+    elif product.stock > 0:
+        message = "🔥 Додано до гарячих пропозицій."
+    else:
+        message = "🔥 Додано до гарячих, але товару немає в наявності — на сайті не з'явиться."
+    if not await publish_hot_deals():
+        message += _LANDING_FAILED
+
+    updated = products_repo.fetch_by_id(product_id)
+    await query.edit_message_text(
+        f"{escape(message)}\n\n{product_detail_text(updated)}",
+        parse_mode=ParseMode.HTML,
+        reply_markup=edit_menu_keyboard(product_id, updated.is_hot),
+    )
+
+
+async def cmd_hot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not is_admin(update, context):
+        await _deny(update, context)
+        return
+    products = products_repo.fetch_hot()
+    await update.message.reply_text(
+        hot_list_text(products),
+        parse_mode=ParseMode.HTML,
+        reply_markup=hot_list_keyboard(products),
+    )
+
+
+async def republish_hot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not is_admin(update, context):
+        await _deny(update, context)
+        return
+    query = update.callback_query
+    if await publish_hot_deals():
+        await query.answer("✅ Лендінг оновлено.")
+    else:
+        await query.answer("⚠️ Не вдалося оновити лендінг (R2).", show_alert=True)
 
 
 async def ask_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -206,6 +270,7 @@ async def confirm_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     if product_to_delete:
         await delete_product_post(context.bot, product_to_delete)
+        await refresh_if_hot(product_to_delete)
 
     await _send_product_list(update, context, page=0)
 
@@ -230,6 +295,7 @@ async def force_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     if product_to_delete:
         await delete_product_post(context.bot, product_to_delete)
+        await refresh_if_hot(product_to_delete)
 
     await _send_product_list(update, context, page=0)
 
@@ -296,7 +362,7 @@ async def _show_updated_product(query, product_id: str, prefix: str) -> None:
     await query.edit_message_text(
         f"{prefix}\n\n{product_detail_text(product)}",
         parse_mode=ParseMode.HTML,
-        reply_markup=edit_menu_keyboard(product_id),
+        reply_markup=edit_menu_keyboard(product_id, product.is_hot),
     )
     await sync_product_post(query.get_bot(), product)
 
@@ -392,6 +458,25 @@ async def apply_edit_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                     return EDIT_INPUT
                 products_repo.update(product_id, product_group=group)
                 message = "✅ Модель оновлено."
+            elif field in ("uah", "old"):
+                if text == "-":
+                    amount = None
+                else:
+                    amount = int(float(text.replace(",", ".").replace(" ", "")))
+                    if amount <= 0:
+                        await update.message.reply_text("Ціна має бути більше нуля.")
+                        return EDIT_INPUT
+                if field == "uah":
+                    if amount is None and not product.price:
+                        await update.message.reply_text(
+                            "Немає ціни в USD — ціну в грн прибрати не можна."
+                        )
+                        return EDIT_INPUT
+                    products_repo.update(product_id, price_uah=amount)
+                    message = "✅ Ціну в грн оновлено."
+                else:
+                    products_repo.update(product_id, hot_old_price_uah=amount)
+                    message = "✅ Стару ціну оновлено."
             else:
                 await update.message.reply_text("Невідоме поле.")
                 _clear_edit(context)
@@ -410,9 +495,11 @@ async def apply_edit_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     await update.message.reply_text(
         f"{message}\n\n{product_detail_text(updated)}",
         parse_mode=ParseMode.HTML,
-        reply_markup=edit_menu_keyboard(product_id),
+        reply_markup=edit_menu_keyboard(product_id, updated.is_hot),
     )
     await sync_product_post(context.bot, updated)
+    # Name, price, stock and photo all show up on the landing slide.
+    await refresh_if_hot(updated)
     return ConversationHandler.END
 
 
@@ -427,7 +514,7 @@ def build_admin_edit_handler() -> ConversationHandler:
         entry_points=[
             CallbackQueryHandler(
                 start_edit_field,
-                pattern=r"^adm:efld:[^:]+:(name|price|stock|group|photo)$",
+                pattern=r"^adm:efld:[^:]+:(name|price|uah|stock|group|photo|old)$",
             ),
         ],
         states={
@@ -444,6 +531,9 @@ def build_admin_edit_handler() -> ConversationHandler:
 def build_admin_product_handlers() -> list:
     return [
         CommandHandler("products", cmd_products),
+        CommandHandler("hot", cmd_hot),
+        CallbackQueryHandler(toggle_hot, pattern=r"^adm:hot:"),
+        CallbackQueryHandler(republish_hot, pattern=r"^adm:hotpub$"),
         CallbackQueryHandler(list_page, pattern=r"^adm:page:\d+$"),
         CallbackQueryHandler(view_product, pattern=r"^adm:view:"),
         CallbackQueryHandler(open_edit_menu, pattern=r"^adm:edit:"),

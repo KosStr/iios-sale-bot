@@ -97,15 +97,24 @@ def photo_source(product: Product):
 
 def upload_image(key: str, data: bytes, content_type: str = "image/jpeg") -> bool:
     """Upload image bytes to R2. Returns True on success."""
+    return upload_object(key, data, content_type)
+
+
+def upload_object(
+    key: str, data: bytes, content_type: str, cache_control: str | None = None
+) -> bool:
+    """Upload arbitrary bytes to R2. Returns True on success."""
     if not _private_enabled():
         logger.warning("R2 upload skipped: private bucket credentials not configured.")
         return False
+    extra = {"CacheControl": cache_control} if cache_control else {}
     try:
         _client().put_object(
             Bucket=_private_config()["bucket"],
             Key=key,
             Body=data,
             ContentType=content_type,
+            **extra,
         )
         return True
     except Exception as err:  # noqa: BLE001

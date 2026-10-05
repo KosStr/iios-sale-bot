@@ -120,7 +120,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = HELP
     if is_admin(update, context):
-        text += "\n\n*Адмін:*\n/add — додати товар\n/products — список, редагування, видалення"
+        text += "\n\n*Адмін:*\n/add — додати товар\n/products — список, редагування, видалення\n/hot — гарячі пропозиції на сайті"
     await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
 
