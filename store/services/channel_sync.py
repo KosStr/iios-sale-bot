@@ -4,7 +4,8 @@ Set ``CHANNEL_ID`` in the environment (e.g. ``@mychannel`` or ``-1001234567890``
 and make the bot a channel admin with *Post*, *Edit*, and *Delete messages*
 permissions.  The bot then:
 
-* Creates a channel post when a product is added via /add.
+* Creates a channel post when a product is added via /add (except
+  accessories, which are never posted to the channel).
 * Updates the post whenever the product is edited.
 * Deletes the post when the product is deleted.
 
@@ -29,6 +30,7 @@ from telegram.constants import ParseMode
 from telegram.error import TelegramError
 
 from store.data.products import (
+    CATEGORY_ACCESSORIES,
     Product,
     effective_price,
     effective_price_uah,
@@ -201,9 +203,12 @@ async def post_product(bot: Bot, channel_id: str, product: Product) -> str:
     """Send a new channel post for *product*.
 
     Returns the ``https://t.me/...`` URL of the new message, or ``""`` on
-    failure or when *channel_id* is empty.
+    failure, when *channel_id* is empty, or when *product* is an accessory.
     """
     if not channel_id:
+        return ""
+    if product.category == CATEGORY_ACCESSORIES:
+        logger.info("Skipping channel post for accessory %s", product.id)
         return ""
 
     text = _post_text(product)
