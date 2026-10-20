@@ -23,11 +23,12 @@ from __future__ import annotations
 import logging
 import os
 import re
+from dataclasses import replace
 from html import escape
 
-from telegram import Bot
+from telegram import Bot, InputMediaPhoto
 from telegram.constants import ParseMode
-from telegram.error import TelegramError
+from telegram.error import BadRequest, TelegramError
 
 from store.data.products import (
     CATEGORY_ACCESSORIES,
@@ -36,6 +37,7 @@ from store.data.products import (
     effective_price_uah,
     is_on_sale,
 )
+from store.db import products_repo
 from store.services.images import get_image_bytes, image_url
 
 logger = logging.getLogger(__name__)
@@ -199,6 +201,37 @@ def _best_photo(product: Product):
     return image_url(product)   # may be None
 
 
+async def _send_post(bot: Bot, channel_id: str, product: Product):
+    """Send a channel post for *product*; return the Message or None on failure."""
+    text = _post_text(product)
+    photo = _best_photo(product)
+    try:
+        if photo:
+            try:
+                return await bot.send_photo(
+                    chat_id=channel_id,
+                    photo=photo,
+                    caption=text,
+                    parse_mode=ParseMode.HTML,
+                )
+            except BadRequest as err:
+                # Captions are capped at 1024 chars; a long description would
+                # otherwise mean no post at all. Fall back to a text post.
+                if "caption is too long" not in str(err).lower():
+                    raise
+                logger.warning(
+                    "Caption too long for %s, posting as text instead", product.id
+                )
+        return await bot.send_message(
+            chat_id=channel_id,
+            text=text,
+            parse_mode=ParseMode.HTML,
+        )
+    except TelegramError as err:
+        logger.warning("Could not create channel post for %s: %s", product.id, err)
+        return None
+
+
 async def post_product(bot: Bot, channel_id: str, product: Product) -> str:
     """Send a new channel post for *product*.
 
@@ -211,62 +244,134 @@ async def post_product(bot: Bot, channel_id: str, product: Product) -> str:
         logger.info("Skipping channel post for accessory %s", product.id)
         return ""
 
-    text = _post_text(product)
-    photo = _best_photo(product)
-
-    try:
-        if photo:
-            msg = await bot.send_photo(
-                chat_id=channel_id,
-                photo=photo,
-                caption=text,
-                parse_mode=ParseMode.HTML,
-            )
-        else:
-            msg = await bot.send_message(
-                chat_id=channel_id,
-                text=text,
-                parse_mode=ParseMode.HTML,
-            )
-        url = _make_post_url(channel_id, msg.message_id)
-        logger.info("Channel post created for product %s: %s", product.id, url)
-        return url
-    except TelegramError as err:
-        logger.warning("Could not create channel post for %s: %s", product.id, err)
+    msg = await _send_post(bot, channel_id, product)
+    if msg is None:
         return ""
+    url = _make_post_url(channel_id, msg.message_id)
+    logger.info("Channel post created for product %s: %s", product.id, url)
+    return url
 
 
-async def sync_product_post(bot: Bot, product: Product) -> None:
-    """Edit the channel post linked to *product* to reflect its current state.
+def _is_not_modified(err: TelegramError) -> bool:
+    return "message is not modified" in str(err).lower()
 
-    Does nothing if the product has no ``channel_post_url`` or the edit fails.
+
+async def _edit_text_or_caption(
+    bot: Bot, chat_id: str, message_id: int, product: Product
+) -> None:
+    """Edit the post's caption (photo post) or text (text post).
+
+    The post kind isn't stored, so guess from ``product.image`` and switch to
+    the other call when Telegram says the message has no caption / no text
+    (e.g. the photo couldn't be fetched when the post was created).
     """
+    text = _post_text(product)
+
+    async def edit_caption() -> None:
+        await bot.edit_message_caption(
+            chat_id=chat_id, message_id=message_id,
+            caption=text, parse_mode=ParseMode.HTML,
+        )
+
+    async def edit_text() -> None:
+        await bot.edit_message_text(
+            chat_id=chat_id, message_id=message_id,
+            text=text, parse_mode=ParseMode.HTML,
+        )
+
+    first, second = (edit_caption, edit_text) if product.image else (edit_text, edit_caption)
+    try:
+        await first()
+    except BadRequest as err:
+        if _is_not_modified(err):
+            return
+        if "there is no" not in str(err).lower():
+            raise
+        try:
+            await second()
+        except BadRequest as err2:
+            if not _is_not_modified(err2):
+                raise
+
+
+async def _replace_post(bot: Bot, product: Product) -> None:
+    """Re-create the post (new photo on a text post) and store the new URL."""
+    parsed = _parse_url(product.channel_post_url)
+    if not parsed:
+        return
+    chat_id, _ = parsed
+    msg = await _send_post(bot, chat_id, product)
+    if msg is None:
+        return
+    await delete_product_post(bot, product)
+    url = _make_post_url(chat_id, msg.message_id)
+    products_repo.update(product.id, channel_post_url=url)
+    logger.info("Channel post re-created for product %s: %s", product.id, url)
+
+
+async def sync_product_post(
+    bot: Bot,
+    product: Product,
+    *,
+    photo_changed: bool = False,
+    channel_id: str = "",
+) -> None:
+    """Bring the channel post for *product* in line with its current state.
+
+    * Accessory with a post → the post is deleted (accessories aren't posted).
+    * No post yet and *channel_id* given → a post is created (used when a
+      product moves out of the accessories category).
+    * *photo_changed* → the post's photo is replaced; a text-only post is
+      re-posted with the photo, since Telegram can't add media to a text message.
+    * Otherwise the caption/text is edited.
+
+    Failures are logged, never raised.
+    """
+    if product.category == CATEGORY_ACCESSORIES:
+        if product.channel_post_url:
+            await delete_product_post(bot, product)
+            products_repo.update(product.id, channel_post_url="")
+        return
+
     if not product.channel_post_url:
+        if channel_id:
+            url = await post_product(bot, channel_id, product)
+            if url:
+                products_repo.update(product.id, channel_post_url=url)
         return
 
     parsed = _parse_url(product.channel_post_url)
     if not parsed:
         logger.warning("Cannot parse channel URL: %s", product.channel_post_url)
         return
-
     chat_id, message_id = parsed
-    text = _post_text(product)
 
     try:
-        if product.image:
-            await bot.edit_message_caption(
-                chat_id=chat_id,
-                message_id=message_id,
-                caption=text,
-                parse_mode=ParseMode.HTML,
-            )
-        else:
-            await bot.edit_message_text(
-                chat_id=chat_id,
-                message_id=message_id,
-                text=text,
-                parse_mode=ParseMode.HTML,
-            )
+        if photo_changed:
+            photo = _best_photo(product)
+            if photo:
+                try:
+                    await bot.edit_message_media(
+                        chat_id=chat_id,
+                        message_id=message_id,
+                        media=InputMediaPhoto(
+                            media=photo,
+                            caption=_post_text(product),
+                            parse_mode=ParseMode.HTML,
+                        ),
+                    )
+                    logger.info("Channel post photo updated for product %s", product.id)
+                    return
+                except BadRequest as err:
+                    if _is_not_modified(err):
+                        return
+                    # Text post (or over-long caption): post it anew instead.
+                    logger.info(
+                        "Can't swap photo on post for %s (%s); re-posting", product.id, err
+                    )
+                    await _replace_post(bot, product)
+                    return
+        await _edit_text_or_caption(bot, chat_id, message_id, product)
         logger.info("Channel post updated for product %s", product.id)
     except TelegramError as err:
         logger.warning(
@@ -275,24 +380,45 @@ async def sync_product_post(bot: Bot, product: Product) -> None:
         )
 
 
-async def delete_product_post(bot: Bot, product: Product) -> None:
+async def delete_product_post(bot: Bot, product: Product) -> bool:
     """Delete the channel post linked to *product*.
 
-    Does nothing if the product has no ``channel_post_url`` or the delete fails.
+    Returns True when the post is gone (or there was none). When Telegram
+    refuses the delete (e.g. the bot lacks the *Delete messages* right), the
+    post is edited to say the item is no longer available so the channel
+    doesn't keep advertising it, and False is returned.
     """
     if not product.channel_post_url:
-        return
+        return True
 
     parsed = _parse_url(product.channel_post_url)
     if not parsed:
-        return
+        logger.warning("Cannot parse channel URL: %s", product.channel_post_url)
+        return False
 
     chat_id, message_id = parsed
     try:
         await bot.delete_message(chat_id=chat_id, message_id=message_id)
         logger.info("Channel post deleted for product %s", product.id)
+        return True
+    except BadRequest as err:
+        if "message to delete not found" in str(err).lower():
+            # Already removed by hand in the channel.
+            return True
+        logger.warning(
+            "Could not delete channel post for %s (%s/%s): %s",
+            product.id, chat_id, message_id, err,
+        )
     except TelegramError as err:
         logger.warning(
             "Could not delete channel post for %s (%s/%s): %s",
             product.id, chat_id, message_id, err,
         )
+
+    # Fallback: mark the post as unavailable.
+    gone = replace(product, stock=0, sale_price=None, sale_price_uah=None, sale_until=None)
+    try:
+        await _edit_text_or_caption(bot, chat_id, message_id, gone)
+    except TelegramError as err:
+        logger.warning("Could not mark channel post for %s as removed: %s", product.id, err)
+    return False

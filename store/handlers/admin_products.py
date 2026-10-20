@@ -19,6 +19,7 @@ from telegram.ext import (
 from html import escape
 
 from store.data.products import (
+    CATEGORY_ACCESSORIES,
     Product,
     get_all_products,
     is_on_sale,
@@ -144,7 +145,6 @@ async def _send_product_list(
         keyboard = product_list_keyboard(products, page)
 
     if update.callback_query:
-        await update.callback_query.answer()
         await update.callback_query.edit_message_text(
             text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard
         )
@@ -158,6 +158,7 @@ async def list_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not is_admin(update, context):
         await _deny(update, context)
         return
+    await update.callback_query.answer()
     page = int(update.callback_query.data.rsplit(":", 1)[1])
     await _send_product_list(update, context, page)
 
@@ -290,7 +291,6 @@ async def confirm_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
     query = update.callback_query
-    await query.answer()
     product_id = query.data.split(":", 2)[2]
 
     # Fetch before deleting so we can remove the channel post.
@@ -299,6 +299,7 @@ async def confirm_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     try:
         products_repo.delete(product_id)
     except sqlite3.IntegrityError:
+        await query.answer()
         name = escape(product_to_delete.name) if product_to_delete else escape(product_id)
         await query.edit_message_text(
             f"⚠️ Товар <b>{name}</b> є в замовленнях або бронюваннях.\n\n"
@@ -309,13 +310,32 @@ async def confirm_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
     except Exception:  # noqa: BLE001
         logger.exception("Failed to delete product %s", product_id)
+        await query.answer()
         await query.edit_message_text("❌ Не вдалося видалити товар.")
         return
 
-    if product_to_delete:
-        await delete_product_post(context.bot, product_to_delete)
-        await refresh_if_hot(product_to_delete)
+    await _after_delete(update, context, product_to_delete)
 
+
+async def _after_delete(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, product: Product | None
+) -> None:
+    """Remove the channel post / landing slide, then show the product list.
+
+    Answers the callback query exactly once — answering it twice makes
+    Telegram reject the second call, which used to abort this flow.
+    """
+    query = update.callback_query
+    if product and not await delete_product_post(context.bot, product):
+        await query.answer(
+            "⚠️ Не вдалося видалити пост у каналі — його позначено як "
+            "«Немає в наявності». Перевірте право бота «Видаляти повідомлення».",
+            show_alert=True,
+        )
+    else:
+        await query.answer()
+    if product:
+        await refresh_if_hot(product)
     await _send_product_list(update, context, page=0)
 
 
@@ -325,7 +345,6 @@ async def force_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
 
     query = update.callback_query
-    await query.answer()
     product_id = query.data.split(":", 2)[2]
 
     product_to_delete = products_repo.fetch_by_id(product_id)
@@ -334,14 +353,11 @@ async def force_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         products_repo.force_delete(product_id)
     except Exception:  # noqa: BLE001
         logger.exception("Failed to force-delete product %s", product_id)
+        await query.answer()
         await query.edit_message_text("❌ Не вдалося видалити товар.")
         return
 
-    if product_to_delete:
-        await delete_product_post(context.bot, product_to_delete)
-        await refresh_if_hot(product_to_delete)
-
-    await _send_product_list(update, context, page=0)
+    await _after_delete(update, context, product_to_delete)
 
 
 async def edit_category_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -373,8 +389,11 @@ async def edit_category_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
         return
 
+    was_accessory = _is_accessory(product_id)
     products_repo.update(product_id, category=category, subcategory="")
-    await _show_updated_product(query, product_id, "✅ Категорію оновлено.")
+    await _show_updated_product(
+        query, context, product_id, "✅ Категорію оновлено.", was_accessory
+    )
 
 
 async def edit_subcategory(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -388,6 +407,7 @@ async def edit_subcategory(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     product_id = parts[2]
     subcategory = parts[3] if len(parts) > 3 else ""
 
+    was_accessory = _is_accessory(product_id)
     pending = context.user_data.pop("admin_cat_pick", None)
     if pending and pending[0] == product_id:
         products_repo.update(
@@ -395,10 +415,23 @@ async def edit_subcategory(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         )
     else:
         products_repo.update(product_id, subcategory=subcategory)
-    await _show_updated_product(query, product_id, "✅ Категорію оновлено.")
+    await _show_updated_product(
+        query, context, product_id, "✅ Категорію оновлено.", was_accessory
+    )
 
 
-async def _show_updated_product(query, product_id: str, prefix: str) -> None:
+def _is_accessory(product_id: str) -> bool:
+    product = products_repo.fetch_by_id(product_id)
+    return bool(product) and product.category == CATEGORY_ACCESSORIES
+
+
+async def _show_updated_product(
+    query,
+    context: ContextTypes.DEFAULT_TYPE,
+    product_id: str,
+    prefix: str,
+    was_accessory: bool = False,
+) -> None:
     product = products_repo.fetch_by_id(product_id)
     if not product:
         await query.edit_message_text("Товар не знайдено.")
@@ -408,7 +441,9 @@ async def _show_updated_product(query, product_id: str, prefix: str) -> None:
         parse_mode=ParseMode.HTML,
         reply_markup=edit_menu_keyboard(product_id, product.is_hot),
     )
-    await sync_product_post(query.get_bot(), product)
+    # Moving into accessories deletes the post; moving out of it creates one.
+    channel_id = context.bot_data.get("channel_id", "") if was_accessory else ""
+    await sync_product_post(context.bot, product, channel_id=channel_id)
 
 
 async def start_edit_field(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -556,7 +591,7 @@ async def apply_edit_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         parse_mode=ParseMode.HTML,
         reply_markup=edit_menu_keyboard(product_id, updated.is_hot),
     )
-    await sync_product_post(context.bot, updated)
+    await sync_product_post(context.bot, updated, photo_changed=field == "photo")
     # Name, price, stock and photo all show up on the landing slide.
     await refresh_if_hot(updated)
     return ConversationHandler.END
