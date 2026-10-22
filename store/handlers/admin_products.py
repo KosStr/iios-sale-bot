@@ -326,10 +326,11 @@ async def _after_delete(
     Telegram reject the second call, which used to abort this flow.
     """
     query = update.callback_query
-    if product and not await delete_product_post(context.bot, product):
+    error = await delete_product_post(context.bot, product) if product else None
+    if error:
+        # Alerts are capped at 200 chars.
         await query.answer(
-            "⚠️ Не вдалося видалити пост у каналі — його позначено як "
-            "«Немає в наявності». Перевірте право бота «Видаляти повідомлення».",
+            f"⚠️ Пост у каналі не видалено, позначено «Немає в наявності».\n{error}"[:200],
             show_alert=True,
         )
     else:

@@ -380,39 +380,34 @@ async def sync_product_post(
         )
 
 
-async def delete_product_post(bot: Bot, product: Product) -> bool:
+async def delete_product_post(bot: Bot, product: Product) -> str | None:
     """Delete the channel post linked to *product*.
 
-    Returns True when the post is gone (or there was none). When Telegram
-    refuses the delete (e.g. the bot lacks the *Delete messages* right), the
-    post is edited to say the item is no longer available so the channel
-    doesn't keep advertising it, and False is returned.
+    Returns None when the post is gone (or there was none), otherwise
+    Telegram's error text. On failure the post is edited to say the item is
+    no longer available so the channel doesn't keep advertising it.
     """
     if not product.channel_post_url:
-        return True
+        return None
 
     parsed = _parse_url(product.channel_post_url)
     if not parsed:
         logger.warning("Cannot parse channel URL: %s", product.channel_post_url)
-        return False
+        return f"невідоме посилання {product.channel_post_url}"
 
     chat_id, message_id = parsed
     try:
         await bot.delete_message(chat_id=chat_id, message_id=message_id)
         logger.info("Channel post deleted for product %s", product.id)
-        return True
-    except BadRequest as err:
+        return None
+    except TelegramError as err:
         if "message to delete not found" in str(err).lower():
             # Already removed by hand in the channel.
-            return True
+            return None
+        reason = f"{type(err).__name__}: {err}"
         logger.warning(
             "Could not delete channel post for %s (%s/%s): %s",
-            product.id, chat_id, message_id, err,
-        )
-    except TelegramError as err:
-        logger.warning(
-            "Could not delete channel post for %s (%s/%s): %s",
-            product.id, chat_id, message_id, err,
+            product.id, chat_id, message_id, reason,
         )
 
     # Fallback: mark the post as unavailable.
@@ -421,4 +416,4 @@ async def delete_product_post(bot: Bot, product: Product) -> bool:
         await _edit_text_or_caption(bot, chat_id, message_id, gone)
     except TelegramError as err:
         logger.warning("Could not mark channel post for %s as removed: %s", product.id, err)
-    return False
+    return reason
