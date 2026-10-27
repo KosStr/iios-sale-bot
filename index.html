@@ -15,13 +15,26 @@
     });
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="IIOS — iPhone, MacBook, AirPods, Apple Watch та аксесуари у Чернівцях. Замовляй прямо у Telegram за кілька хвилин." />
-  <meta property="og:title" content="IIOS — техніка Apple у Telegram" />
-  <meta property="og:description" content="iPhone, MacBook, AirPods та аксесуари. Замовляй у Telegram — ми зателефонуємо та домовимось про доставку." />
+  <meta name="description" content="Нові та вживані iPhone, MacBook, AirPods, Apple Watch у Чернівцях. Гарантія магазину, Trade-in, розтермінування, доставка Новою поштою по Україні. Замовлення в Telegram за 2 хвилини." />
+  <link rel="canonical" href="https://iios.store/" />
+  <meta name="theme-color" content="#f6f4ef" />
+  <!-- Images (no-CORS) and the hot.json fetch (CORS) use separate connections, so warm both. -->
+  <link rel="preconnect" href="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev" />
+  <link rel="preconnect" href="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev" crossorigin />
+  <!-- Scroll-reveal sections start at opacity 0; show them when JS doesn't run. -->
+  <noscript><style>.reveal, .step { opacity: 1 !important; transform: none !important; }</style></noscript>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23111'/%3E%3Ctext x='32' y='45' font-family='Arial,sans-serif' font-size='34' font-weight='800' fill='%23fff' text-anchor='middle'%3EII%3C/text%3E%3C/svg%3E" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="uk_UA" />
+  <meta property="og:site_name" content="IIOS" />
+  <meta property="og:title" content="IIOS — iPhone, MacBook та Apple техніка у Чернівцях" />
+  <meta property="og:description" content="Нові та вживані iPhone, MacBook, AirPods. Замовляй у Telegram — ми зателефонуємо та домовимось про доставку." />
   <meta property="og:image" content="https://iios.store/og-image.jpg" />
-  <meta property="og:url" content="https://iios.store" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:url" content="https://iios.store/" />
   <meta name="twitter:card" content="summary_large_image" />
-  <title>IIOS — Apple техніка у Telegram | Чернівці</title>
+  <title>Купити iPhone, MacBook у Чернівцях — нові та б/у | IIOS</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1023,18 +1036,39 @@
     /* ── FOOTER ─────────────────────────────────────────────── */
     footer {
       border-top: 1px solid var(--border);
-      padding: 40px 0;
+      padding: 48px 0 28px;
     }
-    .footer-inner {
-      display: flex; align-items: center; justify-content: space-between;
-      flex-wrap: wrap; gap: 16px;
+    .footer-top {
+      display: grid; grid-template-columns: 1.4fr 1fr auto;
+      gap: 32px 48px; align-items: start;
     }
     .footer-logo { font-size: 18px; font-weight: 700; }
     .footer-logo span { color: var(--accent); }
-    .footer-links { display: flex; gap: 24px; flex-wrap: wrap; }
-    .footer-links a { font-size: 13px; color: var(--muted); transition: color .15s; }
-    .footer-links a:hover { color: var(--text); }
-    .footer-copy { font-size: 12px; color: var(--muted); }
+    .footer-tagline { font-size: 13px; color: var(--muted); line-height: 1.6; margin-top: 8px; max-width: 260px; }
+    .footer-label {
+      font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 14px;
+    }
+    .footer-contacts {
+      display: flex; flex-direction: column; gap: 10px;
+      font-style: normal; font-size: 14px;
+    }
+    .footer-contacts a, .footer-contacts span {
+      display: inline-flex; align-items: center; gap: 10px;
+      color: var(--text); transition: color .15s;
+    }
+    .footer-contacts a:hover { color: var(--accent2); }
+    .footer-contacts svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--accent); }
+    .footer-links { display: flex; flex-direction: column; gap: 10px; }
+    .footer-links a { font-size: 14px; color: var(--text); transition: color .15s; }
+    .footer-links a:hover { color: var(--accent2); }
+    .footer-bottom {
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 24px;
+      margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--border);
+      font-size: 12px; color: var(--muted);
+    }
+    .footer-bottom a { color: var(--muted); transition: color .15s; }
+    .footer-bottom a:hover { color: var(--text); }
 
     /* ── COOKIE CONSENT ─────────────────────────────────────── */
     .cookie-banner {
@@ -1093,7 +1127,11 @@
       .cats .cat:last-child { grid-column: span 2; }
       .hero-stats { gap: 20px; }
       .section { padding: 64px 0; }
-      .footer-inner { flex-direction: column; text-align: center; }
+      .footer-top { grid-template-columns: 1fr; gap: 28px; text-align: center; justify-items: center; }
+      .footer-tagline { margin-left: auto; margin-right: auto; }
+      .footer-contacts { align-items: center; }
+      .footer-links { flex-direction: row; justify-content: center; gap: 24px; }
+      .footer-bottom { flex-direction: column; text-align: center; }
       .extra-links { grid-template-columns: 1fr; }
 
       /* First screen: headline + button + 3 benefits, smaller phone mock below */
@@ -1132,6 +1170,84 @@
       .reveal, .step { opacity: 1; transform: none; }
     }
   </style>
+  <!-- Structured data for Google / Bing / AI search. Keep in sync with the visible footer contacts and FAQ. -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "MobilePhoneStore",
+    "@id": "https://iios.store/#store",
+    "name": "IIOS",
+    "alternateName": "IIOS Store",
+    "description": "Магазин нової та вживаної техніки Apple у Чернівцях: iPhone, MacBook, AirPods, Apple Watch, аксесуари. Гарантія магазину, Trade-in, розтермінування, доставка Новою поштою по Україні.",
+    "url": "https://iios.store/",
+    "image": "https://iios.store/og-image.jpg",
+    "telephone": "+380953407754",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "вул. Заньковецької",
+      "addressLocality": "Чернівці",
+      "addressRegion": "Чернівецька область",
+      "postalCode": "58000",
+      "addressCountry": "UA"
+    },
+    "hasMap": "https://maps.app.goo.gl/8AZcqV7XxU1495Ns6",
+    "openingHoursSpecification": [{
+      "@type": "OpeningHoursSpecification",
+      "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+      "opens": "10:00",
+      "closes": "20:00"
+    }],
+    "areaServed": [
+      { "@type": "City", "name": "Чернівці" },
+      { "@type": "Country", "name": "Україна" }
+    ],
+    "currenciesAccepted": "UAH, USD, EUR",
+    "paymentAccepted": "Готівка, банківська картка, післяплата, розтермінування",
+    "sameAs": [
+      "https://www.instagram.com/iios_cv",
+      "https://t.me/IIOS_cv",
+      "https://t.me/iios_cv_bot"
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Техніка нова чи вживана?",
+        "acceptedAnswer": { "@type": "Answer", "text": "В наявності як вживані, так і нові пристрої. Стан кожного товару чесно вказаний у його картці в боті та в пості в каналі." }
+      },
+      {
+        "@type": "Question",
+        "name": "Яка гарантія і хто її дає?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Гарантію надає магазин IIOS. Її термін вказаний у картці кожного товару — у разі питань звертайтесь до нас у Telegram або приходьте в магазин у Чернівцях." }
+      },
+      {
+        "@type": "Question",
+        "name": "Чи можна перевірити товар при отриманні?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Так. У магазині ви оглядаєте пристрій перед оплатою, а при доставці Новою поштою з післяплатою — можете перевірити його у відділенні до оплати." }
+      },
+      {
+        "@type": "Question",
+        "name": "Як працює розтермінування?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Ви оформлюєте покупку частинами через банк і сплачуєте її щомісяця. Доступні банки, кількість платежів і умови менеджер підкаже під конкретний товар." }
+      },
+      {
+        "@type": "Question",
+        "name": "Які умови Trade-in?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Надішліть нам модель вашого пристрою — ми оцінимо його до 10 хвилин і вирахуємо вартість з ціни нового, а ви сплатите лише різницю." }
+      },
+      {
+        "@type": "Question",
+        "name": "Як швидко ви відповідаєте?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Після замовлення в боті менеджер зв'язується з вами, щоб підтвердити деталі, оплату та доставку." }
+      }
+    ]
+  }
+  </script>
 </head>
 <body>
 
@@ -1141,7 +1257,7 @@
       <div class="nav-logo">IIOS<span>.</span></div>
       <div class="nav-right">
         <div class="nav-icons">
-          <a href="https://www.instagram.com/iios_cv?igsi=OGFmYWt3cDd4YXgw" class="nav-icon" target="_blank" rel="noopener" aria-label="Instagram" data-tip="Instagram">
+          <a href="https://www.instagram.com/iios_cv" class="nav-icon" target="_blank" rel="noopener" aria-label="Instagram" data-tip="Instagram">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
           </a>
           <a href="https://t.me/IIOS_cv" class="nav-icon" target="_blank" rel="noopener" aria-label="Telegram-канал (новини та акції)" data-tip="Канал">
@@ -1173,7 +1289,7 @@
           <span class="live-text">Магазин у Чернівцях — працює щодня</span>
         </div>
         <h1>Apple техніка<br />у <em>Telegram</em>.<span class="h1-extra"><br />Просто й швидко.</span></h1>
-        <p class="hero-sub">iPhone, MacBook, AirPods, Apple Watch та аксесуари — обирайте й замовляйте прямо в чаті.</p>
+        <p class="hero-sub">Нові та вживані iPhone, MacBook, AirPods, Apple Watch та аксесуари у Чернівцях — обирайте й замовляйте прямо в чаті.</p>
         <div class="hero-actions" id="hero-actions">
           <a href="https://t.me/iios_cv_bot" class="btn-primary hero-cta" target="_blank" rel="noopener" data-cta="hero">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.93 7.003-1.67 7.87c-.125.558-.455.695-.92.432l-2.54-1.872-1.225 1.178c-.135.135-.25.25-.512.25l.182-2.594 4.705-4.25c.204-.182-.044-.283-.317-.1l-5.812 3.66-2.502-.782c-.543-.17-.554-.543.114-.803l9.76-3.762c.452-.164.849.11.738.773z"/></svg>
@@ -1188,7 +1304,7 @@
           </span>
           <span class="trust-badge">
             <span class="trust-badge-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
-            Офіційна гарантія
+            Гарантія магазину
           </span>
           <span class="trust-badge">
             <span class="trust-badge-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
@@ -1480,7 +1596,7 @@
             <span class="extra-link-sub">Знижки та новинки першими</span>
           </span>
         </a>
-        <a href="https://www.instagram.com/iios_cv?igsi=OGFmYWt3cDd4YXgw" class="extra-link" target="_blank" rel="noopener">
+        <a href="https://www.instagram.com/iios_cv" class="extra-link" target="_blank" rel="noopener">
           <span class="extra-link-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
           </span>
@@ -1609,7 +1725,7 @@
           </div>
           <div class="cta-chip chip-2">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--accent)"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            Офіційна гарантія
+            Гарантія магазину
           </div>
           <div class="cta-chip chip-3">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--accent)"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
@@ -1623,14 +1739,43 @@
 
   <!-- FOOTER -->
   <footer>
-    <div class="container footer-inner">
-      <div class="footer-logo">IIOS<span>.</span></div>
-      <div class="footer-links">
-        <a href="https://t.me/IIOS_cv" target="_blank">Telegram</a>
-        <a href="https://www.instagram.com/iios_cv?igsi=OGFmYWt3cDd4YXgw" target="_blank">Instagram</a>
+    <div class="container">
+      <div class="footer-top">
+        <div>
+          <div class="footer-logo">IIOS<span>.</span></div>
+          <p class="footer-tagline">Нова та вживана техніка Apple у Чернівцях. Замовлення в Telegram, доставка по Україні.</p>
+        </div>
+        <div>
+          <div class="footer-label">Контакти</div>
+          <!-- Keep identical to Google Business Profile and the JSON-LD in <head>. -->
+          <address class="footer-contacts">
+            <a href="https://maps.app.goo.gl/8AZcqV7XxU1495Ns6" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              м. Чернівці, вул. Заньковецької
+            </a>
+            <a href="tel:+380953407754">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.14 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.05 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 17z"/></svg>
+              +380 95 340 77 54
+            </a>
+            <span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Пн–Нд, 10:00–20:00
+            </span>
+          </address>
+        </div>
+        <div>
+          <div class="footer-label">Ми в мережі</div>
+          <div class="footer-links">
+            <a href="https://t.me/IIOS_cv" target="_blank" rel="noopener">Telegram-канал</a>
+            <a href="https://t.me/iios_cv_bot" target="_blank" rel="noopener">Telegram-бот</a>
+            <a href="https://www.instagram.com/iios_cv" target="_blank" rel="noopener">Instagram</a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <div>© 2026 IIOS · Чернівці</div>
         <a href="#" id="cookie-settings-link">Cookie-налаштування</a>
       </div>
-      <div class="footer-copy">© 2026 IIOS · Чернівці</div>
     </div>
   </footer>
 
