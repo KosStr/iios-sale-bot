@@ -73,6 +73,8 @@ def main() -> None:
         stream=sys.stdout,
         force=True,
     )
+    # httpx logs every request URL at INFO, and Telegram URLs contain the bot token.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 
     try:
         config = load_config()
