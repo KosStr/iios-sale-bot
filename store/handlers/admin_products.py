@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 
-from telegram import Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
 from telegram.ext import (
     CallbackQueryHandler,
@@ -34,6 +34,7 @@ from store.handlers.admin_ui import (
     edit_subcategory_keyboard,
     force_delete_keyboard,
     hot_list_keyboard,
+    sold_delete_confirm_keyboard,
     hot_list_text,
     product_detail_keyboard,
     product_detail_text,
@@ -142,7 +143,8 @@ async def _send_product_list(
         pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
         page = min(page, pages - 1)
         text = f"📋 *Товари* ({total})\n\nСторінка {page + 1}/{pages}\nОберіть товар:"
-        keyboard = product_list_keyboard(products, page)
+        sold_count = sum(1 for p in products if p.stock <= 0)
+        keyboard = product_list_keyboard(products, page, sold_count)
 
     if update.callback_query:
         await update.callback_query.edit_message_text(
@@ -330,8 +332,14 @@ async def _after_delete(
     if error:
         # Alerts are capped at 200 chars.
         await query.answer(
-            f"⚠️ Пост у каналі не видалено, позначено «Немає в наявності».\n{error}"[:200],
+            f"⚠️ Пост у каналі не видалено, позначено «❌ ПРОДАНО».\n{error}"[:200],
             show_alert=True,
+        )
+        # Alerts can't hold links, so send the post link to delete it by hand.
+        await query.message.reply_text(
+            f"🔗 Пост товару <b>{escape(product.name)}</b> у каналі:\n"
+            f"{escape(product.channel_post_url)}",
+            parse_mode=ParseMode.HTML,
         )
     else:
         await query.answer()
@@ -359,6 +367,106 @@ async def force_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
 
     await _after_delete(update, context, product_to_delete)
+
+
+def _sold_products() -> list[Product]:
+    return [p for p in get_all_products() if p.stock <= 0]
+
+
+async def ask_delete_sold(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not is_admin(update, context):
+        await _deny(update, context)
+        return
+
+    query = update.callback_query
+    await query.answer()
+    sold = _sold_products()
+    if not sold:
+        await _send_product_list(update, context, page=0)
+        return
+
+    names = [f"• {escape(p.name)} · <code>{escape(p.id)}</code>" for p in sold[:30]]
+    if len(sold) > 30:
+        names.append(f"…і ще {len(sold) - 30}")
+    await query.edit_message_text(
+        f"🗑 <b>Видалити всі продані товари ({len(sold)})?</b>\n"
+        "Товари з нульовим складом буде видалено з бота, а їхні пости — з каналу.\n\n"
+        + "\n".join(names)
+        + "\n\nПости, старші за 48 год, Telegram не дає видалити ботам — їх буде "
+        "позначено «❌ ПРОДАНО», а посилання на них надіслано вам.",
+        parse_mode=ParseMode.HTML,
+        reply_markup=sold_delete_confirm_keyboard(),
+    )
+
+
+async def confirm_delete_sold(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not is_admin(update, context):
+        await _deny(update, context)
+        return
+
+    query = update.callback_query
+    await query.answer("Видаляю…")
+    deleted: list[Product] = []
+    skipped: list[Product] = []
+    leftover_posts: list[Product] = []
+    for product in _sold_products():
+        try:
+            products_repo.delete(product.id)
+        except sqlite3.IntegrityError:
+            skipped.append(product)
+            continue
+        except Exception:  # noqa: BLE001
+            logger.exception("Failed to delete sold product %s", product.id)
+            skipped.append(product)
+            continue
+        deleted.append(product)
+        if await delete_product_post(context.bot, product):
+            leftover_posts.append(product)
+    await refresh_if_hot(*deleted)
+
+    lines = [f"🗑 Видалено з бота: <b>{len(deleted)}</b>"]
+    if skipped:
+        lines += [
+            "",
+            f"⚠️ Не видалено (є в замовленнях або бронюваннях) — видаліть вручну: "
+            f"<b>{len(skipped)}</b>",
+        ]
+        lines += [f"• {escape(p.name)} · <code>{escape(p.id)}</code>" for p in skipped]
+    if leftover_posts:
+        lines += [
+            "",
+            f"❌ Пости позначено «ПРОДАНО», бо вони старші за 48 год — видаліть "
+            f"їх у каналі вручну: <b>{len(leftover_posts)}</b>",
+        ]
+        lines += [
+            f"• {escape(p.name)}: {escape(p.channel_post_url)}" for p in leftover_posts
+        ]
+
+    # Split into messages under Telegram's 4096-char limit.
+    chunks: list[str] = []
+    current = ""
+    for line in lines:
+        if current and len(current) + len(line) + 1 > 4000:
+            chunks.append(current)
+            current = ""
+        current = f"{current}\n{line}" if current else line
+    chunks.append(current)
+
+    back = InlineKeyboardMarkup(
+        [[InlineKeyboardButton("⬅️ До списку", callback_data="adm:page:0")]]
+    )
+    for i, chunk in enumerate(chunks):
+        markup = back if i == len(chunks) - 1 else None
+        if i == 0:
+            await query.edit_message_text(
+                chunk, parse_mode=ParseMode.HTML, reply_markup=markup,
+                disable_web_page_preview=True,
+            )
+        else:
+            await query.message.reply_text(
+                chunk, parse_mode=ParseMode.HTML, reply_markup=markup,
+                disable_web_page_preview=True,
+            )
 
 
 async def edit_category_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -486,6 +594,7 @@ async def apply_edit_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         _clear_edit(context)
         return ConversationHandler.END
 
+    channel_id = ""
     try:
         if field == "photo":
             msg = update.message
@@ -530,6 +639,9 @@ async def apply_edit_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                     return EDIT_INPUT
                 products_repo.update(product_id, stock=int(text))
                 message = "✅ Склад оновлено."
+                if product.stock <= 0 < int(text):
+                    # Restocked: the sold-out post was deleted, post it anew.
+                    channel_id = context.bot_data.get("channel_id", "")
             elif field == "group":
                 group = "" if text == "-" else text
                 if not fits_group_key(group):
@@ -592,7 +704,9 @@ async def apply_edit_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         parse_mode=ParseMode.HTML,
         reply_markup=edit_menu_keyboard(product_id, updated.is_hot),
     )
-    await sync_product_post(context.bot, updated, photo_changed=field == "photo")
+    await sync_product_post(
+        context.bot, updated, photo_changed=field == "photo", channel_id=channel_id
+    )
     # Name, price, stock and photo all show up on the landing slide.
     await refresh_if_hot(updated)
     return ConversationHandler.END
@@ -635,6 +749,8 @@ def build_admin_product_handlers() -> list:
         CallbackQueryHandler(ask_delete, pattern=r"^adm:del:[^:]+$"),
         CallbackQueryHandler(confirm_delete, pattern=r"^adm:delok:"),
         CallbackQueryHandler(force_delete, pattern=r"^adm:delforce:"),
+        CallbackQueryHandler(ask_delete_sold, pattern=r"^adm:soldask$"),
+        CallbackQueryHandler(confirm_delete_sold, pattern=r"^adm:soldok$"),
         CallbackQueryHandler(edit_category_menu, pattern=r"^adm:ecat:"),
         CallbackQueryHandler(edit_subcategory, pattern=r"^adm:esub:"),
     ]

@@ -96,7 +96,8 @@ def _post_text(product: Product) -> str:
         header = f"<b>{escape(product.name)}  {specs}</b>"
     else:
         header = f"<b>{escape(product.name)}</b>"
-    parts = [header]
+    sold = not (product.stock and product.stock > 0)
+    parts = ["❌ <b>ПРОДАНО</b>", "", header] if sold else [header]
 
     # Price first — right under the header. Sale price takes priority.
     if is_on_sale(product):
@@ -123,7 +124,7 @@ def _post_text(product: Product) -> str:
             parts += ["", price]
 
     # Condition (brand) + stock, one line below the price, joined by a separator
-    stock_label = "В наявності" if product.stock and product.stock > 0 else "Немає в наявності"
+    stock_label = "❌ Продано" if sold else "В наявності"
     condition_bits = []
     if product.brand and product.brand not in ("—", ""):
         condition_bits.append(escape(product.brand))
@@ -319,8 +320,10 @@ async def sync_product_post(
     """Bring the channel post for *product* in line with its current state.
 
     * Accessory with a post → the post is deleted (accessories aren't posted).
-    * No post yet and *channel_id* given → a post is created (used when a
-      product moves out of the accessories category).
+    * Sold out (stock 0) with a post → the post is deleted; posts older than
+      48 h can't be deleted by bots, so those are marked «❌ ПРОДАНО» instead.
+    * No post yet, in stock and *channel_id* given → a post is created (used
+      when a product moves out of accessories or is restocked).
     * *photo_changed* → the post's photo is replaced; a text-only post is
       re-posted with the photo, since Telegram can't add media to a text message.
     * Otherwise the caption/text is edited.
@@ -333,8 +336,13 @@ async def sync_product_post(
             products_repo.update(product.id, channel_post_url="")
         return
 
+    if product.stock <= 0 and product.channel_post_url:
+        if await delete_product_post(bot, product) is None:
+            products_repo.update(product.id, channel_post_url="")
+        return
+
     if not product.channel_post_url:
-        if channel_id:
+        if channel_id and product.stock > 0:
             url = await post_product(bot, channel_id, product)
             if url:
                 products_repo.update(product.id, channel_post_url=url)
@@ -384,8 +392,8 @@ async def delete_product_post(bot: Bot, product: Product) -> str | None:
     """Delete the channel post linked to *product*.
 
     Returns None when the post is gone (or there was none), otherwise
-    Telegram's error text. On failure the post is edited to say the item is
-    no longer available so the channel doesn't keep advertising it.
+    Telegram's error text. On failure the post is marked «❌ ПРОДАНО» so the
+    channel doesn't keep advertising it.
     """
     if not product.channel_post_url:
         return None
@@ -404,13 +412,18 @@ async def delete_product_post(bot: Bot, product: Product) -> str | None:
         if "message to delete not found" in str(err).lower():
             # Already removed by hand in the channel.
             return None
-        reason = f"{type(err).__name__}: {err}"
+        if "message can't be deleted" in str(err).lower():
+            # Telegram never lets bots delete channel posts older than 48 hours,
+            # whatever admin rights they have.
+            reason = "Telegram не дає ботам видаляти пости, старші за 48 год. Видаліть його вручну."
+        else:
+            reason = f"{type(err).__name__}: {err}"
         logger.warning(
             "Could not delete channel post for %s (%s/%s): %s",
             product.id, chat_id, message_id, reason,
         )
 
-    # Fallback: mark the post as unavailable.
+    # Fallback: mark the post as sold (stock 0 renders «❌ ПРОДАНО»).
     gone = replace(product, stock=0, sale_price=None, sale_price_uah=None, sale_until=None)
     try:
         await _edit_text_or_caption(bot, chat_id, message_id, gone)

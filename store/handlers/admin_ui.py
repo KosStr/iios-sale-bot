@@ -60,7 +60,9 @@ def product_detail_keyboard(product_id: str) -> InlineKeyboardMarkup:
     )
 
 
-def product_list_keyboard(products: list[Product], page: int) -> InlineKeyboardMarkup:
+def product_list_keyboard(
+    products: list[Product], page: int, sold_count: int = 0
+) -> InlineKeyboardMarkup:
     start = page * PAGE_SIZE
     chunk = products[start : start + PAGE_SIZE]
     # Show the id next to the (truncated) name so admins can identify a
@@ -83,8 +85,27 @@ def product_list_keyboard(products: list[Product], page: int) -> InlineKeyboardM
     if nav:
         rows.append(nav)
 
+    if sold_count:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    f"🗑 Видалити продані ({sold_count})", callback_data="adm:soldask"
+                )
+            ]
+        )
     rows.append([InlineKeyboardButton("🔄 Оновити", callback_data="adm:page:0")])
     return InlineKeyboardMarkup(rows)
+
+
+def sold_delete_confirm_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton("✅ Так, видалити", callback_data="adm:soldok"),
+                InlineKeyboardButton("✖️ Ні", callback_data="adm:page:0"),
+            ]
+        ]
+    )
 
 
 def edit_menu_keyboard(product_id: str, is_hot: bool = False) -> InlineKeyboardMarkup:
