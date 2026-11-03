@@ -92,6 +92,15 @@ async def send_photo_or_text(
     )
 
 
+def photo_file_id(message) -> str | None:
+    """Return the best file_id from a photo or image-document message."""
+    if message.photo:
+        return message.photo[-1].file_id
+    if message.document and (message.document.mime_type or "").startswith("image/"):
+        return message.document.file_id
+    return None
+
+
 async def _answer(query) -> None:
     try:
         await query.answer()

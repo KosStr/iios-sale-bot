@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from telegram import Update
+import asyncio
+
+from telegram import InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
 from telegram.error import BadRequest
 from telegram.ext import ContextTypes
 
-from store.data.products import get_product_by_id
+from store.data.products import Product, get_product_by_id
 from store.keyboards import catalog_results_keyboard, product_keyboard
 from store.services import cart as cart_service
 from store.services.catalog_filter import filter_products, get_filter
@@ -34,7 +36,7 @@ async def render_results(
         )
     else:
         text = "😕 За вашим фільтром нічого не знайдено.\nЗмініть параметри фільтра."
-    cart_count = cart_service.get_cart(update.effective_user.id).total_qty
+    cart_count = cart_service.count_items(update.effective_user.id)
     keyboard = catalog_results_keyboard(groups, flt.get("currency", "UAH"), cart_count)
 
     if update.callback_query:
@@ -43,6 +45,18 @@ async def render_results(
         await update.message.reply_text(
             text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard
         )
+
+
+async def _product_card(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, product: Product
+) -> tuple[str, InlineKeyboardMarkup, object]:
+    """Caption, keyboard and photo (URL, bytes or None) for a product card."""
+    currency = get_filter(context).get("currency", "UAH")
+    text = product_summary(product, currency)
+    keyboard = product_keyboard(product, cart_service.count_items(update.effective_user.id))
+    # A private-bucket photo is a blocking boto3 download; keep it off the event loop.
+    photo = await asyncio.to_thread(photo_source, product)
+    return text, keyboard, photo
 
 
 @throttle
@@ -61,17 +75,9 @@ async def show_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await edit_or_resend(update, context, "На жаль, цей товар більше недоступний.")
         return
 
-    currency = get_filter(context).get("currency", "UAH")
-    text = product_summary(product, currency)
-    cart_count = cart_service.get_cart(update.effective_user.id).total_qty
-    keyboard = product_keyboard(product, cart_count)
+    text, keyboard, photo = await _product_card(update, context, product)
     await send_photo_or_text(
-        update,
-        context,
-        text,
-        keyboard,
-        photo=photo_source(product),
-        parse_mode=ParseMode.HTML,
+        update, context, text, keyboard, photo=photo, parse_mode=ParseMode.HTML
     )
 
 
@@ -87,11 +93,7 @@ async def open_product_deeplink(
     if not product:
         return False
 
-    currency = get_filter(context).get("currency", "UAH")
-    text = product_summary(product, currency)
-    cart_count = cart_service.get_cart(update.effective_user.id).total_qty
-    keyboard = product_keyboard(product, cart_count)
-    photo = photo_source(product)
+    text, keyboard, photo = await _product_card(update, context, product)
     if photo is not None:
         try:
             await update.message.reply_photo(

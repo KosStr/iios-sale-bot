@@ -1,10 +1,12 @@
-"""Static product catalog used as the store's data source.
+"""Product model and pricing helpers.
 
-For a production store, replace this module with a real data layer
-(database, CMS, or external API) that exposes the same helper functions.
+Products live in SQLite (``store/db/products_repo.py``) and are managed by
+admins in the bot (/add, /products). ``PRODUCTS`` below is the optional
+built-in seed catalog, inserted on startup when missing (currently empty).
 
-Prices are stored in USD; the bot converts them to UAH on the fly
-(see store/services/catalog_filter.py).
+A product has a USD price (``price``), a UAH price (``price_uah``), or both.
+The regular prices are entered independently (there is no exchange rate);
+only a sale price is scaled across currencies (``synced_sale_prices``).
 """
 
 from __future__ import annotations
@@ -20,27 +22,7 @@ CATEGORY_LAPTOP = "laptop"
 CATEGORY_IPAD = "ipad"
 CATEGORY_ACCESSORIES = "accessories"
 
-# Phone subcategory keys (iPhone models).
-SUBCATEGORY_IPHONE_15 = "iphone_15"
-SUBCATEGORY_IPHONE_16 = "iphone_16"
-SUBCATEGORY_IPHONE_17 = "iphone_17"
-
-# MacBook subcategory keys.
-SUBCATEGORY_MACBOOK_M = "macbook_m"
-SUBCATEGORY_MACBOOK_INTEL = "macbook_intel"
-
-# iPad subcategory keys.
-SUBCATEGORY_IPAD_PRO = "ipad_pro"
-SUBCATEGORY_IPAD_AIR = "ipad_air"
-SUBCATEGORY_IPAD_MINI = "ipad_mini"
-SUBCATEGORY_IPAD_BASE = "ipad_base"
-
-# Accessory subcategory keys (labels live in catalog_filter.SUBCATEGORIES).
-SUBCATEGORY_POWERBANK = "powerbank"
-SUBCATEGORY_CASE = "case"
-SUBCATEGORY_CABLE = "cable"
-SUBCATEGORY_SCREEN_GUARD = "screen_guard"
-SUBCATEGORY_CHARGER = "charger"
+# Subcategory keys and labels live in catalog_filter.SUBCATEGORIES.
 
 
 @dataclass(frozen=True)

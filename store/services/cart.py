@@ -5,7 +5,9 @@ from __future__ import annotations
 from store.db import cart_repo
 from store.models.cart import Cart
 
-__all__ = ["Cart", "add_item", "remove_item", "clear_cart", "get_cart", "is_empty"]
+__all__ = [
+    "Cart", "add_item", "remove_item", "clear_cart", "get_cart", "count_items", "is_empty",
+]
 
 
 def add_item(user_id: int, product_id: str, qty: int = 1) -> None:
@@ -22,6 +24,11 @@ def clear_cart(user_id: int) -> None:
 
 def get_cart(user_id: int) -> Cart:
     return cart_repo.get_cart(user_id)
+
+
+def count_items(user_id: int) -> int:
+    """Total units in the cart (for the cart button badge)."""
+    return cart_repo.total_qty(user_id)
 
 
 def is_empty(user_id: int) -> bool:

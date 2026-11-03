@@ -16,6 +16,16 @@ from store.utils.throttle import throttle
 from store.utils.tg import edit_or_resend
 
 
+async def _refresh_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Resend the persistent reply keyboard so its cart button shows the new count."""
+    count = cart_service.count_items(update.effective_user.id)
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=f"🛒 У кошику: {count}" if count > 0 else "🛒 Кошик порожній",
+        reply_markup=main_menu_keyboard(admin=is_admin(update, context), cart_count=count),
+    )
+
+
 @throttle
 async def show_cart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     cart = cart_service.get_cart(update.effective_user.id)
@@ -51,18 +61,8 @@ async def add_to_cart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         return
 
     cart_service.add_item(update.effective_user.id, product_id, 1)
-    cart = cart_service.get_cart(update.effective_user.id)
-    count = cart.total_qty
     await query.answer(f"Додано {product.name} у кошик ✅")
-    # Update the persistent reply-keyboard to show the new cart count.
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text=f"🛒 У кошику: {count}",
-        reply_markup=main_menu_keyboard(
-            admin=is_admin(update, context),
-            cart_count=count,
-        ),
-    )
+    await _refresh_menu(update, context)
     await show_cart(update, context)
 
 
@@ -71,16 +71,8 @@ async def remove_from_cart(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     query = update.callback_query
     product_id = query.data.split(":", 1)[1]
     cart_service.remove_item(update.effective_user.id, product_id)
-    count = cart_service.get_cart(update.effective_user.id).total_qty
     await query.answer("Видалено з кошика.")
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text=f"🛒 У кошику: {count}" if count > 0 else "🛒 Кошик порожній",
-        reply_markup=main_menu_keyboard(
-            admin=is_admin(update, context),
-            cart_count=count,
-        ),
-    )
+    await _refresh_menu(update, context)
     await show_cart(update, context)
 
 
@@ -89,12 +81,5 @@ async def clear_cart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     query = update.callback_query
     cart_service.clear_cart(update.effective_user.id)
     await query.answer("Кошик очищено.")
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text="🛒 Кошик порожній",
-        reply_markup=main_menu_keyboard(
-            admin=is_admin(update, context),
-            cart_count=0,
-        ),
-    )
+    await _refresh_menu(update, context)
     await show_cart(update, context)

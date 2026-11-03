@@ -16,26 +16,11 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
+from store.utils.format import instagram_links
+
 
 def _env(name: str, default: str = "") -> str:
     return os.getenv(name, default).strip()
-
-
-def _instagram_links() -> str:
-    """Return HTML links for the store's Instagram accounts, or ''."""
-    handles = [
-        _env("STORE_INSTAGRAM", "@iios_cv"),
-        _env("STORE_INSTAGRAM2", "@iios_tehnika"),
-    ]
-    links = []
-    for handle in handles:
-        if not handle:
-            continue
-        user = handle.lstrip("@")
-        links.append(
-            f'<a href="https://instagram.com/{escape(user)}">@{escape(user)}</a>'
-        )
-    return " · ".join(links)
 
 
 def _contacts_text() -> str:
@@ -43,7 +28,7 @@ def _contacts_text() -> str:
     name = _env("STORE_NAME", "IIOS Store")
     phone = _env("STORE_PHONE", "+380 95 340 77 54")
     telegram = _env("STORE_TELEGRAM", "@iios_cv")
-    instagram = _instagram_links()
+    instagram = " · ".join(instagram_links())
 
     if name:
         lines.append(f"🏪 {escape(name)}")

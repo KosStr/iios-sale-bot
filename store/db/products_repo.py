@@ -133,6 +133,24 @@ def fetch_all() -> list[Product]:
     return [_row_to_product(row) for row in rows]
 
 
+def fetch_in_category(category: str = "", subcategory: str = "") -> list[Product]:
+    """Products in `category` (all when empty), optionally narrowed to `subcategory`."""
+    clauses: list[str] = []
+    params: list[str] = []
+    if category:
+        clauses.append("category = ?")
+        params.append(category)
+    if subcategory:
+        clauses.append("subcategory = ?")
+        params.append(subcategory)
+    where = f"WHERE {' AND '.join(clauses)} " if clauses else ""
+    with db_connection() as conn:
+        rows = conn.execute(
+            f"{_SELECT} {where}ORDER BY name, storage, color", params
+        ).fetchall()
+    return [_row_to_product(row) for row in rows]
+
+
 def fetch_hot() -> list[Product]:
     """Products marked as hot deals, in catalog order."""
     with db_connection() as conn:

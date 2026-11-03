@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import sqlite3
+from functools import wraps
+from html import escape
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
@@ -15,8 +18,6 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
-
-from html import escape
 
 from store.data.products import (
     CATEGORY_ACCESSORIES,
@@ -34,11 +35,11 @@ from store.handlers.admin_ui import (
     edit_subcategory_keyboard,
     force_delete_keyboard,
     hot_list_keyboard,
-    sold_delete_confirm_keyboard,
     hot_list_text,
     product_detail_keyboard,
     product_detail_text,
     product_list_keyboard,
+    sold_delete_confirm_keyboard,
 )
 from store.services.catalog_filter import category_has_subcategories
 from store.services.channel_sync import delete_product_post, sync_product_post
@@ -46,6 +47,7 @@ from store.services.grouping import fits_group_key
 from store.services.hot_deals import publish_hot_deals, refresh_if_hot
 from store.services.images import upload_image
 from store.utils.admin import is_admin
+from store.utils.tg import photo_file_id
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +108,7 @@ def _resync_sale(product_id: str) -> str:
     products_repo.update(product_id, sale_price=sale_usd, sale_price_uah=sale_uah)
     return ""
 
+
 _LANDING_FAILED = "\n\n⚠️ Не вдалося оновити лендінг (R2). Спробуйте /hot → 🔄 Оновити лендінг."
 
 
@@ -116,6 +119,22 @@ async def _deny(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text("Ця команда лише для адміністраторів.")
 
 
+def admin_only(handler):
+    """Reject non-admins before running `handler`.
+
+    Returns ``ConversationHandler.END`` on denial, which also ends a
+    conversation when `handler` is an entry point (plain handlers ignore it).
+    """
+    @wraps(handler)
+    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not is_admin(update, context):
+            await _deny(update, context)
+            return ConversationHandler.END
+        return await handler(update, context)
+
+    return wrapper
+
+
 def _edit_state(context: ContextTypes.DEFAULT_TYPE) -> dict:
     return context.user_data.setdefault("admin_edit", {})
 
@@ -124,10 +143,8 @@ def _clear_edit(context: ContextTypes.DEFAULT_TYPE) -> None:
     context.user_data.pop("admin_edit", None)
 
 
+@admin_only
 async def cmd_products(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not is_admin(update, context):
-        await _deny(update, context)
-        return
     await _send_product_list(update, context, page=0)
 
 
@@ -156,20 +173,15 @@ async def _send_product_list(
         )
 
 
+@admin_only
 async def list_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not is_admin(update, context):
-        await _deny(update, context)
-        return
     await update.callback_query.answer()
     page = int(update.callback_query.data.rsplit(":", 1)[1])
     await _send_product_list(update, context, page)
 
 
+@admin_only
 async def view_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not is_admin(update, context):
-        await _deny(update, context)
-        return
-
     query = update.callback_query
     await query.answer()
     product_id = query.data.split(":", 2)[2]
@@ -185,11 +197,8 @@ async def view_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     )
 
 
+@admin_only
 async def open_edit_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not is_admin(update, context):
-        await _deny(update, context)
-        return
-
     query = update.callback_query
     await query.answer()
     product_id = query.data.split(":", 2)[2]
@@ -205,11 +214,8 @@ async def open_edit_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     )
 
 
+@admin_only
 async def toggle_hot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not is_admin(update, context):
-        await _deny(update, context)
-        return
-
     query = update.callback_query
     await query.answer()
     product_id = query.data.split(":", 2)[2]
@@ -236,10 +242,8 @@ async def toggle_hot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     )
 
 
+@admin_only
 async def cmd_hot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not is_admin(update, context):
-        await _deny(update, context)
-        return
     products = products_repo.fetch_hot()
     await update.message.reply_text(
         hot_list_text(products),
@@ -248,10 +252,8 @@ async def cmd_hot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
+@admin_only
 async def republish_hot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not is_admin(update, context):
-        await _deny(update, context)
-        return
     query = update.callback_query
     if await publish_hot_deals():
         await query.answer("✅ Лендінг оновлено.")
@@ -259,11 +261,8 @@ async def republish_hot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await query.answer("⚠️ Не вдалося оновити лендінг (R2).", show_alert=True)
 
 
+@admin_only
 async def ask_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not is_admin(update, context):
-        await _deny(update, context)
-        return
-
     query = update.callback_query
     await query.answer()
     product_id = query.data.split(":", 2)[2]
@@ -287,11 +286,8 @@ async def ask_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     )
 
 
+@admin_only
 async def confirm_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not is_admin(update, context):
-        await _deny(update, context)
-        return
-
     query = update.callback_query
     product_id = query.data.split(":", 2)[2]
 
@@ -348,11 +344,8 @@ async def _after_delete(
     await _send_product_list(update, context, page=0)
 
 
+@admin_only
 async def force_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not is_admin(update, context):
-        await _deny(update, context)
-        return
-
     query = update.callback_query
     product_id = query.data.split(":", 2)[2]
 
@@ -373,11 +366,8 @@ def _sold_products() -> list[Product]:
     return [p for p in get_all_products() if p.stock <= 0]
 
 
+@admin_only
 async def ask_delete_sold(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not is_admin(update, context):
-        await _deny(update, context)
-        return
-
     query = update.callback_query
     await query.answer()
     sold = _sold_products()
@@ -399,11 +389,8 @@ async def ask_delete_sold(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     )
 
 
+@admin_only
 async def confirm_delete_sold(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not is_admin(update, context):
-        await _deny(update, context)
-        return
-
     query = update.callback_query
     await query.answer("Видаляю…")
     deleted: list[Product] = []
@@ -469,11 +456,8 @@ async def confirm_delete_sold(update: Update, context: ContextTypes.DEFAULT_TYPE
             )
 
 
+@admin_only
 async def edit_category_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not is_admin(update, context):
-        await _deny(update, context)
-        return
-
     query = update.callback_query
     await query.answer()
     parts = query.data.split(":")
@@ -505,11 +489,8 @@ async def edit_category_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
     )
 
 
+@admin_only
 async def edit_subcategory(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not is_admin(update, context):
-        await _deny(update, context)
-        return
-
     query = update.callback_query
     await query.answer()
     parts = query.data.split(":")
@@ -555,11 +536,8 @@ async def _show_updated_product(
     await sync_product_post(context.bot, product, channel_id=channel_id)
 
 
+@admin_only
 async def start_edit_field(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if not is_admin(update, context):
-        await _deny(update, context)
-        return ConversationHandler.END
-
     query = update.callback_query
     await query.answer()
     _, _, product_id, field = query.data.split(":", 3)
@@ -597,12 +575,8 @@ async def apply_edit_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     channel_id = ""
     try:
         if field == "photo":
-            msg = update.message
-            if msg.photo:
-                file_id = msg.photo[-1].file_id
-            elif msg.document and (msg.document.mime_type or "").startswith("image/"):
-                file_id = msg.document.file_id
-            else:
+            file_id = photo_file_id(update.message)
+            if not file_id:
                 await update.message.reply_text(
                     "Надішліть *фото* (не файл). Спробуйте ще раз або /cancel.",
                     parse_mode=ParseMode.MARKDOWN,
@@ -611,7 +585,7 @@ async def apply_edit_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             image_key = product.image or f"{product.id}.jpg"
             tg_file = await context.bot.get_file(file_id)
             image_bytes = bytes(await tg_file.download_as_bytearray())
-            if not upload_image(image_key, image_bytes):
+            if not await asyncio.to_thread(upload_image, image_key, image_bytes):
                 await update.message.reply_text(
                     "⚠️ Не вдалося завантажити фото в R2. Спробуйте ще раз або /cancel."
                 )

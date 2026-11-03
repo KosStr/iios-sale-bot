@@ -12,9 +12,9 @@ from store.data.products import (
     Product,
     effective_price,
     effective_price_uah,
-    get_all_products,
     is_on_sale,
 )
+from store.db import products_repo
 
 # Category keys paired with their Ukrainian labels (order = menu order).
 CATEGORIES: list[tuple[str, str]] = [
@@ -76,9 +76,6 @@ SUBCATEGORY_LABELS: dict[str, dict[str, str]] = {
     category: dict(items) for category, items in SUBCATEGORIES.items()
 }
 
-# Only USD is supported.
-CURRENCIES: dict[str, str] = {"USD": "$"}
-
 DEFAULT_FILTER: dict[str, str] = {
     "category": "all",
     "subcategory": "all",
@@ -116,16 +113,15 @@ def convert(amount_usd: int, currency: str) -> int:
 
 
 def _products_in_category(category: str, subcategory: str) -> list[Product]:
-    """All products matching category/subcategory, ignoring price."""
-    return [
-        p for p in get_all_products()
-        if (category == "all" or p.category == category)
-        and (
-            not category_has_subcategories(category)
-            or subcategory == "all"
-            or p.subcategory == subcategory
-        )
-    ]
+    """All products matching category/subcategory, ignoring price.
+
+    Filtered in SQL: every filter screen calls this several times.
+    """
+    narrow_sub = category_has_subcategories(category) and subcategory != "all"
+    return products_repo.fetch_in_category(
+        "" if category == "all" else category,
+        subcategory if narrow_sub else "",
+    )
 
 
 def _products_for(flt: dict) -> list[Product]:

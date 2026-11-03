@@ -3,7 +3,8 @@
 This guide walks you through deploying the Telegram bot to **Fly.io** with:
 
 - persistent **SQLite** on a Fly Volume
-- optional **Cloudflare R2** for product images
+- optional **Cloudflare R2** for product images and the landing page's `hot.json`
+- optional **channel auto-posting** and order notifications
 - store contacts/location from environment variables
 
 ---
@@ -31,7 +32,7 @@ Optional but recommended:
 ### Step 1. Open the project folder
 
 ```powershell
-cd C:\Users\KostiantynStrusovsky\Desktop\pet
+cd path\to\iios-sale-bot
 ```
 
 ### Step 2. Verify the bot runs locally (optional but recommended)
@@ -54,10 +55,10 @@ Open `fly.toml`. The default app name is `iios-store-bot`. If that name is alrea
 
 ```toml
 app = "your-unique-app-name"
-primary_region = "waw"
+primary_region = "fra"
 ```
 
-`waw` = Warsaw (good for Ukraine). You can pick another region: `fly platform regions`.
+`fra` = Frankfurt (the repo default). `waw` (Warsaw) is also close to Ukraine; see `fly platform regions`. Whatever you pick, the volume must be in the same region.
 
 ---
 
@@ -83,7 +84,7 @@ When prompted:
 
 - **Use existing fly.toml?** → Yes
 - **App name** → keep or change to something unique
-- **Region** → `waw` (must match the volume region later)
+- **Region** → `fra` (must match the volume region later)
 - **Postgres / Redis?** → No
 - **Deploy now?** → No (we set secrets and volume first)
 
@@ -100,7 +101,7 @@ The bot stores products, carts, orders and bookings in SQLite at `/data/store.db
 Use the **same region** as `primary_region` in `fly.toml`:
 
 ```powershell
-fly volumes create store_data --size 1 --region waw
+fly volumes create store_data --size 1 --region fra
 ```
 
 - Name `store_data` must match `source = "store_data"` in `fly.toml`.
@@ -112,7 +113,7 @@ Verify:
 fly volumes list
 ```
 
-You should see `store_data` in region `waw`.
+You should see `store_data` in region `fra`.
 
 ---
 
@@ -158,28 +159,41 @@ Multiple admins (comma-separated):
 fly secrets set ADMIN_CHAT_IDS="111111111,222222222"
 ```
 
-**Store contacts** (shown in the «Контакти» button):
+Admins can use `/add`, `/products` and `/hot`, and receive order alerts.
+
+**Order alerts without admin access** (optional):
+
+```powershell
+fly secrets set NOTIFY_CHAT_ID="123456789"
+```
+
+**Channel auto-posting** (optional). Add the bot to the channel as an admin with *Post*, *Edit* and *Delete messages* rights, then:
+
+```powershell
+fly secrets set CHANNEL_ID="@your_channel"   # or the numeric -100… ID
+```
+
+**Store contacts** (shown in «Контакти», on product cards and in channel posts). Each one has a built-in IIOS default, so set only what differs:
 
 ```powershell
 fly secrets set `
   STORE_NAME="IIOS Store" `
-  STORE_PHONE="+380 99 123 45 67" `
-  STORE_EMAIL="info@iios.store" `
+  STORE_PHONE="+380 95 340 77 54" `
   STORE_TELEGRAM="@iios_cv" `
-  STORE_INSTAGRAM="@iios.store" `
-  STORE_HOURS="Пн–Нд, 10:00–20:00"
+  STORE_MANAGER="@iios_manager" `
+  STORE_INSTAGRAM="@iios_cv" `
+  STORE_INSTAGRAM2="@iios_tehnika"
 ```
 
 **Store location** (shown in «Локація»):
 
 ```powershell
 fly secrets set `
-  STORE_ADDRESS="м. Чернівці, вул. Головна, 1" `
-  STORE_LATITUDE="48.291839" `
-  STORE_LONGITUDE="25.935355"
+  STORE_ADDRESS="м. Чернівці, вул. Заньковецької" `
+  STORE_MAP_URL="https://maps.app.goo.gl/8AZcqV7XxU1495Ns6"
 ```
 
-> Non-secret settings like `CURRENCY=UAH` and `DATABASE_PATH=/data/store.db` are already in `fly.toml` under `[env]`.
+> Non-secret settings (`DATABASE_PATH=/data/store.db`, `USE_WEBHOOK`, `WEBHOOK_URL`, `PORT`) are already in `fly.toml` under `[env]`.
 
 List current secrets (values are hidden):
 
@@ -222,7 +236,7 @@ fly secrets set `
 
 ### Step 10. Upload product images
 
-Image files should be named after product IDs, e.g. `iphone-15-pro.jpg`.
+Photos sent to the bot in `/add` or ✏️ «Фото» are uploaded to R2 automatically (Option B credentials required). To bulk-upload, name files after product IDs, e.g. `iphone-15-pro.jpg`.
 
 Locally (with R2 credentials in `.env`):
 
@@ -275,14 +289,15 @@ has no deals, the section is hidden. The object key can be changed with the
 
 ## Part 6 — Deploy
 
-### Step 11. Deploy the app
+### Step 12. Deploy the app
 
 Make sure you run deploy **from the project folder** that contains `Dockerfile` and `fly.toml`:
 
 ```powershell
-cd C:\Users\KostiantynStrusovsky\Desktop\pet
 fly deploy
 ```
+
+Pushing to `main` on GitHub also deploys automatically (`.github/workflows/fly-deploy.yml`). It needs a `FLY_API_TOKEN` repository secret (`fly tokens create deploy`).
 
 If you see `app does not have a Dockerfile or buildpacks configured`:
 
@@ -295,9 +310,9 @@ Fly will:
 1. Build the Docker image from `Dockerfile`
 2. Attach the volume at `/data`
 3. Start the bot with `python -m store`
-4. On first start: create SQLite schema, indexes, and seed products
+4. On first start: create the SQLite schema and indexes (the catalog starts empty — add products with `/add`)
 
-### Step 12. Confirm webhook mode
+### Step 13. Confirm webhook mode
 
 After deploy, logs should show:
 
@@ -314,9 +329,9 @@ curl "https://api.telegram.org/bot<YOUR_TOKEN>/getWebhookInfo"
 
 You should see your Fly URL and `"pending_update_count": 0` (or low).
 
-`fly.toml` keeps **one machine always running** (`min_machines_running = 1`) so Telegram can always deliver POST requests.
+`fly.toml` lets the machine **suspend when idle** (`auto_stop_machines = 'suspend'`, `min_machines_running = 0`). Fly's proxy wakes it when Telegram POSTs an update, so the first update after a quiet period takes a moment longer. Set `min_machines_running = 1` if you want it always on.
 
-### Step 13. Check logs
+### Step 14. Check logs
 
 ```powershell
 fly logs
@@ -325,13 +340,14 @@ fly logs
 Look for:
 
 ```
-SQLite pool ready: /data/store.db
+Telegram bot OK: @your_bot (123456789)
+SQLite pool ready: /data/store.db (size=5)
 Database initialized at /data/store.db
-Seeded 15 product(s) into the database.
+Starting webhook on 0.0.0.0:8080/webhook -> https://iios-store-bot.fly.dev/webhook
 Application started
 ```
 
-### Step 14. Test in Telegram
+### Step 15. Test in Telegram
 
 1. Make sure the bot is **not** running locally.
 2. Open your bot in Telegram.
@@ -426,9 +442,11 @@ If Fly shows **"Machines Restarting a Lot"**, open **Logs from Previous Starts**
 | `401` / updates ignored | `WEBHOOK_SECRET` mismatch | Use the same secret in Fly secrets and redeploy |
 | Bot starts but no data after restart | Volume missing or wrong mount | Create volume; check `fly volumes list` and `[mounts]` in `fly.toml` |
 | `Can't parse entities` on contacts | Old deployment | Redeploy latest code (contacts use HTML) |
-| No product photos | R2 not configured or images not uploaded | Set R2 secrets; run `upload_images` |
+| No product photos | R2 not configured or images not uploaded | Set R2 secrets; re-send the photo via ✏️ «Фото» or run `upload_images` |
+| Channel post not created/updated | `CHANNEL_ID` unset or bot lacks channel admin rights | Set `CHANNEL_ID`; give the bot Post/Edit/Delete rights. Errors are logged as `Could not … channel post` |
+| «Пост у каналі не видалено» alert | Telegram doesn't let bots delete posts older than 48 h | The post is marked «❌ ПРОДАНО»; delete it by hand via the link the bot sends |
 | App won't start — volume error | Volume in different region than app | Create volume in same region as `primary_region` |
-| Empty catalog | DB seeded only when empty | Normal on first run; check logs for "Seeded N product(s)" |
+| Empty catalog | The built-in seed catalog is empty | Normal on first run — add products with `/add` |
 
 ---
 
@@ -461,7 +479,7 @@ curl "https://api.telegram.org/bot<YOUR_TOKEN>/getWebhookInfo"
 
 ## Cost notes (Fly.io)
 
-- One `shared-cpu-1x` machine (~512 MB) runs continuously.
+- One `shared-cpu-1x` machine (512 MB), suspended while idle.
 - 1 GB volume has a small monthly cost.
 - See [Fly.io pricing](https://fly.io/docs/about/pricing/) for current rates.
 

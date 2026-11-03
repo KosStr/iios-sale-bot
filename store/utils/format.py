@@ -100,21 +100,21 @@ def _price_block(product: Product) -> list[str]:
     return [f"💰 Ціна: <b>{escape(_fmt_price(product))}</b>"]
 
 
-def _instagram_links() -> list[str]:
-    """HTML links for the store's Instagram accounts (from env), if any."""
+def instagram_users() -> list[str]:
+    """The store's Instagram usernames (without '@') from env; blanks skipped."""
     handles = [
         os.getenv("STORE_INSTAGRAM", "@iios_cv").strip(),
         os.getenv("STORE_INSTAGRAM2", "@iios_tehnika").strip(),
     ]
-    links: list[str] = []
-    for handle in handles:
-        if not handle:
-            continue
-        user = handle.lstrip("@")
-        links.append(
-            f'<a href="https://instagram.com/{escape(user)}">@{escape(user)}</a>'
-        )
-    return links
+    return [handle.lstrip("@") for handle in handles if handle]
+
+
+def instagram_links() -> list[str]:
+    """HTML links for the store's Instagram accounts (from env), if any."""
+    return [
+        f'<a href="https://instagram.com/{escape(user)}">@{escape(user)}</a>'
+        for user in instagram_users()
+    ]
 
 
 def product_summary(product: Product, currency: str = "UAH") -> str:
@@ -133,7 +133,7 @@ def product_summary(product: Product, currency: str = "UAH") -> str:
             escape(product.description),
         ]
     )
-    insta = _instagram_links()
+    insta = instagram_links()
     if insta:
         lines += ["", "📸 Instagram: " + " · ".join(insta)]
     return "\n".join(lines)

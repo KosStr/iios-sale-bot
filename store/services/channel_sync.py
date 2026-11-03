@@ -20,6 +20,7 @@ Private channel:  https://t.me/c/<channel_id>/<msg_id>
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import re
@@ -39,6 +40,7 @@ from store.data.products import (
 )
 from store.db import products_repo
 from store.services.images import get_image_bytes, image_url
+from store.utils.format import instagram_users
 
 logger = logging.getLogger(__name__)
 
@@ -170,15 +172,7 @@ def _post_text(product: Product) -> str:
         parts.append(f"📞 {escape(phone)}")
 
     # Instagram (both store accounts, if configured)
-    insta_handles = [
-        os.getenv("STORE_INSTAGRAM", "@iios_cv").strip(),
-        os.getenv("STORE_INSTAGRAM2", "@iios_tehnika").strip(),
-    ]
-    insta_links = [
-        f"https://instagram.com/{escape(handle.lstrip('@'))}"
-        for handle in insta_handles
-        if handle
-    ]
+    insta_links = [f"https://instagram.com/{escape(user)}" for user in instagram_users()]
     if insta_links:
         parts += ["", "Інстаграм"] + insta_links
 
@@ -187,7 +181,7 @@ def _post_text(product: Product) -> str:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-def _best_photo(product: Product):
+async def _best_photo(product: Product):
     """Return the best photo source for a channel post.
 
     Bytes (uploaded directly by the bot) are preferred over a URL because
@@ -196,7 +190,8 @@ def _best_photo(product: Product):
     when no private credentials are configured, and to None when neither is
     available.
     """
-    bytes_ = get_image_bytes(product)
+    # boto3 is blocking; keep it off the event loop.
+    bytes_ = await asyncio.to_thread(get_image_bytes, product)
     if bytes_:
         return bytes_
     return image_url(product)   # may be None
@@ -205,7 +200,7 @@ def _best_photo(product: Product):
 async def _send_post(bot: Bot, channel_id: str, product: Product):
     """Send a channel post for *product*; return the Message or None on failure."""
     text = _post_text(product)
-    photo = _best_photo(product)
+    photo = await _best_photo(product)
     try:
         if photo:
             try:
@@ -356,7 +351,7 @@ async def sync_product_post(
 
     try:
         if photo_changed:
-            photo = _best_photo(product)
+            photo = await _best_photo(product)
             if photo:
                 try:
                     await bot.edit_message_media(

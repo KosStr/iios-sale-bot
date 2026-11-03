@@ -62,6 +62,19 @@ def get_cart(user_id: int) -> Cart:
     return Cart(items=items)
 
 
+def total_qty(user_id: int) -> int:
+    """Units in the cart, counted in SQL (same result as ``get_cart().total_qty``)."""
+    with db_connection() as conn:
+        return conn.execute(
+            """
+            SELECT COALESCE(SUM(c.qty), 0) FROM cart_items c
+            JOIN products p ON p.id = c.product_id
+            WHERE c.user_id = ?
+            """,
+            (user_id,),
+        ).fetchone()[0]
+
+
 def is_empty(user_id: int) -> bool:
     with db_connection() as conn:
         count = conn.execute(

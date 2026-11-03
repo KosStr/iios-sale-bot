@@ -26,7 +26,6 @@ from store.handlers.admin_products import (
 )
 from store.handlers.booking import build_booking_handler
 from store.handlers.cart import add_to_cart, clear_cart, remove_from_cart, show_cart
-from store.services import cart as cart_service
 from store.handlers.catalog import open_product_deeplink, show_catalog, show_product
 from store.handlers.checkout import build_checkout_handler
 from store.handlers.filters import (
@@ -49,7 +48,7 @@ from store.keyboards import (
     BTN_LOCATION,
     main_menu_keyboard,
 )
-
+from store.services import cart as cart_service
 from store.utils.admin import is_admin
 
 logger = logging.getLogger(__name__)
@@ -97,7 +96,7 @@ PRODUCT_DEEPLINK_PREFIX = "prod_"
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    cart_count = cart_service.get_cart(update.effective_user.id).total_qty
+    cart_count = cart_service.count_items(update.effective_user.id)
     await update.message.reply_text(
         WELCOME,
         parse_mode=ParseMode.MARKDOWN,
@@ -132,7 +131,7 @@ async def _admin_products_btn(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 async def on_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-    logger.error("Update caused an error: %s", context.error)
+    logger.error("Update caused an error: %s", context.error, exc_info=context.error)
 
 
 def create_application(config: Config) -> Application:
