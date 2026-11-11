@@ -267,9 +267,9 @@ Cloudflare → R2 → bucket → **Settings** → **CORS Policy**:
 [
   {
     "AllowedOrigins": [
+      "https://i-ios.store",
+      "https://www.i-ios.store",
       "https://store.iios.workers.dev",
-      "https://iios.store",
-      "https://www.iios.store",
       "http://localhost:8000",
       "http://localhost:5500",
       "http://127.0.0.1:5500"
@@ -497,11 +497,11 @@ What a flood of requests can cost, and how each part is capped:
 
 ### Put R2 behind a custom domain (recommended)
 
-1. Cloudflare → **R2** → bucket → **Settings** → **Custom Domains** → **Connect Domain** → `img.iios.store`.
+1. Cloudflare → **R2** → bucket → **Settings** → **Custom Domains** → **Connect Domain** → `img.i-ios.store`.
 2. Same page: **Public Development URL** (`r2.dev`) → **Disallow**. Do this only after step 5, or the live landing loses its images.
-3. **Caching** → **Cache Rules** → create a rule: *Hostname equals `img.iios.store`* → **Eligible for cache**, Edge TTL **Use cache-control header if present**, else 1 hour. Photos and `hot.json` (`max-age=60`) are then served from the CDN, so repeated requests no longer reach R2.
-4. **Security** → **WAF** → **Rate limiting rules**: *Hostname equals `img.iios.store`* → 100 requests / 10 s per IP → **Block** for 10 s. The Free plan includes one rule.
-5. Replace the `pub-…r2.dev` host with `https://img.iios.store` in `index.html`, `_headers` (CSP) and the `R2_PUBLIC_BASE_URL` Fly secret, then redeploy both. The R2 CORS policy (Step 11) stays the same.
+3. **Caching** → **Cache Rules** → create a rule: *Hostname equals `img.i-ios.store`* → **Eligible for cache**, Edge TTL **Use cache-control header if present**, else 1 hour. Photos and `hot.json` (`max-age=60`) are then served from the CDN, so repeated requests no longer reach R2.
+4. **Security** → **WAF** → **Rate limiting rules**: *Hostname equals `img.i-ios.store`* → 100 requests / 10 s per IP → **Block** for 10 s. The Free plan includes one rule.
+5. Replace the `pub-…r2.dev` host with `https://img.i-ios.store` in `index.html`, `_headers` (CSP) and the `R2_PUBLIC_BASE_URL` Fly secret, then redeploy both. The R2 CORS policy (Step 11) stays the same.
 
 ### Spending alerts
 

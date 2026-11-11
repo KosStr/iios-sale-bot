@@ -17,4 +17,4 @@ User-agent: Applebot-Extended
 User-agent: Bingbot
 Allow: /
 
-Sitemap: https://iios.store/sitemap.xml
+Sitemap: https://i-ios.store/sitemap.xml
