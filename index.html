@@ -638,7 +638,8 @@
       transition: background .2s ease, transform .2s ease;
     }
     .deal-dot.active { background: var(--accent2); transform: scale(1.3); }
-    .deal-nav[hidden], .deals-dots[hidden], #deals[hidden] { display: none; }
+    .deal-nav[hidden], .deals-dots[hidden], #deals[hidden],
+    #hero-deal-badge[hidden], #hero-deal[hidden], #hero-deal-btns[hidden] { display: none; }
     @media (min-width: 701px) {
       .deal-slide { display: flex; align-items: stretch; }
       .deal-img { width: 50%; aspect-ratio: auto; }
@@ -1328,10 +1329,10 @@
       </div>
 
       <div class="hero-visual">
-        <div class="badge badge-tl reveal">
+        <div class="badge badge-tl reveal" id="hero-deal-badge" hidden>
           <div class="badge-icon">🔥</div>
           <div style="color:var(--muted);font-size:11px;">Гаряча ціна</div>
-          <strong>iPhone 15 Pro</strong>
+          <strong id="hero-deal-badge-name"></strong>
         </div>
         <div class="phone-glow"></div>
         <div class="phone-frame">
@@ -1348,17 +1349,17 @@
               Ласкаво просимо до <strong>IIOS!</strong><br/>
               Оберіть категорію або скористайтеся пошуком.
             </div>
-            <!-- Filled from the first hot deal in hot.json; static content is the fallback. -->
-            <div class="msg-product" id="hero-deal">
-              <div class="prod-img-placeholder" id="hero-deal-img"><picture><source srcset="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone_2.webp" type="image/webp"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone_2.jpg" alt="iPhone 15 Pro 256GB" width="960" height="1280" decoding="async" onerror="this.onerror=null;var s=this.parentNode.querySelector('source');if(s)s.remove();"></picture></div>
-              <div class="prod-name" id="hero-deal-name">iPhone 15 Pro 256GB</div>
-              <div id="hero-deal-sub" style="font-size:10px;color:var(--muted);margin:2px 0 6px">Natural Titanium</div>
+            <!-- Filled from the first hot deal in hot.json; stays hidden when there are none. -->
+            <div class="msg-product" id="hero-deal" hidden>
+              <div class="prod-img-placeholder" id="hero-deal-img"></div>
+              <div class="prod-name" id="hero-deal-name"></div>
+              <div id="hero-deal-sub" style="font-size:10px;color:var(--muted);margin:2px 0 6px" hidden></div>
               <div style="display:flex;align-items:baseline;gap:6px">
-                <div class="prod-price" id="hero-deal-price">40 995 ₴</div>
-                <div class="prod-old" id="hero-deal-old">44 500 ₴</div>
+                <div class="prod-price" id="hero-deal-price"></div>
+                <div class="prod-old" id="hero-deal-old" hidden></div>
               </div>
             </div>
-            <div class="tg-btns">
+            <div class="tg-btns" id="hero-deal-btns" hidden>
               <div class="tg-btn">Додати в кошик</div>
               <div class="tg-btn">Забронювати модель</div>
             </div>
@@ -1407,7 +1408,7 @@
   </section>
 
   <!-- HOT DEALS -->
-  <section class="section" id="deals">
+  <section class="section" id="deals" hidden>
     <div class="container">
       <div class="section-head reveal">
         <div class="tag">Гарячі пропозиції</div>
@@ -1416,67 +1417,9 @@
       </div>
       <div class="deals-carousel reveal" id="deals-carousel">
         <div class="deals-viewport">
-          <!-- Fallback slides. They are replaced at load time by the deals the admins
-               mark as hot in the bot (/products → 🔥), published to R2 as hot.json. -->
-          <div class="deals-track" id="deals-track">
-            <div class="deal-slide">
-              <div class="deal-badge">-9%</div>
-              <div class="deal-img">
-                <picture><source srcset="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.webp" type="image/webp"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.jpg" alt="iPhone 15 Pro 256GB" width="960" height="1280" loading="lazy" decoding="async" onerror="this.onerror=null;var s=this.parentNode.querySelector('source');if(s)s.remove();"></picture>
-              </div>
-              <div class="deal-body">
-                <div class="deal-name">iPhone 15 Pro 256GB</div>
-                <div class="deal-price-row">
-                  <span class="deal-price-old">44 500 ₴</span>
-                  <span class="deal-price-new">40 995 ₴</span>
-                </div>
-                <a href="https://t.me/iios_cv_bot?start=prod_iphone-15-pro-256gb" class="btn-primary deal-cta" target="_blank" rel="noopener" data-cta="deal">Хочу цей</a>
-              </div>
-            </div>
-            <div class="deal-slide">
-              <div class="deal-badge">-18%</div>
-              <div class="deal-img">
-                <picture><source srcset="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_watch.webp" type="image/webp"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_watch.jpg" alt="Apple Watch Series 9" width="960" height="1280" loading="lazy" decoding="async" onerror="this.onerror=null;var s=this.parentNode.querySelector('source');if(s)s.remove();"></picture>
-              </div>
-              <div class="deal-body">
-                <div class="deal-name">Apple Watch Series 9</div>
-                <div class="deal-price-row">
-                  <span class="deal-price-old">16 565 ₴</span>
-                  <span class="deal-price-new">13 645 ₴</span>
-                </div>
-                <a href="https://t.me/iios_cv_bot?start=prod_apple-watch-series-9" class="btn-primary deal-cta" target="_blank" rel="noopener" data-cta="deal">Хочу цей</a>
-              </div>
-            </div>
-            <div class="deal-slide">
-              <div class="deal-badge">-10%</div>
-              <div class="deal-img">
-                <picture><source srcset="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone_2.webp" type="image/webp"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone_2.jpg" alt="iPhone 15 Pro Max 256GB" width="960" height="1280" loading="lazy" decoding="async" onerror="this.onerror=null;var s=this.parentNode.querySelector('source');if(s)s.remove();"></picture>
-              </div>
-              <div class="deal-body">
-                <!-- TODO: confirm exact model/name and prices for this second iPhone deal -->
-                <div class="deal-name">iPhone 15 Pro Max 256GB</div>
-                <div class="deal-price-row">
-                  <span class="deal-price-old">49 900 ₴</span>
-                  <span class="deal-price-new">44 900 ₴</span>
-                </div>
-                <a href="https://t.me/iios_cv_bot?start=prod_iphone-15-pro-max-256gb" class="btn-primary deal-cta" target="_blank" rel="noopener" data-cta="deal">Хочу цей</a>
-              </div>
-            </div>
-            <div class="deal-slide">
-              <div class="deal-badge">-12%</div>
-              <div class="deal-img">
-                <picture><source srcset="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_mac.webp" type="image/webp"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_mac.jpg" alt="MacBook Air 13&quot; M3" width="960" height="1280" loading="lazy" decoding="async" onerror="this.onerror=null;var s=this.parentNode.querySelector('source');if(s)s.remove();"></picture>
-              </div>
-              <div class="deal-body">
-                <div class="deal-name">MacBook Air 13" M3</div>
-                <div class="deal-price-row">
-                  <span class="deal-price-old">52 000 ₴</span>
-                  <span class="deal-price-new">45 600 ₴</span>
-                </div>
-                <a href="https://t.me/iios_cv_bot?start=prod_macbook-air-13-m3" class="btn-primary deal-cta" target="_blank" rel="noopener" data-cta="deal">Хочу цей</a>
-              </div>
-            </div>
-          </div>
+          <!-- Filled at load time from hot.json: the deals admins mark as hot in the bot
+               (/products → 🔥). The section stays hidden when there are none. -->
+          <div class="deals-track" id="deals-track"></div>
           <button class="deal-nav deal-nav-prev" id="deals-prev" type="button" aria-label="Попередній товар">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
@@ -1484,12 +1427,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
         </div>
-        <div class="deals-dots" id="deals-dots">
-          <button class="deal-dot active" type="button" aria-label="Слайд 1"></button>
-          <button class="deal-dot" type="button" aria-label="Слайд 2"></button>
-          <button class="deal-dot" type="button" aria-label="Слайд 3"></button>
-          <button class="deal-dot" type="button" aria-label="Слайд 4"></button>
-        </div>
+        <div class="deals-dots" id="deals-dots"></div>
       </div>
     </div>
   </section>
@@ -1693,7 +1631,7 @@
                   <div class="laptop-card-img"><picture><source srcset="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_mac.webp" type="image/webp"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_mac.jpg" alt="MacBook Air 13&quot; M3" width="960" height="1280" loading="lazy" decoding="async" onerror="this.onerror=null;var s=this.parentNode.querySelector('source');if(s)s.remove();"></picture></div>
                   <div class="laptop-card-body">
                     <strong>MacBook Air 13" M3</strong>
-                    <span class="laptop-card-price">45 600 ₴</span>
+                    <span class="laptop-card-price" aria-hidden="true">🔥</span>
                   </div>
                 </div>
               </div>
@@ -1704,7 +1642,7 @@
                 <div class="phone-notch-cta"></div>
                 <div class="phone-card-img-cta"><picture><source srcset="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.webp" type="image/webp"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.jpg" alt="iPhone 15 Pro 256GB" width="960" height="1280" loading="lazy" decoding="async" onerror="this.onerror=null;var s=this.parentNode.querySelector('source');if(s)s.remove();"></picture></div>
                 <div class="phone-card-name-cta">iPhone 15 Pro</div>
-                <div class="phone-card-price-cta">40 995 ₴</div>
+                <div class="phone-card-price-cta" aria-hidden="true">🔥</div>
                 <div class="phone-mini-btn-cta">Додати в кошик</div>
               </div>
             </div>
@@ -1825,6 +1763,7 @@
       let nearViewport = false;
 
       function goTo(i) {
+        if (!slides.length) return;
         index = (i + slides.length) % slides.length;
         track.style.transform = `translateX(-${index * 100}%)`;
         dots.forEach((d, di) => d.classList.toggle('active', di === index));
@@ -1834,7 +1773,7 @@
       const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       function startAutoplay() {
         stopAutoplay();
-        if (reduceMotion) return;
+        if (reduceMotion || slides.length < 2) return;
         timer = setInterval(next, 10000);
       }
       function stopAutoplay() {
@@ -1872,11 +1811,8 @@
         obs.disconnect();
       }, { rootMargin: '300px' }).observe(track);
 
-      goTo(0);
-      startAutoplay();
-
       // Live deals: admins mark products as hot in the bot, which publishes them
-      // to R2 as hot.json. The static slides above stay only if the fetch fails.
+      // to R2 as hot.json. Without deals (or if the fetch fails) the section stays hidden.
       const HOT_DEALS_URL = 'https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/hot.json';
       const BOT_URL = 'https://t.me/iios_cv_bot';
 
@@ -1943,6 +1879,12 @@
         const imgWrap = document.getElementById('hero-deal-img');
         if (!name || !price) return;
         name.textContent = deal.name;
+        const badgeName = document.getElementById('hero-deal-badge-name');
+        if (badgeName) badgeName.textContent = deal.name;
+        ['hero-deal-badge', 'hero-deal', 'hero-deal-btns'].forEach(id => {
+          const node = document.getElementById(id);
+          if (node) node.hidden = false;
+        });
         if (sub) { sub.textContent = deal.subtitle || ''; sub.hidden = !deal.subtitle; }
         price.textContent = regular ? fmt(sale || regular) : '';
         if (old) { old.textContent = sale ? fmt(regular) : ''; old.hidden = !sale; }
@@ -1960,13 +1902,10 @@
         .then(r => (r.ok ? r.json() : Promise.reject(r.status)))
         .then(data => {
           const deals = (data.deals || []).filter(d => d && d.id && d.name);
-          if (deals.length) renderHeroDeal(deals[0]);
-          if (!deals.length) {
-            // Admins removed every hot deal — hide the section rather than show stale ones.
-            document.getElementById('deals')?.setAttribute('hidden', '');
-            stopAutoplay();
-            return;
-          }
+          // No hot deals: the section and the hero product card stay hidden.
+          if (!deals.length) return;
+          renderHeroDeal(deals[0]);
+          document.getElementById('deals').hidden = false;
           track.replaceChildren(...deals.map(renderSlide));
           dotsWrap?.replaceChildren(...deals.map((_, i) => {
             const dot = el('button', 'deal-dot');
@@ -1983,7 +1922,7 @@
           goTo(0);
           if (single) stopAutoplay(); else startAutoplay();
         })
-        .catch(() => { /* keep the static fallback slides */ });
+        .catch(() => { /* leave the deals hidden */ });
     })();
 
     // Sticky mobile CTA: show once the hero button has scrolled out of view
