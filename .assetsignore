@@ -4,4 +4,4 @@
 !og-image.jpg
 !robots.txt
 !sitemap.xml
-!_headers
+# _headers is still applied by wrangler; ignoring it here just stops it being served.
