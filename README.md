@@ -127,7 +127,7 @@ The catalog starts empty — add products with `/add` (or the «➕ Додати
 | `USE_WEBHOOK` | on when a webhook URL is known | `false` → long polling (local dev) |
 | `WEBHOOK_URL` | `https://$FLY_APP_NAME.fly.dev/<path>` on Fly | Public webhook URL |
 | `WEBHOOK_PATH` | `/webhook` | Webhook path |
-| `WEBHOOK_SECRET` | empty | Checked against Telegram's `X-Telegram-Bot-Api-Secret-Token` header |
+| `WEBHOOK_SECRET` | derived from `BOT_TOKEN` | Checked against Telegram's `X-Telegram-Bot-Api-Secret-Token` header |
 | `PORT` / `WEBHOOK_LISTEN` | `8080` / `0.0.0.0` | Webhook server bind |
 | `STORE_NAME`, `STORE_PHONE`, `STORE_TELEGRAM`, `STORE_MANAGER`, `STORE_INSTAGRAM`, `STORE_INSTAGRAM2` | IIOS values | Contacts screen, product cards, channel posts |
 | `STORE_ADDRESS`, `STORE_MAP_URL` | IIOS values | Location screen |

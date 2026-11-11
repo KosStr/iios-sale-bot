@@ -129,7 +129,7 @@ fly secrets set BOT_TOKEN="YOUR_BOT_TOKEN_HERE"
 
 Replace with the token from BotFather.
 
-**Recommended — webhook secret** (Telegram sends this in the `X-Telegram-Bot-Api-Secret-Token` header):
+**Webhook secret** (Telegram sends this in the `X-Telegram-Bot-Api-Secret-Token` header; requests without it get `403`). If unset, the bot derives one from `BOT_TOKEN`, so the webhook is never open. Setting your own is still fine:
 
 ```powershell
 fly secrets set WEBHOOK_SECRET="pick-a-long-random-string-here"
@@ -482,6 +482,32 @@ curl "https://api.telegram.org/bot<YOUR_TOKEN>/getWebhookInfo"
 - One `shared-cpu-1x` machine (512 MB), suspended while idle.
 - 1 GB volume has a small monthly cost.
 - See [Fly.io pricing](https://fly.io/docs/about/pricing/) for current rates.
+
+---
+
+## Cost and abuse protection
+
+What a flood of requests can cost, and how each part is capped:
+
+| Part | Billing risk | Protection |
+|------|--------------|------------|
+| Landing (`index.html` on Workers static assets) | None: static asset requests are free and unlimited | Keep `wrangler.jsonc` assets-only (no `main` script). Security headers in `_headers` |
+| R2 photos + `hot.json` via `r2.dev` | Every request is an uncached R2 Class B read; `r2.dev` has no WAF or rate limiting | Move to a custom domain with cache + rate limiting (below) |
+| Bot on Fly (`/webhook`) | Junk traffic keeps the machine awake, plus egress | One machine only, `[http_service.concurrency]` caps in `fly.toml`, secret token rejects forged requests with `403` |
+
+### Put R2 behind a custom domain (recommended)
+
+1. Cloudflare → **R2** → bucket → **Settings** → **Custom Domains** → **Connect Domain** → `img.iios.store`.
+2. Same page: **Public Development URL** (`r2.dev`) → **Disallow**. Do this only after step 5, or the live landing loses its images.
+3. **Caching** → **Cache Rules** → create a rule: *Hostname equals `img.iios.store`* → **Eligible for cache**, Edge TTL **Use cache-control header if present**, else 1 hour. Photos and `hot.json` (`max-age=60`) are then served from the CDN, so repeated requests no longer reach R2.
+4. **Security** → **WAF** → **Rate limiting rules**: *Hostname equals `img.iios.store`* → 100 requests / 10 s per IP → **Block** for 10 s. The Free plan includes one rule.
+5. Replace the `pub-…r2.dev` host with `https://img.iios.store` in `index.html`, `_headers` (CSP) and the `R2_PUBLIC_BASE_URL` Fly secret, then redeploy both. The R2 CORS policy (Step 11) stays the same.
+
+### Spending alerts
+
+- Cloudflare → **Manage Account** → **Notifications** → **Add** → **Usage Based Billing**: get an email when R2 or Workers usage crosses a threshold.
+- Stay on the Workers **Free** plan if possible. Its limits fail closed, so requests are refused instead of billed.
+- Fly.io → **Billing**: turn on usage alerts. Check `fly scale show` shows a single machine, since only extra machines can multiply the cost.
 
 ---
 

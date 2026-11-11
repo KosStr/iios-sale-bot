@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 from dataclasses import dataclass, field
 from urllib.parse import urljoin
@@ -50,7 +51,7 @@ class WebhookConfig:
     enabled: bool
     url: str | None
     path: str
-    secret: str | None
+    secret: str
     port: int
     listen: str
 
@@ -64,6 +65,20 @@ class Config:
     admin_chat_ids: list[str] = field(default_factory=list)
     notify_chat_id: str = ""
     channel_id: str = ""
+
+
+def _webhook_secret() -> str:
+    """WEBHOOK_SECRET, or one derived from BOT_TOKEN when it is unset.
+
+    Without a secret anyone can POST forged updates (e.g. as an admin) to the
+    public webhook. The derived value is unguessable without the token and
+    stable across restarts; Telegram allows [A-Za-z0-9_-], so hex is valid.
+    """
+    explicit = os.getenv("WEBHOOK_SECRET", "").strip()
+    if explicit:
+        return explicit
+    token = os.getenv("BOT_TOKEN", "").strip()
+    return hashlib.sha256(f"webhook:{token}".encode()).hexdigest()
 
 
 def _load_webhook_config() -> WebhookConfig:
@@ -81,7 +96,7 @@ def _load_webhook_config() -> WebhookConfig:
         enabled=enabled,
         url=url,
         path=path,
-        secret=os.getenv("WEBHOOK_SECRET", "").strip() or None,
+        secret=_webhook_secret(),
         port=int(os.getenv("PORT", os.getenv("WEBHOOK_PORT", "8080"))),
         listen=os.getenv("WEBHOOK_LISTEN", "0.0.0.0").strip() or "0.0.0.0",
     )

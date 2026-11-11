@@ -1,0 +1,16 @@
+// Landing page (index.html) on Cloudflare Workers static assets.
+// Deploy: npx wrangler deploy  — only files allowed by .assetsignore are uploaded.
+// Hero images and hot.json are served from the R2 bucket, not from here.
+// Billing: static asset requests are free and unlimited. Do NOT add "main"
+// (a Worker script) or "run_worker_first" — every request would then count
+// as a billable Worker invocation, so a flood of requests would cost money.
+// Security headers live in _headers.
+{
+  "name": "store",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": ".",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "none"
+  }
+}

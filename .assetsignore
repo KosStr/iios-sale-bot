@@ -1,0 +1,7 @@
+# The repo root is the assets directory: publish only the landing page files.
+*
+!index.html
+!og-image.jpg
+!robots.txt
+!sitemap.xml
+!_headers

@@ -25,7 +25,10 @@ def log_runtime_config(config: Config) -> None:
     if webhook.enabled:
         logger.info("  webhook_url=%s", webhook.url)
         logger.info("  webhook_port=%s", webhook.port)
-        logger.info("  webhook_secret=%s", "set" if webhook.secret else "not set")
+        logger.info(
+            "  webhook_secret=%s",
+            "set" if os.getenv("WEBHOOK_SECRET", "").strip() else "derived from BOT_TOKEN",
+        )
     logger.info("  fly_app=%s", os.getenv("FLY_APP_NAME", "(not set)"))
     logger.info("  fly_region=%s", os.getenv("FLY_REGION", "(not set)"))
 

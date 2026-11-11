@@ -1,0 +1,9 @@
+# Response headers for the landing page (Cloudflare Workers static assets).
+# If the R2 public host changes (e.g. a custom domain), update img-src/connect-src.
+/*
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://connect.facebook.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev https://*.google-analytics.com https://*.googletagmanager.com https://*.doubleclick.net https://www.google.com https://www.google.com.ua https://www.facebook.com; connect-src 'self' https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://*.doubleclick.net https://www.google.com https://www.facebook.com https://connect.facebook.net; frame-src https://www.googletagmanager.com https://td.doubleclick.net; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
