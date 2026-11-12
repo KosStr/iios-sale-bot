@@ -50,13 +50,14 @@
       --border:   rgba(20,19,15,.09);
       --border-strong: rgba(20,19,15,.16);
       --text:     #17160f;
-      --muted:    #7c7869;
+      --muted:    #6a6658;
       --accent:   #a3814f;
-      --accent2:  #8c6b3f;
+      --accent2:  #7a5c34;
       --ink:      #121109;
       --white:    #ffffff;
-      --danger:   #dd5b47;
+      --danger:   #c2412c;
       --ok:       #2f9e5c;
+      --ok-text:  #1d7443;
       --shadow:   0 20px 50px rgba(23,22,15,.08);
       --shadow-sm:0 10px 24px rgba(23,22,15,.06);
       --radius:   18px;
@@ -74,14 +75,21 @@
     }
 
     a { color: inherit; text-decoration: none; }
+    a:focus-visible, button:focus-visible, summary:focus-visible {
+      outline: 2px solid var(--accent2); outline-offset: 3px;
+    }
+    .cta-band a:focus-visible { outline-color: var(--accent); }
     img { display: block; max-width: 100%; }
+    h1, h2 { text-wrap: balance; }
+    h2 { line-height: 1.15; }
+    .section-head p, .hero-sub, .cta-hero-text p { text-wrap: pretty; }
     picture { display: contents; }
 
     /* ── Utilities ──────────────────────────────────────────── */
     .container { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
     .tag {
       display: inline-block;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 700;
       letter-spacing: .1em;
       text-transform: uppercase;
@@ -107,14 +115,8 @@
       content: '';
       position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
       background: linear-gradient(90deg, transparent, var(--accent) 50%, transparent);
-      background-size: 200% 100%;
       opacity: .7;
-      animation: nav-sheen 7s linear infinite;
       pointer-events: none;
-    }
-    @keyframes nav-sheen {
-      0%   { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
     }
     .nav-inner {
       display: flex; align-items: center; justify-content: space-between;
@@ -127,7 +129,7 @@
     .nav-right { display: flex; align-items: center; gap: 18px; }
     .nav-icons { display: flex; align-items: center; gap: 8px; }
     .nav-icon {
-      width: 36px; height: 36px; border-radius: 50%;
+      width: 40px; height: 40px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
       background: var(--bg2);
       border: 1px solid var(--border);
@@ -174,18 +176,29 @@
       color: var(--white);
       font-size: 14px; font-weight: 700;
       border-radius: 100px;
-      padding: 9px 20px;
+      padding: 0 20px; height: 40px;
+      white-space: nowrap;
       transition: transform .2s, box-shadow .2s;
     }
     .nav-cta:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
     .nav-cta svg { width: 16px; height: 16px; flex-shrink: 0; }
     .nav-cta-text-short { display: none; }
+    .nav-catalog {
+      display: flex; align-items: center; gap: 7px;
+      height: 40px; padding: 0 16px 0 13px;
+      border-radius: 100px;
+      background: var(--bg2); border: 1px solid var(--border-strong);
+      font-size: 14px; font-weight: 700; color: var(--ink);
+      transition: border-color .2s, background .2s, transform .2s;
+    }
+    .nav-catalog svg { width: 16px; height: 16px; color: var(--accent2); }
+    .nav-catalog:hover { border-color: var(--accent); background: var(--bg3); transform: translateY(-1px); }
 
     /* ── HERO ───────────────────────────────────────────────── */
     .hero {
       min-height: 100svh;
       display: flex; flex-direction: column; justify-content: center;
-      padding: 110px 0 80px;
+      padding: 96px 0 64px;
       position: relative; overflow: hidden;
     }
     .hero-grid {
@@ -195,6 +208,7 @@
       align-items: center;
       position: relative; z-index: 1;
     }
+    .hero-grid > * { min-width: 0; }
     .hero-eyebrow {
       display: flex; align-items: center; gap: 10px;
       margin-bottom: 24px;
@@ -221,12 +235,11 @@
     }
     .hero h1 {
       position: relative;
-      font-size: clamp(36px, 6vw, 68px);
+      font-size: clamp(36px, 5.4vw, 60px);
       font-weight: 800;
       letter-spacing: -.03em;
       line-height: 1.05;
       margin-bottom: 20px;
-      text-shadow: 0 0 30px rgba(163,129,79,.22);
     }
     .hero h1::before {
       content: '';
@@ -250,7 +263,6 @@
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
-      filter: drop-shadow(0 0 16px rgba(163,129,79,.5));
     }
     .hero-sub {
       font-size: clamp(16px, 2vw, 20px);
@@ -258,7 +270,7 @@
       max-width: 480px;
       margin-bottom: 36px;
     }
-    .trust-badges { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 40px; }
+    .trust-badges { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 28px; }
     .trust-badge {
       display: inline-flex; align-items: center; gap: 10px;
       font-size: 14px; font-weight: 800; color: var(--text);
@@ -339,6 +351,10 @@
     }
     .hero-cta { font-size: 17px; padding: 16px 32px; box-shadow: var(--shadow); }
     .hero-cta-note { font-size: 13px; font-weight: 600; color: var(--muted); }
+    .hero-catalog { font-size: 16px; padding: 15px 22px; }
+    .hero-catalog-short { display: none; }
+    .hero-cta-note { flex-basis: 100%; }
+    .hero-catalog svg { width: 18px; height: 18px; color: var(--accent2); }
 
     /* ── Phone mock ─────────────────────────────────────────── */
     .hero-visual {
@@ -359,7 +375,7 @@
       will-change: opacity, transform;
     }
     .phone-frame {
-      width: 280px; max-width: 100%;
+      width: 320px; max-width: 100%;
       background: var(--bg2);
       border: 1px solid var(--border);
       border-radius: 40px;
@@ -380,7 +396,7 @@
       border-radius: 0 0 20px 20px;
       margin: 0 auto;
     }
-    .phone-screen { padding: 8px 0 24px; }
+    .phone-screen { padding: 8px 0 24px; min-height: 400px; }
     .tg-header {
       background: var(--bg3);
       padding: 12px 16px;
@@ -396,7 +412,7 @@
       flex-shrink: 0;
     }
     .tg-name { font-size: 13px; font-weight: 700; }
-    .tg-status { font-size: 10px; color: var(--ok); display: flex; align-items: center; gap: 5px; }
+    .tg-status { font-size: 10px; color: var(--ok-text); display: flex; align-items: center; gap: 5px; }
     .tg-status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); position: relative; }
     .tg-status-dot::after {
       content: ''; position: absolute; inset: 0; border-radius: 50%;
@@ -420,24 +436,29 @@
       animation-delay: .3s;
     }
     .msg-product {
+      display: block;
       background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
       border-bottom-left-radius: 4px;
+      padding: 8px 8px 10px;
       margin: 0 12px 8px;
+      transition: border-color .2s ease, box-shadow .2s ease;
       opacity: 0;
       animation: msg-in .5s ease forwards;
       animation-delay: .9s;
     }
+    a.msg-product:hover { border-color: var(--accent); box-shadow: var(--shadow-sm); }
     @keyframes msg-in {
       from { opacity: 0; transform: translateY(10px); }
       to   { opacity: 1; transform: translateY(0); }
     }
     .prod-img-placeholder {
-      width: 100%; height: 120px;
+      width: 100%; aspect-ratio: 1 / 1;
       background: linear-gradient(135deg, var(--bg3), #e2ddce);
-      border-radius: 8px;
+      border-radius: 9px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 28px;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
       overflow: hidden;
     }
     .prod-img-placeholder img {
@@ -448,9 +469,11 @@
       0%,100% { transform: scale(1); }
       50%      { transform: scale(1.04); }
     }
-    .prod-name { font-size: 12px; font-weight: 700; }
-    .prod-price { font-size: 13px; font-weight: 800; color: var(--accent2); }
-    .prod-old { font-size: 10px; color: var(--muted); text-decoration: line-through; }
+    .prod-name { font-size: 15px; font-weight: 700; padding: 0 4px; }
+    .prod-sub { font-size: 12px; color: var(--muted); padding: 0 4px; }
+    .prod-price-row { display: flex; align-items: baseline; gap: 8px; padding: 4px 4px 0; }
+    .prod-price { font-size: 19px; font-weight: 800; color: var(--accent2); }
+    .prod-old { font-size: 12px; color: var(--muted); text-decoration: line-through; }
     .tg-btns {
       display: flex; flex-direction: column; gap: 4px;
       padding: 0 12px;
@@ -462,13 +485,13 @@
       background: rgba(163,129,79,.1);
       border: 1px solid rgba(163,129,79,.3);
       border-radius: 10px;
-      padding: 7px 12px;
-      font-size: 11px; font-weight: 700;
+      padding: 9px 12px;
+      font-size: 12.5px; font-weight: 700;
       color: var(--accent2);
       text-align: center;
       transition: background .2s, border-color .2s;
     }
-    .tg-btns .tg-btn:first-child {
+    #hero-deal-btns .tg-btn:first-child {
       animation: btn-pulse 2.6s ease-in-out infinite;
       animation-delay: 1.9s;
     }
@@ -545,6 +568,9 @@
     }
     .section-head p { font-size: 17px; color: var(--muted); max-width: 520px; margin: 0 auto; }
 
+    .cats-more { margin-top: 22px; text-align: center; }
+    .cats-more a { font-weight: 700; color: var(--accent2); border-bottom: 1px solid currentColor; padding-bottom: 1px; }
+    .cats-more a:hover { color: var(--ink); }
     .cats {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
@@ -585,6 +611,7 @@
       border: 1px solid rgba(163,129,79,.2);
       transition: transform .3s ease;
     }
+    .cat-icon svg { width: 24px; height: 24px; color: var(--accent2); }
     .cat:hover .cat-icon { transform: scale(1.12) rotate(-6deg); }
     .cat-name { font-size: 13px; font-weight: 700; }
 
@@ -618,13 +645,14 @@
     .deal-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .deal-body { padding: 20px; }
     .deal-name { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+    .deal-sub { font-size: 14px; color: var(--muted); margin: -6px 0 10px; }
     .deal-price-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
     .deal-price-old { font-size: 14px; color: var(--muted); text-decoration: line-through; }
     .deal-price-new { font-size: 22px; font-weight: 800; color: var(--accent2); }
     .deal-cta { align-self: flex-start; display: inline-flex; margin-top: 18px; padding: 12px 28px; }
     .deal-nav {
       position: absolute; top: 50%; transform: translateY(-50%);
-      width: 38px; height: 38px; border-radius: 50%;
+      width: 44px; height: 44px; border-radius: 50%;
       background: var(--bg2); border: 1px solid var(--border-strong);
       display: flex; align-items: center; justify-content: center;
       cursor: pointer; box-shadow: var(--shadow-sm);
@@ -635,21 +663,29 @@
     .deal-nav svg { width: 18px; height: 18px; color: var(--text); }
     .deal-nav-prev { left: 10px; }
     .deal-nav-next { right: 10px; }
-    .deals-dots { display: flex; justify-content: center; gap: 8px; margin-top: 18px; }
+    .deals-dots { display: flex; justify-content: center; margin-top: 10px; }
+    /* 28px tap area around an 8px dot */
     .deal-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: var(--border-strong); border: none; padding: 0;
+      position: relative;
+      width: 28px; height: 28px; border-radius: 50%;
+      background: none; border: none; padding: 0;
       cursor: pointer;
+    }
+    .deal-dot::before {
+      content: '';
+      position: absolute; inset: 10px; border-radius: 50%;
+      background: rgba(20,19,15,.3);
       transition: background .2s ease, transform .2s ease;
     }
-    .deal-dot.active { background: var(--accent2); transform: scale(1.3); }
+    .deal-dot.active::before { background: var(--accent2); transform: scale(1.4); }
     .deal-nav[hidden], .deals-dots[hidden], #deals[hidden],
-    #hero-deal-badge[hidden], #hero-deal[hidden], #hero-deal-btns[hidden] { display: none; }
+    #hero-deal-badge[hidden], #hero-deal[hidden], #hero-deal-btns[hidden], #hero-default-btns[hidden] { display: none; }
     @media (min-width: 701px) {
       .deal-slide { display: flex; align-items: stretch; }
       .deal-img { width: 50%; aspect-ratio: auto; }
       .deal-body { width: 50%; display: flex; flex-direction: column; justify-content: center; padding: 40px 48px; }
       .deal-name { font-size: 22px; margin-bottom: 14px; }
+      .deal-sub { font-size: 15px; margin: -8px 0 14px; }
       .deal-price-old { font-size: 16px; }
       .deal-price-new { font-size: 30px; }
     }
@@ -707,15 +743,19 @@
         -webkit-backdrop-filter: blur(16px);
         border-top: 1px solid var(--border);
         transform: translateY(110%);
-        transition: transform .3s ease;
+        visibility: hidden;
+        transition: transform .3s ease, visibility 0s .3s;
       }
-      .sticky-cta.visible { transform: none; }
-      .sticky-cta .btn-primary { justify-content: center; width: 100%; padding: 14px 20px; }
+      .sticky-cta.visible { transform: none; visibility: visible; transition-delay: 0s; }
+      .sticky-cta { display: flex; gap: 8px; }
+      .sticky-cta .btn-primary { justify-content: center; flex: 1; gap: 8px; padding: 14px 12px; font-size: 15px; white-space: nowrap; }
+      .sticky-cta .btn-secondary { justify-content: center; padding: 14px 16px; font-size: 15px; white-space: nowrap; }
+      .sticky-cta .btn-secondary svg { width: 18px; height: 18px; color: var(--accent2); }
       body { padding-bottom: 76px; }
     }
 
     /* ── HOW IT WORKS (compact accordion) ──────────────────────── */
-    .steps { position: relative; display: flex; flex-direction: column; gap: 10px; max-width: 640px; margin: 0 auto; }
+    .steps { position: relative; display: flex; flex-direction: column; gap: 10px; max-width: 640px; margin: 0 auto; list-style: none; }
     .steps::before {
       content: '';
       position: absolute; left: 35px; top: 0; bottom: 0; width: 2px;
@@ -736,16 +776,12 @@
     .reveal.visible .step:nth-child(2) { transition-delay: .16s; }
     .reveal.visible .step:nth-child(3) { transition-delay: .27s; }
     .reveal.visible .step:nth-child(4) { transition-delay: .38s; }
-    .step[open] { border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
     .step-summary {
       list-style: none;
       display: flex; align-items: center; gap: 14px;
-      padding: 14px 18px;
-      cursor: pointer;
+      padding: 14px 18px 6px;
       font-weight: 700; font-size: 15px;
-      -webkit-tap-highlight-color: transparent;
     }
-    .step-summary::-webkit-details-marker { display: none; }
     .step-icon {
       width: 34px; height: 34px; border-radius: 10px;
       background: rgba(163,129,79,.1);
@@ -754,19 +790,8 @@
       transition: transform .25s ease, background .3s ease;
     }
     .step-icon svg { width: 17px; height: 17px; color: var(--accent2); transition: color .3s ease; }
-    .step-summary:hover .step-icon { transform: scale(1.08) rotate(-4deg); }
-    .step[open] .step-icon {
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      animation: step-icon-pulse 2.2s ease-in-out infinite;
-    }
-    .step[open] .step-icon svg { color: var(--white); }
-    @keyframes step-icon-pulse {
-      0%,100% { box-shadow: 0 0 0 0 rgba(163,129,79,.35); }
-      50%      { box-shadow: 0 0 0 8px rgba(163,129,79,0); }
-    }
     .step-title { flex: 1; }
     .step-chevron { width: 18px; height: 18px; color: var(--muted); flex-shrink: 0; transition: transform .25s ease; }
-    .step[open] .step-chevron { transform: rotate(180deg); }
     .step p { font-size: 14px; color: var(--muted); line-height: 1.6; padding: 0 18px 16px 66px; }
     .steps-note {
       text-align: center; font-size: 13px; font-weight: 700;
@@ -847,14 +872,14 @@
     .cta-band .btn-primary:hover { box-shadow: 0 20px 50px rgba(0,0,0,.35); }
     .cta-band .btn-secondary { background: transparent; color: var(--white); border-color: rgba(255,255,255,.25); }
     .cta-band .btn-secondary:hover { border-color: var(--accent); background: rgba(255,255,255,.06); }
-    .cta-features { display: flex; flex-wrap: wrap; gap: 24px; }
-    .cta-feature { display: flex; align-items: center; gap: 12px; }
+    .cta-features { display: flex; flex-wrap: wrap; gap: 14px 18px; }
+    .cta-feature { display: flex; align-items: center; gap: 10px; }
     .cta-feature-icon {
-      width: 40px; height: 40px; border-radius: 50%;
+      width: 36px; height: 36px; border-radius: 50%;
       background: linear-gradient(135deg, var(--accent), var(--accent2));
       display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
-    .cta-feature-icon svg { width: 18px; height: 18px; color: var(--white); }
+    .cta-feature-icon svg { width: 17px; height: 17px; color: var(--white); }
     .cta-feature strong { display: block; font-size: 14px; font-weight: 800; }
     .cta-feature div span { display: block; font-size: 12px; color: rgba(255,255,255,.5); }
 
@@ -923,7 +948,7 @@
     .laptop-card-img { width: 54px; height: 54px; border-radius: 8px; overflow: hidden; flex-shrink: 0; background: #000; }
     .laptop-card-img img { width: 100%; height: 100%; object-fit: cover; }
     .laptop-card-body strong { display: block; font-size: 12px; font-weight: 700; color: var(--white); margin-bottom: 4px; }
-    .laptop-card-price { font-size: 14px; font-weight: 800; color: var(--accent); }
+    .laptop-card-price { font-size: 13px; font-weight: 800; color: var(--accent); }
     .laptop-base {
       width: 44px; height: 20px;
       margin: 0 auto;
@@ -959,7 +984,7 @@
     .phone-card-img-cta { width: 100%; aspect-ratio: 1/1; border-radius: 8px; overflow: hidden; margin-bottom: 7px; }
     .phone-card-img-cta img { width: 100%; height: 100%; object-fit: cover; }
     .phone-card-name-cta { font-size: 10px; font-weight: 700; color: var(--white); }
-    .phone-card-price-cta { font-size: 12px; font-weight: 800; color: var(--accent); margin: 2px 0 8px; }
+    .phone-card-price-cta { font-size: 11px; font-weight: 800; color: var(--accent); margin: 2px 0 8px; }
     .phone-mini-btn-cta {
       background: linear-gradient(135deg, var(--accent), var(--accent2));
       color: var(--white);
@@ -1018,7 +1043,7 @@
       margin-top: 36px;
       text-align: center;
       font-size: 11px; font-weight: 700; letter-spacing: .3em; text-transform: uppercase;
-      color: rgba(255,255,255,.35);
+      color: rgba(255,255,255,.6);
     }
     .cta-tagline::before, .cta-tagline::after { content: ''; height: 1px; width: 60px; background: rgba(255,255,255,.15); }
 
@@ -1056,11 +1081,12 @@
       color: var(--muted); margin-bottom: 14px;
     }
     .footer-contacts {
-      display: flex; flex-direction: column; gap: 10px;
+      display: flex; flex-direction: column; gap: 0;
       font-style: normal; font-size: 14px;
     }
     .footer-contacts a, .footer-contacts span {
       display: inline-flex; align-items: center; gap: 10px;
+      padding: 7px 0;
       color: var(--text); transition: color .15s;
     }
     .footer-contacts a:hover { color: var(--accent2); }
@@ -1071,32 +1097,34 @@
     .footer-bottom {
       display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 24px;
       margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--border);
-      font-size: 12px; color: var(--muted);
+      font-size: 13px; color: var(--muted);
     }
-    .footer-bottom a { color: var(--muted); transition: color .15s; }
+    .footer-bottom a { display: inline-block; padding: 10px 0; color: var(--muted); transition: color .15s; }
     .footer-bottom a:hover { color: var(--text); }
 
     /* ── COOKIE CONSENT ─────────────────────────────────────── */
     .cookie-banner {
-      position: fixed; left: 16px; right: 16px; bottom: 16px;
-      max-width: 620px; margin: 0 auto;
+      /* Bottom-right on desktop: the hero buttons sit on the left. */
+      position: fixed; right: 24px; bottom: 24px;
+      width: min(400px, calc(100vw - 32px));
       background: var(--bg2);
       border: 1px solid var(--border-strong);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      padding: 22px 24px;
+      padding: 18px 20px;
       z-index: 200;
       transform: translateY(140%);
       opacity: 0;
-      transition: transform .5s cubic-bezier(.2,.8,.2,1), opacity .4s ease;
+      visibility: hidden;
+      transition: transform .5s cubic-bezier(.2,.8,.2,1), opacity .4s ease, visibility 0s .5s;
     }
-    .cookie-banner.visible { transform: translateY(0); opacity: 1; }
-    .cookie-banner p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+    .cookie-banner.visible { transform: translateY(0); opacity: 1; visibility: visible; transition-delay: 0s; }
+    .cookie-banner p { font-size: 13px; color: var(--muted); line-height: 1.5; }
     .cookie-banner strong { color: var(--text); }
     .cookie-toggle {
       background: none; border: none; padding: 0; margin-top: 8px;
-      font: inherit; font-size: 12px; font-weight: 700; color: var(--accent2);
-      text-decoration: underline; cursor: pointer;
+      font: inherit; font-size: 13px; font-weight: 700; color: var(--accent2);
+      text-decoration: underline; cursor: pointer; padding: 6px 0;
     }
     .cookie-details {
       font-size: 12px; color: var(--muted); line-height: 1.7;
@@ -1104,10 +1132,15 @@
     }
     .cookie-details.open { max-height: 200px; margin-top: 10px; }
     .cookie-details ul { padding-left: 18px; }
-    .cookie-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+    .cookie-actions { display: flex; gap: 8px; margin-top: 14px; }
     .cookie-actions button {
-      font-family: inherit; border: none; cursor: pointer;
-      padding: 10px 20px; font-size: 14px;
+      font-family: inherit; cursor: pointer;
+      flex: 1; justify-content: center;
+      padding: 11px 14px; font-size: 14px; white-space: nowrap;
+    }
+    .cookie-actions .btn-primary { border: 1px solid var(--ink); }
+    @media (max-width: 700px) {
+      .cookie-banner { left: 12px; right: 12px; bottom: 12px; width: auto; padding: 14px 16px; }
     }
 
     /* ── Scroll reveal ──────────────────────────────────────── */
@@ -1117,26 +1150,29 @@
     /* ── RESPONSIVE ─────────────────────────────────────────── */
     @media (max-width: 900px) {
       .hero-grid { grid-template-columns: 1fr; gap: 48px; }
-      .cats { grid-template-columns: repeat(3, 1fr); }
+      /* 3 + 2 layout: no orphan card stretched across the row */
+      .cats { grid-template-columns: repeat(6, 1fr); }
+      .cat { grid-column: span 2; }
+      .cat:nth-child(n+4) { grid-column: span 3; }
       .badge-tl, .badge-br { display: none; }
     }
     @media (max-width: 600px) {
       .nav-right { gap: 10px; }
       .nav-icons { gap: 6px; }
-      .nav-icon { width: 32px; height: 32px; }
-      .nav-icon svg { width: 15px; height: 15px; }
-      .nav-cta { padding: 9px 16px 9px 12px; }
+      /* Socials live in the footer on phones; keep only the map pin. */
+      .nav-icon:not(.nav-icon-map) { display: none; }
+      .nav-cta { padding: 0 16px 0 12px; }
       .nav-cta-text { display: none; }
       .nav-cta-text-short { display: inline; }
       .hero { padding: 90px 0 60px; }
-      .cats { grid-template-columns: repeat(2, 1fr); }
-      .cats .cat:last-child { grid-column: span 2; }
+      .cats { gap: 8px; }
+      .cat { padding: 20px 6px; }
       .hero-stats { gap: 20px; }
       .section { padding: 64px 0; }
       .footer-top { grid-template-columns: 1fr; gap: 28px; text-align: center; justify-items: center; }
       .footer-tagline { margin-left: auto; margin-right: auto; }
       .footer-contacts { align-items: center; }
-      .footer-links { flex-direction: row; justify-content: center; gap: 24px; }
+      .footer-links { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 4px 24px; }
       .footer-bottom { flex-direction: column; text-align: center; }
       .extra-links { grid-template-columns: 1fr; }
 
@@ -1149,17 +1185,26 @@
       .hero-sub { font-size: 16px; margin-bottom: 20px; }
       .hero-actions { margin: 0 0 18px; gap: 8px; }
       .hero-cta { width: 100%; justify-content: center; }
-      .hero-cta-note { width: 100%; text-align: center; font-size: 12px; }
+      .hero-catalog { width: 100%; justify-content: center; font-size: 17px; }
+      .hero-catalog-long { display: none; }
+      .hero-catalog-short { display: inline; }
+      .hero-cta-note { width: 100%; text-align: center; font-size: 13px; }
       .trust-badges { gap: 6px; margin-bottom: 0; }
-      .trust-badge { font-size: 12px; padding: 5px 12px 5px 5px; gap: 7px; }
+      .trust-badge { font-size: 12.5px; padding: 5px 10px 5px 5px; gap: 6px; }
       .trust-badge-icon { width: 24px; height: 24px; }
       .trust-badge-icon svg { width: 13px; height: 13px; }
       .trust-badge:nth-child(4) { display: none; }
       .hero-stats { display: none; }
-      .phone-frame { width: 230px; }
+      .phone-frame { width: 280px; }
 
       .pay-grid { grid-template-columns: 1fr; }
       .deal-cta { display: flex; justify-content: center; }
+    }
+
+    @media (max-width: 359px) {
+      .nav-catalog { width: 40px; padding: 0; justify-content: center; }
+      .nav-catalog-text, .sticky-catalog-text { display: none; }
+      .cat-name { font-size: 12px; }
     }
 
     /* ── Reduced motion ─────────────────────────────────────── */
@@ -1260,7 +1305,7 @@
   <!-- NAV -->
   <nav>
     <div class="container nav-inner">
-      <div class="nav-logo">IIOS<span>.</span></div>
+      <a href="/" class="nav-logo" aria-label="IIOS — на головну">IIOS<span>.</span></a>
       <div class="nav-right">
         <div class="nav-icons">
           <a href="https://www.instagram.com/iios_cv" class="nav-icon" target="_blank" rel="noopener" aria-label="Instagram" data-tip="Instagram">
@@ -1269,19 +1314,21 @@
           <a href="https://t.me/IIOS_cv" class="nav-icon" target="_blank" rel="noopener" aria-label="Telegram-канал (новини та акції)" data-tip="Канал">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
           </a>
-          <a href="https://maps.app.goo.gl/8AZcqV7XxU1495Ns6?g_st=ic" class="nav-icon" target="_blank" rel="noopener" aria-label="Адреса на мапі" data-tip="Геолокація">
+          <a href="https://maps.app.goo.gl/8AZcqV7XxU1495Ns6?g_st=ic" class="nav-icon nav-icon-map" target="_blank" rel="noopener" aria-label="Адреса на мапі" data-tip="Геолокація">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
           </a>
         </div>
+        <a href="/catalog" class="nav-catalog" aria-label="Каталог з цінами"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span class="nav-catalog-text">Каталог</span></a>
         <a href="https://t.me/iios_cv_bot" class="nav-cta" target="_blank" rel="noopener" data-cta="nav">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.93 7.003-1.67 7.87c-.125.558-.455.695-.92.432l-2.54-1.872-1.225 1.178c-.135.135-.25.25-.512.25l.182-2.594 4.705-4.25c.204-.182-.044-.283-.317-.1l-5.812 3.66-2.502-.782c-.543-.17-.554-.543.114-.803l9.76-3.762c.452-.164.849.11.738.773z"/></svg>
-          <span class="nav-cta-text">Відкрити бот</span>
+          <span class="nav-cta-text">Обрати в Telegram</span>
           <span class="nav-cta-text-short">Бот</span>
         </a>
       </div>
     </div>
   </nav>
 
+  <main>
   <!-- HERO -->
   <section class="hero">
     <div class="grid-texture"></div>
@@ -1301,6 +1348,7 @@
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.93 7.003-1.67 7.87c-.125.558-.455.695-.92.432l-2.54-1.872-1.225 1.178c-.135.135-.25.25-.512.25l.182-2.594 4.705-4.25c.204-.182-.044-.283-.317-.1l-5.812 3.66-2.502-.782c-.543-.17-.554-.543.114-.803l9.76-3.762c.452-.164.849.11.738.773z"/></svg>
             Обрати в Telegram
           </a>
+          <a href="/catalog" class="btn-secondary hero-catalog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span class="hero-catalog-long">Каталог з цінами</span><span class="hero-catalog-short">Переглянути каталог</span></a>
           <span class="hero-cta-note">Без реєстрації · Післяплата · Розтермінування</span>
         </div>
         <div class="trust-badges">
@@ -1355,14 +1403,21 @@
               Оберіть категорію або скористайтеся пошуком.
             </div>
             <!-- Filled from the first hot deal in hot.json; stays hidden when there are none. -->
-            <div class="msg-product" id="hero-deal" hidden>
+            <a class="msg-product" id="hero-deal" href="https://t.me/iios_cv_bot" target="_blank" rel="noopener" data-cta="hero_deal" hidden>
               <div class="prod-img-placeholder" id="hero-deal-img"></div>
               <div class="prod-name" id="hero-deal-name"></div>
-              <div id="hero-deal-sub" style="font-size:10px;color:var(--muted);margin:2px 0 6px" hidden></div>
-              <div style="display:flex;align-items:baseline;gap:6px">
+              <div class="prod-sub" id="hero-deal-sub" hidden></div>
+              <div class="prod-price-row">
                 <div class="prod-price" id="hero-deal-price"></div>
                 <div class="prod-old" id="hero-deal-old" hidden></div>
               </div>
+            </a>
+            <!-- Shown until (and unless) a hot deal fills the card above. -->
+            <div class="tg-btns" id="hero-default-btns" aria-hidden="true">
+              <div class="tg-btn">iPhone</div>
+              <div class="tg-btn">MacBook</div>
+              <div class="tg-btn">AirPods</div>
+              <div class="tg-btn">Apple Watch</div>
             </div>
             <div class="tg-btns" id="hero-deal-btns" hidden>
               <div class="tg-btn">Додати в кошик</div>
@@ -1372,7 +1427,7 @@
         </div>
         <div class="badge badge-br reveal">
           <div style="color:var(--muted);font-size:11px;">Ваше замовлення</div>
-          <strong style="color:var(--ok)">Підтверджено ✓</strong>
+          <strong style="color:var(--ok-text)">Підтверджено ✓</strong>
           <div style="font-size:11px;color:var(--muted)">Ми зателефонуємо</div>
         </div>
       </div>
@@ -1388,27 +1443,29 @@
         <p>П'ять категорій з фільтрами по ціні, бренду та кольору. Знайдіть свій пристрій за секунди.</p>
       </div>
       <div class="cats reveal">
-        <a href="https://t.me/iios_cv_bot?start=cat_phone" class="cat" target="_blank" rel="noopener" data-cta="category">
-          <div class="cat-icon">📱</div>
+        <a href="/catalog#phone" class="cat" data-cta="category">
+          <div class="cat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2.5"/><line x1="10.5" y1="5" x2="13.5" y2="5"/></svg></div>
           <div class="cat-name">iPhone</div>
         </a>
-        <a href="https://t.me/iios_cv_bot?start=cat_watch" class="cat" target="_blank" rel="noopener" data-cta="category">
-          <div class="cat-icon">⌚</div>
+        <a href="/catalog#watch" class="cat" data-cta="category">
+          <div class="cat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><polyline points="12 9 12 12 13.5 13.5"/><path d="M16.51 17.35l-.35 3.83a2 2 0 0 1-2 1.82H9.83a2 2 0 0 1-2-1.82l-.35-3.83m.01-10.7l.35-3.83A2 2 0 0 1 9.83 1h4.35a2 2 0 0 1 2 1.82l.35 3.83"/></svg></div>
           <div class="cat-name">Apple Watch</div>
         </a>
-        <a href="https://t.me/iios_cv_bot?start=cat_headphones" class="cat" target="_blank" rel="noopener" data-cta="category">
-          <div class="cat-icon">🎧</div>
+        <a href="/catalog#headphones" class="cat" data-cta="category">
+          <div class="cat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg></div>
           <div class="cat-name">Навушники</div>
         </a>
-        <a href="https://t.me/iios_cv_bot?start=cat_laptop" class="cat" target="_blank" rel="noopener" data-cta="category">
-          <div class="cat-icon">💻</div>
+        <a href="/catalog#laptop" class="cat" data-cta="category">
+          <div class="cat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="11" rx="2"/><path d="M2 19h20"/></svg></div>
           <div class="cat-name">MacBook</div>
         </a>
-        <a href="https://t.me/iios_cv_bot?start=cat_accessories" class="cat" target="_blank" rel="noopener" data-cta="category">
-          <div class="cat-icon">🔌</div>
+        <a href="/catalog#accessories" class="cat" data-cta="category">
+          <div class="cat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 2v6M15 2v6"/><path d="M6 8h12v3a6 6 0 0 1-12 0z"/><path d="M12 17v5"/></svg></div>
           <div class="cat-name">Аксесуари</div>
         </a>
       </div>
+      <!-- Plain link to the crawlable catalog page (rendered by worker/index.js). -->
+      <p class="cats-more reveal"><a href="/catalog">Увесь каталог з цінами →</a></p>
     </div>
   </section>
 
@@ -1416,9 +1473,11 @@
   <section class="section" id="deals" hidden>
     <div class="container">
       <div class="section-head reveal">
-        <div class="tag">Гарячі пропозиції</div>
-        <h2>Знижки тижня</h2>
-        <p>Обмежена кількість за спеціальною ціною.</p>
+        <!-- Default wording makes no discount claim; the script switches to
+             "Знижки тижня" only when a deal really has a sale price. -->
+        <div class="tag" id="deals-tag">Гаряче</div>
+        <h2 id="deals-title">Гарячі пропозиції</h2>
+        <p id="deals-sub">Добірка тижня від IIOS.</p>
       </div>
       <div class="deals-carousel reveal" id="deals-carousel">
         <div class="deals-viewport">
@@ -1486,48 +1545,44 @@
         <h2>Замовлення за чотири кроки</h2>
         <p>Жодних форм і реєстрацій. Прямо в Telegram — швидко і зручно.</p>
       </div>
-      <div class="steps reveal">
-        <details class="step" open>
-          <summary class="step-summary">
+      <ol class="steps reveal">
+        <li class="step">
+          <div class="step-summary">
             <span class="step-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>
             </span>
             <span class="step-title">Відкрийте бот</span>
-            <svg class="step-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-          </summary>
-          <p>Кнопка «Відкрити в Telegram» — і ви вже в каталозі.</p>
-        </details>
-        <details class="step">
-          <summary class="step-summary">
+          </div>
+          <p>Кнопка «Обрати в Telegram» — і ви вже в каталозі.</p>
+        </li>
+        <li class="step">
+          <div class="step-summary">
             <span class="step-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 4 21 4 14 12.5 14 19 10 21 10 12.5 3 4"/></svg>
             </span>
             <span class="step-title">Оберіть модель</span>
-            <svg class="step-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-          </summary>
+          </div>
           <p>Фільтруйте за ціною, кольором і категорією — знайдете модель за секунди.</p>
-        </details>
-        <details class="step">
-          <summary class="step-summary">
+        </li>
+        <li class="step">
+          <div class="step-summary">
             <span class="step-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
             </span>
             <span class="step-title">Оформіть замовлення</span>
-            <svg class="step-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-          </summary>
+          </div>
           <p>Додайте в кошик, залиште ім'я, телефон і адресу доставки.</p>
-        </details>
-        <details class="step">
-          <summary class="step-summary">
+        </li>
+        <li class="step">
+          <div class="step-summary">
             <span class="step-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.14 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.05 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 17z"/></svg>
             </span>
             <span class="step-title">Ми зателефонуємо</span>
-            <svg class="step-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-          </summary>
+          </div>
           <p>Підтвердимо деталі й домовимось про доставку.</p>
-        </details>
-      </div>
+        </li>
+      </ol>
       <div class="steps-note reveal">Ще не готові замовляти?</div>
       <div class="extra-links reveal">
         <a href="https://t.me/IIOS_cv" class="extra-link" target="_blank" rel="noopener">
@@ -1603,7 +1658,7 @@
           <div class="cta-actions">
             <a href="https://t.me/iios_cv_bot" class="btn-primary" target="_blank" rel="noopener" data-cta="cta_band">
               <svg viewBox="0 0 24 24" fill="currentColor" style="width:20px;height:20px;"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.93 7.003-1.67 7.87c-.125.558-.455.695-.92.432l-2.54-1.872-1.225 1.178c-.135.135-.25.25-.512.25l.182-2.594 4.705-4.25c.204-.182-.044-.283-.317-.1l-5.812 3.66-2.502-.782c-.543-.17-.554-.543.114-.803l9.76-3.762c.452-.164.849.11.738.773z"/></svg>
-              Відкрити в Telegram
+              Обрати в Telegram
             </a>
             <a href="https://t.me/IIOS_cv" class="btn-secondary" target="_blank" rel="noopener">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
@@ -1633,10 +1688,10 @@
               <div class="laptop-screen">
                 <div class="laptop-dots"><span></span><span></span><span></span></div>
                 <div class="laptop-card">
-                  <div class="laptop-card-img"><picture><source srcset="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_mac.webp" type="image/webp"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_mac.jpg" alt="MacBook Air 13&quot; M3" width="960" height="1280" loading="lazy" decoding="async" onerror="this.onerror=null;var s=this.parentNode.querySelector('source');if(s)s.remove();"></picture></div>
+                  <div class="laptop-card-img" id="cta-deal2-img"><picture><source srcset="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_mac.webp" type="image/webp"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_mac.jpg" alt="MacBook Air 13&quot; M3" width="960" height="1280" loading="lazy" decoding="async" onerror="this.onerror=null;var s=this.parentNode.querySelector('source');if(s)s.remove();"></picture></div>
                   <div class="laptop-card-body">
-                    <strong>MacBook Air 13" M3</strong>
-                    <span class="laptop-card-price" aria-hidden="true">🔥</span>
+                    <strong id="cta-deal2-name">MacBook Air 13" M3</strong>
+                    <span class="laptop-card-price" id="cta-deal2-price">У каталозі</span>
                   </div>
                 </div>
               </div>
@@ -1645,9 +1700,9 @@
             <div class="device device-phone">
               <div class="phone-frame-cta">
                 <div class="phone-notch-cta"></div>
-                <div class="phone-card-img-cta"><picture><source srcset="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.webp" type="image/webp"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.jpg" alt="iPhone 15 Pro 256GB" width="960" height="1280" loading="lazy" decoding="async" onerror="this.onerror=null;var s=this.parentNode.querySelector('source');if(s)s.remove();"></picture></div>
-                <div class="phone-card-name-cta">iPhone 15 Pro</div>
-                <div class="phone-card-price-cta" aria-hidden="true">🔥</div>
+                <div class="phone-card-img-cta" id="cta-deal1-img"><picture><source srcset="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.webp" type="image/webp"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.jpg" alt="iPhone 15 Pro 256GB" width="960" height="1280" loading="lazy" decoding="async" onerror="this.onerror=null;var s=this.parentNode.querySelector('source');if(s)s.remove();"></picture></div>
+                <div class="phone-card-name-cta" id="cta-deal1-name">iPhone 15 Pro</div>
+                <div class="phone-card-price-cta" id="cta-deal1-price">У каталозі</div>
                 <div class="phone-mini-btn-cta">Додати в кошик</div>
               </div>
             </div>
@@ -1680,6 +1735,8 @@
     </div>
   </section>
 
+  </main>
+
   <!-- FOOTER -->
   <footer>
     <div class="container">
@@ -1707,8 +1764,9 @@
           </address>
         </div>
         <div>
-          <div class="footer-label">Ми в мережі</div>
+          <div class="footer-label">Посилання</div>
           <div class="footer-links">
+            <a href="/catalog">Каталог з цінами</a>
             <a href="https://t.me/IIOS_cv" target="_blank" rel="noopener">Telegram-канал</a>
             <a href="https://t.me/iios_cv_bot" target="_blank" rel="noopener">Telegram-бот</a>
             <a href="https://www.instagram.com/iios_cv" target="_blank" rel="noopener">Instagram</a>
@@ -1728,10 +1786,11 @@
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.93 7.003-1.67 7.87c-.125.558-.455.695-.92.432l-2.54-1.872-1.225 1.178c-.135.135-.25.25-.512.25l.182-2.594 4.705-4.25c.204-.182-.044-.283-.317-.1l-5.812 3.66-2.502-.782c-.543-.17-.554-.543.114-.803l9.76-3.762c.452-.164.849.11.738.773z"/></svg>
       Обрати в Telegram
     </a>
+    <a href="/catalog" class="btn-secondary" aria-label="Каталог з цінами"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span class="sticky-catalog-text">Каталог</span></a>
   </div>
 
   <!-- COOKIE CONSENT BANNER -->
-  <div class="cookie-banner" id="cookie-banner">
+  <div class="cookie-banner" id="cookie-banner" role="region" aria-label="Налаштування cookie">
     <p><strong>Ми використовуємо cookie-файли</strong> для аналітики та реклами (Meta, Google), щоб покращувати сайт і оцінювати ефективність реклами, яка веде на цю сторінку.</p>
     <button class="cookie-toggle" id="cookie-details-toggle" type="button">Детальніше</button>
     <div class="cookie-details" id="cookie-details">
@@ -1771,7 +1830,10 @@
         if (!slides.length) return;
         index = (i + slides.length) % slides.length;
         track.style.transform = `translateX(-${index * 100}%)`;
-        dots.forEach((d, di) => d.classList.toggle('active', di === index));
+        dots.forEach((d, di) => {
+          d.classList.toggle('active', di === index);
+          if (di === index) d.setAttribute('aria-current', 'true'); else d.removeAttribute('aria-current');
+        });
       }
       function next() { goTo(index + 1); }
       function prev() { goTo(index - 1); }
@@ -1803,6 +1865,8 @@
 
       carousel?.addEventListener('mouseenter', stopAutoplay);
       carousel?.addEventListener('mouseleave', startAutoplay);
+      carousel?.addEventListener('focusin', stopAutoplay);
+      carousel?.addEventListener('focusout', startAutoplay);
 
       // Slides sit off-screen inside overflow:hidden, so native lazy-loading would only
       // fetch them on first swipe. Load them all once the carousel nears the viewport.
@@ -1857,6 +1921,7 @@
         }
         const body = el('div', 'deal-body');
         body.append(el('div', 'deal-name', deal.name));
+        if (deal.subtitle) body.append(el('div', 'deal-sub', deal.subtitle));
         const priceRow = el('div', 'deal-price-row');
         if (sale) {
           priceRow.append(el('span', 'deal-price-old', fmt(regular)), el('span', 'deal-price-new', fmt(sale)));
@@ -1884,6 +1949,10 @@
         const imgWrap = document.getElementById('hero-deal-img');
         if (!name || !price) return;
         name.textContent = deal.name;
+        const card = document.getElementById('hero-deal');
+        if (card) card.href = `${BOT_URL}?start=prod_${encodeURIComponent(deal.id)}`;
+        const defaults = document.getElementById('hero-default-btns');
+        if (defaults) defaults.hidden = true;
         const badgeName = document.getElementById('hero-deal-badge-name');
         if (badgeName) badgeName.textContent = deal.name;
         ['hero-deal-badge', 'hero-deal', 'hero-deal-btns'].forEach(id => {
@@ -1903,6 +1972,24 @@
         }
       }
 
+      // The device mockups in the closing band mirror the first two hot deals.
+      function renderCtaDeal(n, deal) {
+        const name = document.getElementById(`cta-deal${n}-name`);
+        const price = document.getElementById(`cta-deal${n}-price`);
+        const imgWrap = document.getElementById(`cta-deal${n}-img`);
+        if (!deal || !name || !price) return;
+        const { fmt, regular, sale } = dealPrices(deal);
+        name.textContent = deal.name;
+        price.textContent = regular ? fmt(sale || regular) : '';
+        if (imgWrap && deal.image) {
+          const img = el('img');
+          img.alt = deal.name;
+          img.decoding = 'async';
+          img.onload = () => imgWrap.replaceChildren(img);
+          img.src = deal.image;
+        }
+      }
+
       fetch(HOT_DEALS_URL)
         .then(r => (r.ok ? r.json() : Promise.reject(r.status)))
         .then(data => {
@@ -1910,6 +1997,13 @@
           // No hot deals: the section and the hero product card stay hidden.
           if (!deals.length) return;
           renderHeroDeal(deals[0]);
+          renderCtaDeal(1, deals[0]);
+          renderCtaDeal(2, deals[1]);
+          if (deals.some(d => dealPrices(d).sale)) {
+            document.getElementById('deals-tag').textContent = 'Гарячі пропозиції';
+            document.getElementById('deals-title').textContent = 'Знижки тижня';
+            document.getElementById('deals-sub').textContent = 'Обмежена кількість за спеціальною ціною.';
+          }
           document.getElementById('deals').hidden = false;
           track.replaceChildren(...deals.map(renderSlide));
           dotsWrap?.replaceChildren(...deals.map((_, i) => {

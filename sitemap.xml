@@ -4,4 +4,8 @@
     <loc>https://i-ios.store/</loc>
     <lastmod>2026-11-11</lastmod>
   </url>
+  <url>
+    <loc>https://i-ios.store/catalog</loc>
+    <changefreq>daily</changefreq>
+  </url>
 </urlset>

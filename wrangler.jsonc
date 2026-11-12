@@ -1,16 +1,24 @@
-// Landing page (index.html) on Cloudflare Workers static assets.
+// Landing page (index.html) on Cloudflare Workers static assets, plus the
+// /catalog page rendered by worker/index.js from catalog.json in R2.
 // Deploy: npx wrangler deploy  — only files allowed by .assetsignore are uploaded.
-// Hero images and hot.json are served from the R2 bucket, not from here.
-// Billing: static asset requests are free and unlimited. Do NOT add "main"
-// (a Worker script) or "run_worker_first" — every request would then count
-// as a billable Worker invocation, so a flood of requests would cost money.
-// Security headers live in _headers.
+// Hero images, hot.json and catalog.json live in the R2 bucket, not here.
+// Billing (Free plan): static asset requests are free and unlimited, and only
+// the paths in run_worker_first invoke the Worker (100k requests/day free; over
+// that it errors instead of billing). Never set run_worker_first to true —
+// every request would then count against the Worker limit.
+// Security headers for static assets live in _headers; the Worker sets its own.
 {
   "name": "store",
+  "main": "worker/index.js",
   "compatibility_date": "2026-10-01",
   "assets": {
     "directory": ".",
+    "binding": "ASSETS",
     "html_handling": "auto-trailing-slash",
-    "not_found_handling": "none"
-  }
+    "not_found_handling": "none",
+    "run_worker_first": ["/catalog", "/catalog/*"]
+  },
+  "r2_buckets": [
+    { "binding": "CATALOG", "bucket_name": "iios" }
+  ]
 }

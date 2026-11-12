@@ -45,6 +45,7 @@ from store.services.catalog_filter import category_has_subcategories
 from store.services.channel_sync import delete_product_post, sync_product_post
 from store.services.grouping import fits_group_key
 from store.services.hot_deals import publish_hot_deals, refresh_if_hot
+from store.services.site_catalog import request_catalog_refresh
 from store.services.images import upload_image
 from store.utils.admin import is_admin
 from store.utils.tg import photo_file_id
@@ -591,6 +592,7 @@ async def apply_edit_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 )
                 return EDIT_INPUT
             products_repo.update(product_id, image=image_key)
+            request_catalog_refresh()
             message = "✅ Фото оновлено."
         else:
             text = update.message.text.strip()
