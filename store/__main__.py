@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import sys
 
@@ -11,6 +12,7 @@ from telegram.ext import Application
 from store.bot import create_application
 from store.config import Config, load_config
 from store.db import close_pool, init_database
+from store.services.site_catalog import run_catalog_sync
 from store.startup import (
     fatal_startup,
     log_runtime_config,
@@ -35,6 +37,17 @@ async def _set_commands(app: Application) -> None:
         )
     except Exception as err:  # noqa: BLE001 - bot can still run without menu commands
         logger.error("Could not register bot commands (non-fatal): %s", err)
+
+
+async def _post_init(app: Application) -> None:
+    await _set_commands(app)
+    app.bot_data["catalog_sync_task"] = asyncio.create_task(run_catalog_sync())
+
+
+async def _post_shutdown(app: Application) -> None:
+    task = app.bot_data.get("catalog_sync_task")
+    if task:
+        task.cancel()
 
 
 def _run_webhook(app: Application, config: Config) -> None:
@@ -84,7 +97,8 @@ def main() -> None:
         init_database(config.database_path)
 
         app = create_application(config)
-        app.post_init = _set_commands
+        app.post_init = _post_init
+        app.post_shutdown = _post_shutdown
 
         logger.info("PhoneStore bot is starting...")
         if config.webhook.enabled:

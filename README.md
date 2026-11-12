@@ -134,6 +134,7 @@ The catalog starts empty — add products with `/add` (or the «➕ Додати
 | `R2_PUBLIC_BASE_URL` | empty | Public bucket URL; Telegram and the landing page load photos from it |
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | empty | R2 API access; needed for photo uploads in `/add`, private-bucket downloads, and `hot.json` |
 | `HOT_DEALS_KEY` | `hot.json` | Object key of the landing-page deals file |
+| `CATALOG_KEY` | `catalog.json` | Object key of the in-stock catalog rendered at `/catalog` |
 | `CURRENCY` | `UAH` | Only logged at startup; it doesn't change what the bot shows |
 
 ## Cloudflare R2 images

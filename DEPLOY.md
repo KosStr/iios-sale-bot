@@ -285,6 +285,24 @@ If the fetch fails, the landing keeps its built-in static slides. If the file
 has no deals, the section is hidden. The object key can be changed with the
 `HOT_DEALS_KEY` env var (default `hot.json`).
 
+### Step 11b. Website catalog (`/catalog`)
+
+With the same R2 credentials, the bot uploads every in-stock product to
+`catalog.json` (checked every 2 minutes while it runs, uploaded only on
+change). `worker/index.js` renders it as plain HTML with Product structured
+data at `https://i-ios.store/catalog`, so search engines and AI assistants can
+read products and prices. Only `/catalog` runs the Worker (`run_worker_first`
+in `wrangler.jsonc`); the rendered page is cached for 5 minutes, so edits
+appear on the site within about 7 minutes. Key: `CATALOG_KEY` (default
+`catalog.json`).
+
+Test locally without touching production:
+
+```bash
+npx wrangler r2 object put iios/catalog.json --local --file sample.json
+npx wrangler dev --local    # http://127.0.0.1:8787/catalog
+```
+
 ---
 
 ## Part 6 — Deploy
