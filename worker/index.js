@@ -210,6 +210,7 @@ function jsonLd(items) {
 const ICON_TG = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.93 7.003-1.67 7.87c-.125.558-.455.695-.92.432l-2.54-1.872-1.225 1.178c-.135.135-.25.25-.512.25l.182-2.594 4.705-4.25c.204-.182-.044-.283-.317-.1l-5.812 3.66-2.502-.782c-.543-.17-.554-.543.114-.803l9.76-3.762c.452-.164.849.11.738.773z"/></svg>';
 const ICON_SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
 const ICON_SHIELD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>';
+const ICON_SORT = '<svg class="sort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16M3 8l4-4 4 4M17 20V4M13 16l4 4 4-4"/></svg>';
 const ICON_CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
 const ICON_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
 const ICON_PHONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.14 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.05 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 17z"/></svg>';
@@ -393,16 +394,17 @@ function page(items, updatedAt) {
     <div class="toolbar">
       <div class="wrap toolbar-inner">
         <nav class="tabs chips" aria-label="Категорії">${tabs}</nav>
-        <!-- One row: filters and model chips scroll on the left, sorting stays on the right. -->
+        <!-- Tabs navigate (underlined text); the row below refines: toggle chips on the left, sorting on the right. -->
         <div class="controls js-only">
           <div class="refine chips">
             ${filters ? `<div class="filters" role="group" aria-label="Фільтри">${filters}</div>` : ''}
             <div class="models" id="models" role="group" aria-label="Модель" hidden></div>
           </div>
           <label class="sort">
-            <span class="sr">Сортування</span>
-            <select id="sort">
-              <option value="default">Сортування</option>
+            ${ICON_SORT}
+            <span class="sort-label">Сортування:</span>
+            <select id="sort" aria-label="Сортування">
+              <option value="default">Типово</option>
               <option value="asc">Дешевші</option>
               <option value="desc">Дорожчі</option>
             </select>
@@ -518,33 +520,43 @@ h1{font-size:clamp(30px,5vw,48px);line-height:1.05;letter-spacing:-.035em;font-w
 /* Toolbar: category tabs + filters/models, sticky under the header */
 .toolbar{position:sticky;top:var(--top);z-index:20;background:rgba(246,244,239,.92);backdrop-filter:saturate(1.4) blur(20px);-webkit-backdrop-filter:saturate(1.4) blur(20px);border-bottom:1px solid transparent;transition:border-color .2s,box-shadow .2s}
 .toolbar.is-stuck{border-bottom-color:var(--border);box-shadow:0 8px 24px rgba(23,22,15,.05)}
-.toolbar-inner{display:flex;flex-direction:column;gap:6px;padding-top:10px;padding-bottom:10px}
-.chips{display:flex;align-items:center;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -24px;padding:2px 24px;scroll-padding:0 24px}
+.toolbar-inner{--gutter:24px;display:flex;flex-direction:column;gap:10px;padding-top:4px;padding-bottom:10px}
+.chips{display:flex;align-items:center;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 calc(-1 * var(--gutter));padding:2px var(--gutter);scroll-padding:0 var(--gutter)}
 .chips::-webkit-scrollbar{display:none}
-.controls{align-items:center;gap:10px}
+/* Categories are navigation: plain text with an underline on a hairline, not buttons */
+.tabs{gap:26px;padding-top:0;padding-bottom:0;background:linear-gradient(var(--border-strong),var(--border-strong)) var(--gutter) 100%/calc(100% - 2 * var(--gutter)) 1px no-repeat}
+.tab{display:flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap;height:46px;font-size:15px;font-weight:600;color:var(--muted);box-shadow:inset 0 -2px 0 transparent;transition:color .2s,box-shadow .2s}
+.tab span{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--muted);opacity:.8}
+.tab:hover{color:var(--ink)}
+.tab.is-active{color:var(--ink);font-weight:700;box-shadow:inset 0 -2px 0 var(--ink)}
+.tab:focus-visible{outline-offset:-2px}
+.controls{align-items:center;gap:14px}
 .controls .refine{flex:1;min-width:0;margin:0;padding:2px 0;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 20px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 20px),transparent)}
 .filters,.models{display:flex;gap:6px;flex-shrink:0}
 .filters + .models{padding-left:10px;margin-left:4px;border-left:1px solid var(--border-strong)}
-.tab,.filter{display:flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap;font-size:14px;font-weight:600;height:40px;padding:0 16px;border-radius:100px;background:var(--bg2);border:1px solid var(--border);transition:background .2s,border-color .2s,color .2s}
-.filter{height:36px;padding:0 14px;font-size:13px}
-.tab span,.filter span{font-size:12px;color:var(--muted);font-weight:600}
-.tab:hover,.filter:hover{border-color:var(--accent)}
-.tab.is-active{background:var(--ink);border-color:var(--ink);color:#fff}
-.tab.is-active span{color:rgba(255,255,255,.7)}
-.filter[aria-pressed=true]{background:var(--bg3);border-color:var(--accent2);color:var(--ink)}
-.filter[aria-pressed=true]::before{content:'✓';font-size:12px;color:var(--accent2)}
-.filter-sale[aria-pressed=true]{background:#fbe9e5;border-color:var(--danger)}
-.filter-sale[aria-pressed=true]::before{color:var(--danger)}
+/* Filters are toggles: small chips that fill in when on */
+.filter{display:flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap;height:34px;padding:0 13px;font-size:13px;font-weight:600;border-radius:100px;background:var(--bg2);border:1px solid var(--border-strong);transition:background .2s,border-color .2s,color .2s}
+.filter span{font-size:12px;color:var(--muted);font-weight:600}
+.filter:hover{border-color:var(--accent)}
+.filter[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff;padding-left:10px}
+.filter[aria-pressed=true]::before{content:'✓';font-size:12px}
+.filter[aria-pressed=true] span{color:rgba(255,255,255,.7)}
+.filter-sale::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--danger)}
+.filter-sale[aria-pressed=true]{background:var(--danger);border-color:var(--danger)}
+.filter-sale[aria-pressed=true]::before{width:auto;height:auto;background:none}
 
 /* Result count + sorting */
 .results{padding-bottom:24px}
 .summary-text{flex-wrap:wrap;align-items:center;gap:0 12px;padding-top:14px;min-height:44px;font-size:14px;font-weight:600;color:var(--muted)}
 .reset{font-size:14px;font-weight:700;color:var(--accent2);text-decoration:underline;text-underline-offset:3px;padding:8px 0}
 .reset:hover{color:var(--ink)}
-.sort{position:relative;display:flex;align-items:center;flex-shrink:0}
-.sort select{-webkit-appearance:none;appearance:none;height:36px;padding:0 34px 0 14px;font-size:13px;font-weight:600;background:var(--bg2);border:1px solid var(--border);border-radius:100px;transition:border-color .2s}
-.sort select:hover{border-color:var(--accent)}
-.sort svg{position:absolute;right:13px;width:15px;height:15px;color:var(--muted);pointer-events:none}
+.sort{position:relative;display:flex;align-items:center;gap:6px;flex-shrink:0;font-size:13px;color:var(--muted)}
+.sort-icon{width:15px;height:15px}
+.sort select{-webkit-appearance:none;appearance:none;height:34px;padding:0 20px 0 0;font-size:13px;font-weight:700;color:var(--ink);border-radius:8px;transition:color .2s}
+.sort:hover select{color:var(--accent2)}
+.sort svg:last-child{position:absolute;right:0;width:15px;height:15px;pointer-events:none}
+/* The count only earns a row once something narrows the list; the tabs already show totals. */
+.js .results:not(.is-filtered) .summary-text{display:none!important}
 
 .group{padding-top:18px;scroll-margin-top:calc(var(--top) + 120px)}
 .group-title{display:flex;align-items:baseline;gap:8px;font-size:22px;letter-spacing:-.015em;margin-bottom:14px}
@@ -624,13 +636,14 @@ h1{font-size:clamp(30px,5vw,48px);line-height:1.05;letter-spacing:-.035em;font-w
   .intro{padding-top:14px;padding-bottom:12px}
   .perks{display:none}
   .search{height:46px;max-width:none;border-radius:14px;margin-top:16px}
-  .toolbar-inner{padding-top:8px;padding-bottom:8px;gap:6px}
-  .chips{margin:0 -16px;padding:2px 16px;scroll-padding:0 16px}
-  .tab{padding:0 14px;font-size:13.5px}
+  .toolbar-inner{--gutter:16px;padding-top:2px;padding-bottom:8px;gap:8px}
+  .tabs{gap:22px}
+  .tab{height:44px;font-size:14.5px}
+  .controls{gap:10px}
+  .sort-label{display:none}
   .summary-text{font-size:13px;padding-top:8px}
   /* 16px keeps iOS from zooming the page when the select opens */
-  .sort select{font-size:16px;font-weight:500;padding:0 30px 0 12px}
-  .sort svg{right:11px}
+  .sort select{font-size:16px;font-weight:600}
   .group-title{font-size:19px;margin-bottom:10px}
   .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .card{border-radius:16px}

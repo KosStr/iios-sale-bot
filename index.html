@@ -440,6 +440,9 @@
       align-self: flex-start;
       animation-delay: .3s;
     }
+    /* The phone is an illustration of the bot, not a control: nothing in it
+       reacts to the pointer, and its buttons are drawn as quiet chat keys. */
+    .phone-frame { pointer-events: none; user-select: none; -webkit-user-select: none; }
     .msg-product {
       display: block;
       background: var(--bg2);
@@ -448,12 +451,10 @@
       border-bottom-left-radius: 4px;
       padding: 8px 8px 10px;
       margin: 0 12px 8px;
-      transition: border-color .2s ease, box-shadow .2s ease;
       opacity: 0;
       animation: msg-in .5s ease forwards;
       animation-delay: .9s;
     }
-    a.msg-product:hover { border-color: var(--accent); box-shadow: var(--shadow-sm); }
     @keyframes msg-in {
       from { opacity: 0; transform: translateY(10px); }
       to   { opacity: 1; transform: translateY(0); }
@@ -479,27 +480,21 @@
     .prod-price-row { display: flex; align-items: baseline; gap: 8px; padding: 4px 4px 0; }
     .prod-price { font-size: 19px; font-weight: 800; color: var(--accent2); }
     .prod-old { font-size: 12px; color: var(--muted); text-decoration: line-through; }
-    .tg-btns {
-      display: flex; flex-direction: column; gap: 4px;
+    /* What follows the bot's message is the rest of the chat, as bubbles —
+       no button shapes anywhere in the mockup. */
+    .tg-chat {
+      display: flex; flex-direction: column; gap: 6px;
       padding: 0 12px;
-      opacity: 0;
-      animation: msg-in .5s ease forwards;
-      animation-delay: 1.4s;
     }
-    .tg-btn {
-      background: rgba(163,129,79,.1);
-      border: 1px solid rgba(163,129,79,.3);
-      border-radius: 10px;
-      padding: 9px 12px;
-      font-size: 12.5px; font-weight: 700;
-      color: var(--accent2);
-      text-align: center;
-      transition: background .2s, border-color .2s;
+    .tg-chat .msg { margin: 0; animation-delay: 1.4s; }
+    .tg-chat .msg + .msg { animation-delay: 1.9s; }
+    .msg-user {
+      align-self: flex-end;
+      background: rgba(163,129,79,.16);
+      border-bottom-right-radius: 4px;
     }
-    #hero-deal-btns .tg-btn:first-child {
-      animation: btn-pulse 2.6s ease-in-out infinite;
-      animation-delay: 1.9s;
-    }
+    .msg-time { font-size: 9px; color: var(--muted); margin-left: 8px; white-space: nowrap; }
+
     @keyframes btn-pulse {
       0%,100% { box-shadow: 0 0 0 rgba(163,129,79,0); }
       50%      { box-shadow: 0 0 0 6px rgba(163,129,79,.12); }
@@ -697,7 +692,7 @@
     }
     .deal-dot.active::before { background: var(--accent2); transform: scale(1.4); }
     .deal-nav[hidden], .deals-dots[hidden], #deals[hidden],
-    #hero-deal-badge[hidden], #hero-deal[hidden], #hero-deal-btns[hidden], #hero-default-btns[hidden] { display: none; }
+    #hero-deal-badge[hidden], #hero-deal[hidden], #hero-default-btns[hidden] { display: none; }
     @media (min-width: 701px) {
       .deal-slide { display: flex; align-items: stretch; }
       .deal-img { width: 50%; aspect-ratio: auto; }
@@ -1420,7 +1415,7 @@
               Оберіть категорію або скористайтеся пошуком.
             </div>
             <!-- Filled from the first hot deal in hot.json; stays hidden when there are none. -->
-            <a class="msg-product" id="hero-deal" href="https://t.me/iios_cv_bot" target="_blank" rel="noopener" data-cta="hero_deal" hidden>
+            <div class="msg-product" id="hero-deal" hidden>
               <div class="prod-img-placeholder" id="hero-deal-img"></div>
               <div class="prod-name" id="hero-deal-name"></div>
               <div class="prod-sub" id="hero-deal-sub" hidden></div>
@@ -1428,17 +1423,11 @@
                 <div class="prod-price" id="hero-deal-price"></div>
                 <div class="prod-old" id="hero-deal-old" hidden></div>
               </div>
-            </a>
-            <!-- Shown until (and unless) a hot deal fills the card above. -->
-            <div class="tg-btns" id="hero-default-btns" aria-hidden="true">
-              <div class="tg-btn">iPhone</div>
-              <div class="tg-btn">MacBook</div>
-              <div class="tg-btn">AirPods</div>
-              <div class="tg-btn">Apple Watch</div>
             </div>
-            <div class="tg-btns" id="hero-deal-btns" hidden>
-              <div class="tg-btn">Додати в кошик</div>
-              <div class="tg-btn">Забронювати модель</div>
+            <!-- Shown until (and unless) a hot deal fills the card above. -->
+            <div class="tg-chat" id="hero-default-btns" aria-hidden="true">
+              <div class="msg msg-user">Є iPhone 15 Pro?<span class="msg-time">12:41 ✓✓</span></div>
+              <div class="msg msg-bot">Так, є в наявності ✓<br/>Гарантія магазину, доставка Новою поштою.</div>
             </div>
           </div>
         </div>
@@ -1966,13 +1955,11 @@
         const imgWrap = document.getElementById('hero-deal-img');
         if (!name || !price) return;
         name.textContent = deal.name;
-        const card = document.getElementById('hero-deal');
-        if (card) card.href = `${BOT_URL}?start=prod_${encodeURIComponent(deal.id)}`;
         const defaults = document.getElementById('hero-default-btns');
         if (defaults) defaults.hidden = true;
         const badgeName = document.getElementById('hero-deal-badge-name');
         if (badgeName) badgeName.textContent = deal.name;
-        ['hero-deal-badge', 'hero-deal', 'hero-deal-btns'].forEach(id => {
+        ['hero-deal-badge', 'hero-deal'].forEach(id => {
           const node = document.getElementById(id);
           if (node) node.hidden = false;
         });
