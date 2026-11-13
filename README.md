@@ -1,6 +1,6 @@
 # IIOS Store — Telegram Bot
 
-A Telegram bot for a shop selling used and new Apple devices (iPhone, iPad, Apple Watch, AirPods, MacBook) and accessories. Customers browse a filtered catalog, open product cards with photos, fill a cart and place orders. Admins manage the catalog from inside the bot, and the bot keeps a Telegram channel and a landing page in sync. Ukrainian interface. Built with [python-telegram-bot](https://python-telegram-bot.org/) 22 (async), SQLite and Cloudflare R2.
+A Telegram bot for a shop selling used and new Apple devices (iPhone, iPad, Apple Watch, AirPods, MacBook) and accessories. Customers browse a filtered catalog, open product cards with photos, fill a cart and place orders. Admins manage the catalog from inside the bot, and the bot keeps a Telegram channel and the website (landing page and `/catalog`) in sync. Ukrainian interface. Built with [python-telegram-bot](https://python-telegram-bot.org/) 22 (async), SQLite and Cloudflare R2.
 
 ## Features
 
@@ -21,6 +21,13 @@ A Telegram bot for a shop selling used and new Apple devices (iPhone, iPad, Appl
 - 📋 `/products` — paginated list, edit any field, change category, delete (with a force-delete for products referenced by orders), bulk-delete sold-out products
 - 🔥 `/hot` — hot deals published to the landing page as `hot.json`
 - 🔔 New-order alerts to every admin and, optionally, to a separate `NOTIFY_CHAT_ID`
+
+**Website** (`https://i-ios.store`, Cloudflare Workers)
+
+- Landing page (`index.html`): hot deals carousel and a decorative phone mockup in the hero that plays the hot deals as a chat: the bot "types", sends a product card, the price counts down to the sale price, then the next deal rotates in. The mockup is an illustration only: nothing in it is clickable
+- `/catalog`: every in-stock product as crawlable HTML with Product structured data. Category tabs, toggle filters (Нові / Вживані / Знижки), model chips, price sorting, search and «Показати ще» work in the browser on top of the server-rendered page
+- Every product button and category card deep-links into the bot; orders are placed only in Telegram
+- 📞 «Передзвоніть мені»: a floating phone button on both pages (and a link on each `/catalog` card) opens a short form. The Worker validates it, rate-limits it and sends the number to the admins in Telegram (`callback.js`, `worker/callback-api.js`; secrets `TELEGRAM_BOT_TOKEN` and `CALLBACK_CHAT_IDS`, see [DEPLOY.md](DEPLOY.md) Step 11c)
 
 **Channel auto-posting** (when `CHANNEL_ID` is set)
 
@@ -55,7 +62,8 @@ store/
 │   ├── cart.py            # Cart service (SQLite-backed)
 │   ├── images.py          # R2 image URLs, downloads, uploads
 │   ├── channel_sync.py    # Channel post create/edit/delete
-│   └── hot_deals.py       # hot.json for the landing page
+│   ├── hot_deals.py       # hot.json for the landing page
+│   └── site_catalog.py    # catalog.json for the /catalog page
 ├── db/
 │   ├── connection.py      # SQLite pool (WAL)
 │   ├── schema.py          # Tables, indexes, column migrations
@@ -74,6 +82,12 @@ store/
 scripts/
 └── upload_images.py       # Bulk-upload a local folder of images to R2
 index.html                 # Landing page (reads hot.json from R2)
+worker/index.js            # Cloudflare Worker: renders /catalog from catalog.json in R2
+worker/callback-api.js     # POST /api/callback: «Передзвоніть мені» → admins' Telegram
+callback.js                # Browser script: floating phone button + callback form
+catalog.js                 # Browser script for /catalog: tabs, filters, sorting, search
+wrangler.jsonc             # Website deploy config (static assets + the /catalog Worker)
+.assetsignore, _headers    # Which files the site publishes; security headers
 images/                    # Landing page images
 Dockerfile, fly.toml       # Fly.io deployment
 .github/workflows/         # Auto-deploy to Fly.io on push to main
@@ -167,7 +181,8 @@ Carts, orders and bookings persist across restarts. On Fly.io the file lives on 
 - **Catalog filter state** is per user in `context.user_data["filter"]`; the wizard step is `flt["ui"]`.
 - **Images** — `store/services/images.py`; R2 downloads and uploads run in a worker thread so they don't block the bot.
 - **Channel posts** — `store/services/channel_sync.py`; every failure is logged and never breaks the admin action.
-- **Landing page** — `index.html` is a static page. Admin changes to hot products regenerate `hot.json` in R2 (`store/services/hot_deals.py`), so the Fly machine never has to wake up for site visitors.
+- **Landing page** — `index.html` is a static page. Admin changes to hot products regenerate `hot.json` in R2 (`store/services/hot_deals.py`), so the Fly machine never has to wake up for site visitors. The deals also rotate through the product card in the hero phone mockup (`heroDeals` in `index.html`; a single deal, or a visitor with reduced motion, gets a static card); with no deals the mockup shows a short sample chat and the deals section stays hidden.
+- **Website catalog** — the bot uploads in-stock products to `catalog.json` in R2 (`store/services/site_catalog.py`). `worker/index.js` renders `/catalog` from it and caches the page for 5 minutes; `catalog.js` only filters and reorders the cards already on the page, so the page works without JavaScript. The result count line appears only once a category, filter or search narrows the list.
 - **Bookings** — `store/handlers/booking.py` is still registered, but the «Забронювати» button was removed from product cards, so customers can't currently reach it.
 
 ## Deploy to Fly.io
@@ -180,7 +195,18 @@ fly secrets set BOT_TOKEN=... ADMIN_CHAT_IDS=... WEBHOOK_SECRET=...
 fly deploy
 ```
 
-Pushing to `main` also deploys automatically via `.github/workflows/fly-deploy.yml` (needs the `FLY_API_TOKEN` repository secret).
+Pushing to `main` also deploys the bot automatically via `.github/workflows/fly-deploy.yml` (needs the `FLY_API_TOKEN` repository secret).
+
+## Deploy the website
+
+The site is deployed separately from the bot and is **not** deployed by pushing to `main`:
+
+```bash
+npx wrangler dev --port 8787   # preview at http://localhost:8787 and /catalog
+npx wrangler deploy            # publish to i-ios.store
+```
+
+Changes to `index.html`, `catalog.js`, `callback.js` or `worker/` go live only after `wrangler deploy`. See [DEPLOY.md](DEPLOY.md), Step 12b.
 
 ## License
 

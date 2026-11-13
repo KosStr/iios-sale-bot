@@ -5,6 +5,7 @@
 !robots.txt
 !sitemap.xml
 !catalog.js
+!callback.js
 !favicon.ico
 !favicon.svg
 !favicon-96.png

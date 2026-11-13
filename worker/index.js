@@ -7,6 +7,10 @@
 //
 // Free-tier safety: the rendered page is cached for CACHE_SECONDS under one
 // fixed key (query strings ignored), so floods hit the edge cache, not R2.
+//
+// /api/callback (the site's "Передзвоніть мені" form) lives in callback-api.js.
+
+import { handleCallback } from './callback-api.js';
 
 const SITE = 'https://i-ios.store';
 const PAGE_PATH = '/catalog';
@@ -38,6 +42,12 @@ const SECURITY_HEADERS = {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    if (url.pathname === '/api/callback') {
+      return handleCallback(request, env, ctx, { catalogKey: CATALOG_KEY });
+    }
+    if (url.pathname.startsWith('/api/')) {
+      return new Response('Not Found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
+    }
     if (url.pathname !== PAGE_PATH) {
       // "/catalog/" and "/catalog/anything" → the one canonical page.
       if (url.pathname.startsWith(PAGE_PATH + '/')) {
@@ -281,6 +291,7 @@ function card(item, index, rate) {
               <div class="card-price">${price}</div>
               <a class="card-cta" href="${link}" target="_blank" rel="noopener" aria-label="Замовити ${esc(item.name)} у Telegram">${ICON_TG}<span>Замовити</span></a>
             </div>
+            <button type="button" class="card-call js-only" data-callback="${esc(item.id)}" data-callback-name="${esc(item.name)}" aria-label="Передзвоніть мені щодо ${esc(item.name)}">${ICON_PHONE}Передзвоніть мені</button>
           </div>
         </article>`;
 }
@@ -358,6 +369,7 @@ function page(items, updatedAt) {
   ${jsonLd(items)}
   <style>${STYLES}</style>
   <script src="/catalog.js" defer></script>
+  <script src="/callback.js" defer></script>
 </head>
 <body data-labels="${esc(JSON.stringify(labels))}" data-bot="${BOT_URL}">
   <header class="top">
@@ -596,6 +608,10 @@ h1{font-size:clamp(30px,5vw,48px);line-height:1.05;letter-spacing:-.035em;font-w
 .card-cta:hover{background:var(--ink);border-color:var(--ink);color:#fff}
 .card-cta:hover svg{color:#fff}
 .card-cta:active{transform:scale(.97)}
+/* Secondary to "Замовити": a quiet text link under the price row (opens /callback.js's form) */
+.card-call{align-items:center;gap:6px;align-self:flex-start;margin-top:4px;padding:8px 0 0;font-size:13px;font-weight:600;color:var(--muted);transition:color .2s}
+.card-call svg{width:14px;height:14px;color:var(--accent2)}
+.card-call:hover{color:var(--ink)}
 
 /* Show more, empty state, help band */
 .more-wrap{display:flex;justify-content:center}
@@ -657,6 +673,7 @@ h1{font-size:clamp(30px,5vw,48px);line-height:1.05;letter-spacing:-.035em;font-w
   .card-foot{flex-direction:column;align-items:stretch;gap:8px;padding-top:8px}
   .price{font-size:18px}
   .card-cta{height:40px;font-size:13.5px}
+  .card-call{align-self:center;font-size:12.5px;margin-top:2px}
   .help{flex-direction:column;align-items:flex-start;padding:26px 22px;margin-top:36px;border-radius:24px}
   .help h2{font-size:20px}
   .foot-top{grid-template-columns:1fr;gap:26px;text-align:center;justify-items:center}
