@@ -393,26 +393,27 @@ function page(items, updatedAt) {
     <div class="toolbar">
       <div class="wrap toolbar-inner">
         <nav class="tabs chips" aria-label="Категорії">${tabs}</nav>
-        <div class="refine chips js-only">
-          ${filters ? `<div class="filters" role="group" aria-label="Фільтри">${filters}</div>` : ''}
-          <div class="models" id="models" role="group" aria-label="Модель" hidden></div>
+        <!-- One row: filters and model chips scroll on the left, sorting stays on the right. -->
+        <div class="controls js-only">
+          <div class="refine chips">
+            ${filters ? `<div class="filters" role="group" aria-label="Фільтри">${filters}</div>` : ''}
+            <div class="models" id="models" role="group" aria-label="Модель" hidden></div>
+          </div>
+          <label class="sort">
+            <span class="sr">Сортування</span>
+            <select id="sort">
+              <option value="default">Сортування</option>
+              <option value="asc">Дешевші</option>
+              <option value="desc">Дорожчі</option>
+            </select>
+            ${ICON_CHEVRON}
+          </label>
         </div>
       </div>
     </div>
 
     <div class="wrap results">
-      <div class="summary js-only">
-        <p class="summary-text"><span id="summary" aria-live="polite"></span><button type="button" class="reset" id="reset" hidden>Скинути</button></p>
-        <label class="sort">
-          <span class="sr">Сортування</span>
-          <select id="sort">
-            <option value="default">За категоріями</option>
-            <option value="asc">Спочатку дешевші</option>
-            <option value="desc">Спочатку дорожчі</option>
-          </select>
-          ${ICON_CHEVRON}
-        </label>
-      </div>${sections}
+      <p class="summary-text js-only"><span id="summary" aria-live="polite"></span><button type="button" class="reset" id="reset" hidden>Скинути</button></p>${sections}
       <div class="more-wrap"><button type="button" class="more" id="more" hidden>Показати ще</button></div>
       <div class="empty" id="empty" hidden>
         <p class="empty-title">Нічого не знайдено</p>
@@ -517,10 +518,11 @@ h1{font-size:clamp(30px,5vw,48px);line-height:1.05;letter-spacing:-.035em;font-w
 /* Toolbar: category tabs + filters/models, sticky under the header */
 .toolbar{position:sticky;top:var(--top);z-index:20;background:rgba(246,244,239,.92);backdrop-filter:saturate(1.4) blur(20px);-webkit-backdrop-filter:saturate(1.4) blur(20px);border-bottom:1px solid transparent;transition:border-color .2s,box-shadow .2s}
 .toolbar.is-stuck{border-bottom-color:var(--border);box-shadow:0 8px 24px rgba(23,22,15,.05)}
-.toolbar-inner{display:flex;flex-direction:column;gap:8px;padding-top:10px;padding-bottom:10px}
+.toolbar-inner{display:flex;flex-direction:column;gap:6px;padding-top:10px;padding-bottom:10px}
 .chips{display:flex;align-items:center;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -24px;padding:2px 24px;scroll-padding:0 24px}
 .chips::-webkit-scrollbar{display:none}
-.refine.is-empty{display:none!important}
+.controls{align-items:center;gap:10px}
+.controls .refine{flex:1;min-width:0;margin:0;padding:2px 0;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 20px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 20px),transparent)}
 .filters,.models{display:flex;gap:6px;flex-shrink:0}
 .filters + .models{padding-left:10px;margin-left:4px;border-left:1px solid var(--border-strong)}
 .tab,.filter{display:flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap;font-size:14px;font-weight:600;height:40px;padding:0 16px;border-radius:100px;background:var(--bg2);border:1px solid var(--border);transition:background .2s,border-color .2s,color .2s}
@@ -536,12 +538,11 @@ h1{font-size:clamp(30px,5vw,48px);line-height:1.05;letter-spacing:-.035em;font-w
 
 /* Result count + sorting */
 .results{padding-bottom:24px}
-.summary{align-items:center;justify-content:space-between;gap:12px;padding-top:16px;min-height:56px}
-.summary-text{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;font-size:14px;font-weight:600;color:var(--muted);min-width:0}
+.summary-text{flex-wrap:wrap;align-items:center;gap:0 12px;padding-top:14px;min-height:44px;font-size:14px;font-weight:600;color:var(--muted)}
 .reset{font-size:14px;font-weight:700;color:var(--accent2);text-decoration:underline;text-underline-offset:3px;padding:8px 0}
 .reset:hover{color:var(--ink)}
 .sort{position:relative;display:flex;align-items:center;flex-shrink:0}
-.sort select{-webkit-appearance:none;appearance:none;height:40px;padding:0 36px 0 14px;font-size:14px;font-weight:600;background:var(--bg2);border:1px solid var(--border);border-radius:100px;transition:border-color .2s}
+.sort select{-webkit-appearance:none;appearance:none;height:36px;padding:0 34px 0 14px;font-size:13px;font-weight:600;background:var(--bg2);border:1px solid var(--border);border-radius:100px;transition:border-color .2s}
 .sort select:hover{border-color:var(--accent)}
 .sort svg{position:absolute;right:13px;width:15px;height:15px;color:var(--muted);pointer-events:none}
 
@@ -626,9 +627,10 @@ h1{font-size:clamp(30px,5vw,48px);line-height:1.05;letter-spacing:-.035em;font-w
   .toolbar-inner{padding-top:8px;padding-bottom:8px;gap:6px}
   .chips{margin:0 -16px;padding:2px 16px;scroll-padding:0 16px}
   .tab{padding:0 14px;font-size:13.5px}
-  .summary{padding-top:10px;min-height:52px}
-  .summary-text{font-size:13px}
-  .sort select{font-size:13px;padding:0 32px 0 12px}
+  .summary-text{font-size:13px;padding-top:8px}
+  /* 16px keeps iOS from zooming the page when the select opens */
+  .sort select{font-size:16px;font-weight:500;padding:0 30px 0 12px}
+  .sort svg{right:11px}
   .group-title{font-size:19px;margin-bottom:10px}
   .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .card{border-radius:16px}
