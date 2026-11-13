@@ -349,9 +349,14 @@
       display: flex; align-items: center; flex-wrap: wrap; gap: 12px 18px;
       margin: -12px 0 28px;
     }
-    .hero-cta { font-size: 17px; padding: 16px 32px; box-shadow: var(--shadow); }
+    /* Both hero buttons share one size; only the fill differs. */
+    .hero-actions .btn-primary, .hero-actions .btn-secondary {
+      height: 56px; min-width: 236px; padding: 0 28px;
+      justify-content: center;
+      font-size: 16px; font-weight: 700;
+    }
+    .hero-cta { box-shadow: var(--shadow-sm); }
     .hero-cta-note { font-size: 13px; font-weight: 600; color: var(--muted); }
-    .hero-catalog { font-size: 16px; padding: 15px 22px; }
     .hero-catalog-short { display: none; }
     .hero-cta-note { flex-basis: 100%; }
     .hero-catalog svg { width: 18px; height: 18px; color: var(--accent2); }
@@ -512,7 +517,20 @@
       box-shadow: var(--shadow-sm);
     }
     .badge-tl { top: 60px; left: -40px; animation: float 5s ease-in-out infinite; }
-    .badge-br { bottom: 60px; right: -40px; animation: float 5s ease-in-out infinite 1.2s; }
+    .badge-br { bottom: 120px; right: -40px; animation: float 5s ease-in-out infinite 1.2s; }
+    /* Wide screens: the phone sits at the left of its column and both notes
+       stand to its right with a clear 16px gap, inside the page width. */
+    @media (min-width: 1161px) {
+      .hero-visual { justify-content: flex-start; padding-left: 40px; }
+      .phone-glow { left: 200px; }
+      .badge-tl { top: 96px; left: 376px; }
+      .badge-br { right: auto; left: 376px; }
+    }
+    /* Narrower columns have no room beside the phone, so the notes are dropped
+       rather than left touching or covering it. */
+    @media (max-width: 1160px) {
+      .badge-tl, .badge-br { display: none; }
+    }
     @keyframes float {
       0%,100% { transform: translateY(0); }
       50%      { transform: translateY(-8px); }
@@ -1154,7 +1172,6 @@
       .cats { grid-template-columns: repeat(6, 1fr); }
       .cat { grid-column: span 2; }
       .cat:nth-child(n+4) { grid-column: span 3; }
-      .badge-tl, .badge-br { display: none; }
     }
     @media (max-width: 600px) {
       .nav-right { gap: 10px; }
@@ -1185,7 +1202,7 @@
       .hero-sub { font-size: 16px; margin-bottom: 20px; }
       .hero-actions { margin: 0 0 18px; gap: 8px; }
       .hero-cta { width: 100%; justify-content: center; }
-      .hero-catalog { width: 100%; justify-content: center; font-size: 17px; }
+      .hero-catalog { width: 100%; justify-content: center; }
       .hero-catalog-long { display: none; }
       .hero-catalog-short { display: inline; }
       .hero-cta-note { width: 100%; text-align: center; font-size: 13px; }

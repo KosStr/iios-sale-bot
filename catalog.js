@@ -29,7 +29,6 @@
     const resetBtn = document.getElementById('reset');
     const moreBtn = document.getElementById('more');
     const modelsBox = document.getElementById('models');
-    const refine = document.querySelector('.refine');
     const empty = document.getElementById('empty');
     const emptyCta = document.getElementById('empty-cta');
     const toolbar = document.querySelector('.toolbar');
@@ -155,7 +154,6 @@
         state.sub = '';
       }
       modelsBox.hidden = !show;
-      refine?.classList.toggle('is-empty', !filters.length && !show);
     }
 
     function setCategory(cat, { scroll } = {}) {
