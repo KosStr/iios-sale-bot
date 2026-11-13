@@ -7,6 +7,8 @@ This guide walks you through deploying the Telegram bot to **Fly.io** with:
 - optional **channel auto-posting** and order notifications
 - store contacts/location from environment variables
 
+The website (landing page and `/catalog`) is deployed separately to **Cloudflare Workers** — see Step 12b.
+
 ---
 
 ## Before you start
@@ -252,6 +254,9 @@ Object keys default to `<product_id>.jpg` (see `store/services/images.py`).
 Admins mark products as hot in the bot (`/products` → product → ✏️ Редагувати →
 🔥 Зробити гарячою; `/hot` lists them). On every change the bot uploads
 `hot.json` to the bucket, and `index.html` builds the deals carousel from it.
+The deals also rotate through the product card in the hero phone mockup (photo,
+name, colour, price counting down to the sale price, about 5 seconds each). That mockup is decorative: it has no buttons and does not
+link anywhere.
 
 Needs **both** options above: the R2 write credentials (to upload the file) and
 `R2_PUBLIC_BASE_URL` (so the JSON has photo URLs). Only in-stock products are
@@ -270,6 +275,8 @@ Cloudflare → R2 → bucket → **Settings** → **CORS Policy**:
       "https://i-ios.store",
       "https://www.i-ios.store",
       "https://store.iios.workers.dev",
+      "http://localhost:8787",
+      "http://127.0.0.1:8787",
       "http://localhost:8000",
       "http://localhost:5500",
       "http://127.0.0.1:5500"
@@ -281,8 +288,11 @@ Cloudflare → R2 → bucket → **Settings** → **CORS Policy**:
 ]
 ```
 
-If the fetch fails, the landing keeps its built-in static slides. If the file
-has no deals, the section is hidden. The object key can be changed with the
+If the fetch fails or the file has no deals, the deals section stays hidden and
+the hero phone shows a short sample chat instead of a product card. An origin
+missing from the CORS list above looks exactly like that, so add the
+`wrangler dev` origin (`localhost:8787`) if you want to see deals in the local
+preview. The object key can be changed with the
 `HOT_DEALS_KEY` env var (default `hot.json`).
 
 ### Step 11b. Website catalog (`/catalog`)
@@ -296,11 +306,69 @@ in `wrangler.jsonc`); the rendered page is cached for 5 minutes, so edits
 appear on the site within about 7 minutes. Key: `CATALOG_KEY` (default
 `catalog.json`).
 
+The page is complete without JavaScript. `catalog.js` adds the controls on top
+of the rendered cards:
+
+- **Category tabs** — underlined text links with product counts; `/catalog#phone`
+  (used by the landing's category cards) opens that tab directly.
+- **Filters** — toggle chips: Нові / Вживані (shown when the catalog has both)
+  and Знижки (shown when something is on sale), plus model chips inside a
+  category that has more than one model.
+- **Sorting** — Типово / Дешевші / Дорожчі, within each category.
+- **Search** — covers the whole catalog and leaves the open category.
+- **Result count** with «Скинути» — shown only once something narrows the list.
+- **«Показати ще»** — cards are revealed 24 at a time.
+
 Test locally without touching production:
 
 ```bash
 npx wrangler r2 object put iios/catalog.json --local --file sample.json
 npx wrangler dev --local    # http://127.0.0.1:8787/catalog
+```
+
+### Step 11c. «Передзвоніть мені» on the website
+
+A round phone button sits in the bottom-right corner of the landing page and
+`/catalog`, and every `/catalog` card has a «Передзвоніть мені» link. Both open
+a short form (phone, optional name, optional «Що цікавить?»). The Worker
+(`worker/callback-api.js`, route `POST /api/callback`) checks the request and
+sends the number to Telegram through the bot. The bot on Fly is not involved.
+
+Give the Worker the bot token and the chats that should get the alerts. Each
+chat must have pressed **/start** in the bot at least once, or Telegram refuses
+the message («chat not found»):
+
+```bash
+npx wrangler secret put TELEGRAM_BOT_TOKEN   # paste the same token as BOT_TOKEN
+npx wrangler secret put CALLBACK_CHAT_IDS    # e.g. 123456789,987654321
+```
+
+Secrets apply at once, with no redeploy. Until both are set, the form shows
+«Сервіс тимчасово недоступний» with the store phone number, and the Worker logs
+the reason (`npx wrangler tail`).
+
+Protections, all on the free plan:
+
+- Same-origin JSON only (a cross-site browser request is refused), 2 KB body
+  limit, and refused on `*.workers.dev`, where the rate limiter can't run.
+- A hidden honeypot field, and forms sent within 1.5 s of opening are refused.
+- Validation: Ukrainian numbers in any common spelling (`+380…`, `0…`, `80…`)
+  or `+`international ones. Names may contain letters only, and links are
+  refused in every field. The product name comes from `catalog.json`, never
+  from the request.
+- Rate limits in the edge cache (per Cloudflare location): 4 requests an hour
+  per visitor, 1 alert per number every 3 hours (a repeat says «done» without
+  a second alert), and 60 an hour for the whole site. IPs and numbers are kept
+  only as salted hashes.
+- Alerts are plain text with no link previews, and nothing is stored apart
+  from the Telegram message.
+
+To test locally, put the secrets in `.dev.vars` (git-ignored). Use a test bot
+and your own chat ID:
+
+```bash
+printf 'TELEGRAM_BOT_TOKEN=<test bot token>\nCALLBACK_CHAT_IDS=<your chat id>\n' > .dev.vars
+npx wrangler dev --port 8787
 ```
 
 ---
@@ -323,7 +391,28 @@ If you see `app does not have a Dockerfile or buildpacks configured`:
 2. `fly.toml` must include `[build]` with `dockerfile = "Dockerfile"` (already set in this repo)
 3. If deploying via **GitHub Actions**, commit and push `Dockerfile`, `fly.toml`, `requirements.txt`, and the `store/` folder to `main`
 
-Fly will:
+### Step 12b. Deploy the website
+
+The landing page and `/catalog` live on Cloudflare Workers and are deployed
+from the same folder, separately from the bot. Pushing to `main` does **not**
+deploy the site.
+
+```bash
+npx wrangler dev --port 8787   # preview: http://localhost:8787 and /catalog
+npx wrangler deploy            # publish
+```
+
+- First time only: `npx wrangler login`.
+- Only the files allowed by `.assetsignore` are uploaded (`index.html`,
+  `catalog.js`, `callback.js`, icons, `robots.txt`, `sitemap.xml`, `og-image.jpg`), plus the
+  Worker in `worker/` (`index.js`, `callback-api.js`). Add a new public file to `.assetsignore` or it
+  will not be served.
+- Check `https://i-ios.store/` and `https://i-ios.store/catalog` afterwards.
+  `/catalog` is cached for 5 minutes, so allow that long if it still looks old.
+- Usual order: change on a branch → preview → `wrangler deploy` → open a pull
+  request and merge it, so `main` matches what is live.
+
+Back to the bot — on `fly deploy`, Fly will:
 
 1. Build the Docker image from `Dockerfile`
 2. Attach the volume at `/data`
@@ -383,6 +472,8 @@ fly deploy
 ```
 
 The SQLite file on the volume is **preserved** — carts, orders and catalog data remain.
+
+Website changes (`index.html`, `catalog.js`, `callback.js`, `worker/`) need `npx wrangler deploy` instead (Step 12b); the bot does not have to be redeployed for them.
 
 ### View app status
 
@@ -491,6 +582,9 @@ fly deploy
 # 6. Watch logs & verify webhook
 fly logs
 curl "https://api.telegram.org/bot<YOUR_TOKEN>/getWebhookInfo"
+
+# 7. Website (separate from the bot)
+npx wrangler deploy
 ```
 
 ---
@@ -509,7 +603,9 @@ What a flood of requests can cost, and how each part is capped:
 
 | Part | Billing risk | Protection |
 |------|--------------|------------|
-| Landing (`index.html` on Workers static assets) | None: static asset requests are free and unlimited | Keep `wrangler.jsonc` assets-only (no `main` script). Security headers in `_headers` |
+| Landing (`index.html` on Workers static assets) | None: static asset requests are free and unlimited | Never set `run_worker_first` to `true` in `wrangler.jsonc`. Security headers in `_headers` |
+| `/catalog` (Worker, `worker/index.js`) | Only `/catalog` and `/api/*` invoke the Worker: 100k requests/day on the Free plan, then it errors instead of billing | `run_worker_first` lists only `/catalog` and `/api/*`; the rendered page (and the error page) is cached, so a flood does not become one R2 read per request |
+| `/api/callback` (Worker, `worker/callback-api.js`) | One Worker request per submitted form, sharing the 100k/day with `/catalog` | Same-origin JSON only, honeypot, minimum fill time, per-visitor, per-number and site-wide limits in the edge cache (Step 11c) |
 | R2 photos + `hot.json` via `r2.dev` | Every request is an uncached R2 Class B read; `r2.dev` has no WAF or rate limiting | Move to a custom domain with cache + rate limiting (below) |
 | Bot on Fly (`/webhook`) | Junk traffic keeps the machine awake, plus egress | One machine only, `[http_service.concurrency]` caps in `fly.toml`, secret token rejects forged requests with `403` |
 

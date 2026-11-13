@@ -15,5 +15,6 @@ dist/
 *.db-wal
 *.db-shm
 
-# Wrangler local cache (Cloudflare account info)
+# Wrangler local cache (Cloudflare account info) and local Worker secrets
 .wrangler/
+.dev.vars*
