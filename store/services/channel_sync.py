@@ -31,7 +31,7 @@ from telegram import Bot, InputMediaPhoto
 from telegram.constants import ParseMode
 from telegram.error import BadRequest, TelegramError
 
-from store.data.products import (
+from store.models.product import (
     CATEGORY_ACCESSORIES,
     Product,
     effective_price,

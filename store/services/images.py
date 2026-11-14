@@ -20,7 +20,7 @@ import functools
 import logging
 import os
 
-from store.data.products import Product
+from store.models.product import Product
 
 logger = logging.getLogger(__name__)
 

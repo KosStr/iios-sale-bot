@@ -9,8 +9,8 @@ from telegram.constants import ParseMode
 from telegram.error import BadRequest
 from telegram.ext import ContextTypes
 
-from store.data.products import Product, get_product_by_id
-from store.keyboards import catalog_results_keyboard, product_keyboard
+from store.models.product import Product, get_product_by_id
+from store.handlers.keyboards import catalog_results_keyboard, product_keyboard
 from store.services import cart as cart_service
 from store.services.catalog_filter import filter_products, get_filter
 from store.services.grouping import build_groups

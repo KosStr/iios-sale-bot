@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from store.data.products import effective_price
+from store.models.product import effective_price
 from store.db.connection import db_connection
 from store.services.cart import Cart
 

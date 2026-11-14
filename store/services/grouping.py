@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from store.data.products import Product, effective_price, is_on_sale
+from store.models.product import Product, effective_price, is_on_sale
 
 # A group key is sent as "group:<key>" callback data, which Telegram caps at
 # 64 bytes. Model names are admin-typed and may be Cyrillic (2 bytes/char),

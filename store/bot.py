@@ -18,8 +18,8 @@ from telegram.ext import (
 )
 
 from store.config import Config
-from store.handlers.admin_add import build_admin_add_handler
-from store.handlers.admin_products import (
+from store.handlers.admin.add import build_admin_add_handler
+from store.handlers.admin.products import (
     build_admin_edit_handler,
     build_admin_product_handlers,
     cmd_products,
@@ -39,7 +39,7 @@ from store.handlers.filters import (
     to_price_screen,
 )
 from store.handlers.info import show_contacts, show_location
-from store.keyboards import (
+from store.handlers.keyboards import (
     BTN_ADMIN_PRODUCTS,
     BTN_CART,
     BTN_CATALOG,

@@ -13,7 +13,7 @@ from telegram import (
     ReplyKeyboardMarkup,
 )
 
-from store.data.products import Product
+from store.models.product import Product
 from store.services.cart import Cart
 from store.services.catalog_filter import (
     CATEGORIES,

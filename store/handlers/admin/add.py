@@ -18,9 +18,9 @@ from telegram.ext import (
     filters,
 )
 
-from store.data.products import Product
+from store.models.product import Product
 from store.db import products_repo
-from store.keyboards import BTN_ADMIN_ADD
+from store.handlers.keyboards import BTN_ADMIN_ADD
 from store.services.catalog_filter import (
     CATEGORIES,
     CATEGORY_LABELS,

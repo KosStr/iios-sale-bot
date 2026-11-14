@@ -1,18 +1,19 @@
-// Landing page (index.html) on Cloudflare Workers static assets, plus the
-// /catalog page rendered by worker/index.js from catalog.json in R2.
-// Deploy: npx wrangler deploy  — only files allowed by .assetsignore are uploaded.
+// Landing page (site/public/) on Cloudflare Workers static assets, plus the
+// /catalog page rendered by site/worker/index.js from catalog.json in R2.
+// Deploy (from the repo root): npx wrangler deploy — every file in site/public/
+// is published except those listed in site/public/.assetsignore.
 // Hero images, hot.json and catalog.json live in the R2 bucket, not here.
 // Billing (Free plan): static asset requests are free and unlimited, and only
 // the paths in run_worker_first invoke the Worker (100k requests/day free; over
 // that it errors instead of billing). Never set run_worker_first to true —
 // every request would then count against the Worker limit.
-// Security headers for static assets live in _headers; the Worker sets its own.
+// Security headers for static assets live in site/public/_headers; the Worker sets its own.
 {
   "name": "store",
-  "main": "worker/index.js",
+  "main": "site/worker/index.js",
   "compatibility_date": "2026-10-01",
   "assets": {
-    "directory": ".",
+    "directory": "site/public",
     "binding": "ASSETS",
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "none",

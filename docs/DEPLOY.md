@@ -243,7 +243,7 @@ Photos sent to the bot in `/add` or ✏️ «Фото» are uploaded to R2 autom
 Locally (with R2 credentials in `.env`):
 
 ```powershell
-# Put images in ./images/
+# Put images in ./images/ (or pass a folder, e.g. site/images for the landing images)
 python -m scripts.upload_images
 ```
 
@@ -253,7 +253,7 @@ Object keys default to `<product_id>.jpg` (see `store/services/images.py`).
 
 Admins mark products as hot in the bot (`/products` → product → ✏️ Редагувати →
 🔥 Зробити гарячою; `/hot` lists them). On every change the bot uploads
-`hot.json` to the bucket, and `index.html` builds the deals carousel from it.
+`hot.json` to the bucket, and `site/public/index.html` builds the deals carousel from it.
 The deals also rotate through the product card in the hero phone mockup (photo,
 name, colour, price counting down to the sale price, about 5 seconds each). That mockup is decorative: it has no buttons and does not
 link anywhere.
@@ -299,14 +299,14 @@ preview. The object key can be changed with the
 
 With the same R2 credentials, the bot uploads every in-stock product to
 `catalog.json` (checked every 2 minutes while it runs, uploaded only on
-change). `worker/index.js` renders it as plain HTML with Product structured
+change). `site/worker/index.js` renders it as plain HTML with Product structured
 data at `https://i-ios.store/catalog`, so search engines and AI assistants can
 read products and prices. Only `/catalog` runs the Worker (`run_worker_first`
 in `wrangler.jsonc`); the rendered page is cached for 5 minutes, so edits
 appear on the site within about 7 minutes. Key: `CATALOG_KEY` (default
 `catalog.json`).
 
-The page is complete without JavaScript. `catalog.js` adds the controls on top
+The page is complete without JavaScript. `site/public/catalog.js` adds the controls on top
 of the rendered cards:
 
 - **Category tabs** — underlined text links with product counts; `/catalog#phone`
@@ -331,7 +331,7 @@ npx wrangler dev --local    # http://127.0.0.1:8787/catalog
 A round phone button sits in the bottom-right corner of the landing page and
 `/catalog`, and every `/catalog` card has a «Передзвоніть мені» link. Both open
 a short form (phone, optional name, optional «Що цікавить?»). The Worker
-(`worker/callback-api.js`, route `POST /api/callback`) checks the request and
+(`site/worker/callback-api.js`, route `POST /api/callback`) checks the request and
 sends the number to Telegram through the bot. The bot on Fly is not involved.
 
 Give the Worker the bot token and the chats that should get the alerts. Each
@@ -403,10 +403,10 @@ npx wrangler deploy            # publish
 ```
 
 - First time only: `npx wrangler login`.
-- Only the files allowed by `.assetsignore` are uploaded (`index.html`,
+- Every file in `site/public/` is uploaded as a static asset (`index.html`,
   `catalog.js`, `callback.js`, icons, `robots.txt`, `sitemap.xml`, `og-image.jpg`), plus the
-  Worker in `worker/` (`index.js`, `callback-api.js`). Add a new public file to `.assetsignore` or it
-  will not be served.
+  Worker in `site/worker/` (`index.js`, `callback-api.js`). A new public file just goes into
+  `site/public/`; anything there that must not be served goes into `site/public/.assetsignore`.
 - Check `https://i-ios.store/` and `https://i-ios.store/catalog` afterwards.
   `/catalog` is cached for 5 minutes, so allow that long if it still looks old.
 - Usual order: change on a branch → preview → `wrangler deploy` → open a pull
@@ -473,7 +473,7 @@ fly deploy
 
 The SQLite file on the volume is **preserved** — carts, orders and catalog data remain.
 
-Website changes (`index.html`, `catalog.js`, `callback.js`, `worker/`) need `npx wrangler deploy` instead (Step 12b); the bot does not have to be redeployed for them.
+Website changes (anything in `site/`) need `npx wrangler deploy` instead (Step 12b); the bot does not have to be redeployed for them.
 
 ### View app status
 
@@ -603,9 +603,9 @@ What a flood of requests can cost, and how each part is capped:
 
 | Part | Billing risk | Protection |
 |------|--------------|------------|
-| Landing (`index.html` on Workers static assets) | None: static asset requests are free and unlimited | Never set `run_worker_first` to `true` in `wrangler.jsonc`. Security headers in `_headers` |
-| `/catalog` (Worker, `worker/index.js`) | Only `/catalog` and `/api/*` invoke the Worker: 100k requests/day on the Free plan, then it errors instead of billing | `run_worker_first` lists only `/catalog` and `/api/*`; the rendered page (and the error page) is cached, so a flood does not become one R2 read per request |
-| `/api/callback` (Worker, `worker/callback-api.js`) | One Worker request per submitted form, sharing the 100k/day with `/catalog` | Same-origin JSON only, honeypot, minimum fill time, per-visitor, per-number and site-wide limits in the edge cache (Step 11c) |
+| Landing (`site/public/` on Workers static assets) | None: static asset requests are free and unlimited | Never set `run_worker_first` to `true` in `wrangler.jsonc`. Security headers in `site/public/_headers` |
+| `/catalog` (Worker, `site/worker/index.js`) | Only `/catalog` and `/api/*` invoke the Worker: 100k requests/day on the Free plan, then it errors instead of billing | `run_worker_first` lists only `/catalog` and `/api/*`; the rendered page (and the error page) is cached, so a flood does not become one R2 read per request |
+| `/api/callback` (Worker, `site/worker/callback-api.js`) | One Worker request per submitted form, sharing the 100k/day with `/catalog` | Same-origin JSON only, honeypot, minimum fill time, per-visitor, per-number and site-wide limits in the edge cache (Step 11c) |
 | R2 photos + `hot.json` via `r2.dev` | Every request is an uncached R2 Class B read; `r2.dev` has no WAF or rate limiting | Move to a custom domain with cache + rate limiting (below) |
 | Bot on Fly (`/webhook`) | Junk traffic keeps the machine awake, plus egress | One machine only, `[http_service.concurrency]` caps in `fly.toml`, secret token rejects forged requests with `403` |
 
@@ -615,7 +615,7 @@ What a flood of requests can cost, and how each part is capped:
 2. Same page: **Public Development URL** (`r2.dev`) → **Disallow**. Do this only after step 5, or the live landing loses its images.
 3. **Caching** → **Cache Rules** → create a rule: *Hostname equals `img.i-ios.store`* → **Eligible for cache**, Edge TTL **Use cache-control header if present**, else 1 hour. Photos and `hot.json` (`max-age=60`) are then served from the CDN, so repeated requests no longer reach R2.
 4. **Security** → **WAF** → **Rate limiting rules**: *Hostname equals `img.i-ios.store`* → 100 requests / 10 s per IP → **Block** for 10 s. The Free plan includes one rule.
-5. Replace the `pub-…r2.dev` host with `https://img.i-ios.store` in `index.html`, `_headers` (CSP) and the `R2_PUBLIC_BASE_URL` Fly secret, then redeploy both. The R2 CORS policy (Step 11) stays the same.
+5. Replace the `pub-…r2.dev` host with `https://img.i-ios.store` in `site/public/index.html`, `site/public/_headers` (CSP) and the `R2_PUBLIC_BASE_URL` Fly secret, then redeploy both. The R2 CORS policy (Step 11) stays the same.
 
 ### Spending alerts
 
