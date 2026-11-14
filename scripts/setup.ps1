@@ -1,7 +1,10 @@
 # PhoneStore bot — one-time setup script for Windows (PowerShell)
-# Run from the project folder:  powershell -ExecutionPolicy Bypass -File .\setup.ps1
+# Run from anywhere:  powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1
 
 $ErrorActionPreference = "Stop"
+
+# Work from the project root (this script lives in scripts/).
+Set-Location (Split-Path -Parent $PSScriptRoot)
 
 Write-Host "=== PhoneStore bot setup ===" -ForegroundColor Cyan
 
@@ -32,7 +35,7 @@ if (-not $python) {
     }
     winget install --id Python.Python.3.12 --source winget --accept-package-agreements --accept-source-agreements
 
-    Write-Host "Python installed. Please CLOSE and REOPEN this terminal, then run setup.ps1 again so PATH is refreshed." -ForegroundColor Green
+    Write-Host "Python installed. Please CLOSE and REOPEN this terminal, then run scripts\setup.ps1 again so PATH is refreshed." -ForegroundColor Green
     exit 0
 }
 

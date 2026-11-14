@@ -20,7 +20,7 @@ from telegram.ext import (
     filters,
 )
 
-from store.data.products import get_product_by_id
+from store.models.product import get_product_by_id
 from store.db.orders_repo import save_booking
 from store.utils.admin import broadcast_to_admins, user_handle
 

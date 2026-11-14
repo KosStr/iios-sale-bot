@@ -6,8 +6,8 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-from store.data.products import get_product_by_id, is_in_stock
-from store.keyboards import cart_keyboard, main_menu_keyboard
+from store.models.product import get_product_by_id, is_in_stock
+from store.handlers.keyboards import cart_keyboard, main_menu_keyboard
 from store.services import cart as cart_service
 from store.services.catalog_filter import get_filter
 from store.utils.admin import is_admin

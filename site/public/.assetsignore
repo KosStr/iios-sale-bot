@@ -1,0 +1,4 @@
+# Everything in site/public/ is published as a static asset, except these.
+# _headers is still applied by wrangler; ignoring it here just stops it being served.
+.assetsignore
+_headers

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import math
 
-from store.data.products import (
+from store.models.product import (
     Product,
     effective_price,
     effective_price_uah,

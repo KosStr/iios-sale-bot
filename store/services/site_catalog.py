@@ -20,7 +20,7 @@ import logging
 import os
 import time
 
-from store.data.products import Product, is_on_sale
+from store.models.product import Product, is_on_sale
 from store.db import products_repo
 from store.services.catalog_filter import CATEGORY_LABELS, SUBCATEGORY_LABELS
 from store.services.images import image_url, r2_write_enabled, upload_object

@@ -9,10 +9,10 @@ __pycache__/
 *.log
 .DS_Store
 .pytest_cache/
-images/
+site/
+docs/
 data/
 *.db
 *.db-wal
 *.db-shm
-setup.ps1
 *.ps1

@@ -6,7 +6,7 @@ from html import escape
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-from store.data.products import Product, is_on_sale
+from store.models.product import Product, is_on_sale
 from store.services.catalog_filter import (
     CATEGORIES,
     CATEGORY_LABELS,

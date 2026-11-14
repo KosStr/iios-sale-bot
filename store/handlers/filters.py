@@ -15,7 +15,7 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 from store.handlers.catalog import render_results
-from store.keyboards import filter_keyboard, group_variants_keyboard
+from store.handlers.keyboards import filter_keyboard, group_variants_keyboard
 from store.services.catalog_filter import (
     CATEGORY_LABELS,
     category_has_subcategories,

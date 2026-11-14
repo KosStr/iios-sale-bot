@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from store.data.products import Product, effective_price
+from store.models.product import Product, effective_price
 
 
 @dataclass(frozen=True)

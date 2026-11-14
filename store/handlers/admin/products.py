@@ -19,7 +19,7 @@ from telegram.ext import (
     filters,
 )
 
-from store.data.products import (
+from store.models.product import (
     CATEGORY_ACCESSORIES,
     Product,
     get_all_products,
@@ -27,7 +27,7 @@ from store.data.products import (
     synced_sale_prices,
 )
 from store.db import cart_repo, products_repo
-from store.handlers.admin_ui import (
+from store.handlers.admin.ui import (
     PAGE_SIZE,
     delete_confirm_keyboard,
     edit_category_keyboard,

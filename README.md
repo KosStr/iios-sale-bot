@@ -24,10 +24,10 @@ A Telegram bot for a shop selling used and new Apple devices (iPhone, iPad, Appl
 
 **Website** (`https://i-ios.store`, Cloudflare Workers)
 
-- Landing page (`index.html`): hot deals carousel and a decorative phone mockup in the hero that plays the hot deals as a chat: the bot "types", sends a product card, the price counts down to the sale price, then the next deal rotates in. The mockup is an illustration only: nothing in it is clickable
+- Landing page (`site/public/index.html`): hot deals carousel and a decorative phone mockup in the hero that plays the hot deals as a chat: the bot "types", sends a product card, the price counts down to the sale price, then the next deal rotates in. The mockup is an illustration only: nothing in it is clickable
 - `/catalog`: every in-stock product as crawlable HTML with Product structured data. Category tabs, toggle filters (Нові / Вживані / Знижки), model chips, price sorting, search and «Показати ще» work in the browser on top of the server-rendered page
 - Every product button and category card deep-links into the bot; orders are placed only in Telegram
-- 📞 «Передзвоніть мені»: a floating phone button on both pages (and a link on each `/catalog` card) opens a short form. The Worker validates it, rate-limits it and sends the number to the admins in Telegram (`callback.js`, `worker/callback-api.js`; secrets `TELEGRAM_BOT_TOKEN` and `CALLBACK_CHAT_IDS`, see [DEPLOY.md](DEPLOY.md) Step 11c)
+- 📞 «Передзвоніть мені»: a floating phone button on both pages (and a link on each `/catalog` card) opens a short form. The Worker validates it, rate-limits it and sends the number to the admins in Telegram (`site/public/callback.js`, `site/worker/callback-api.js`; secrets `TELEGRAM_BOT_TOKEN` and `CALLBACK_CHAT_IDS`, see [DEPLOY.md](docs/DEPLOY.md) Step 11c)
 
 **Channel auto-posting** (when `CHANNEL_ID` is set)
 
@@ -38,59 +38,67 @@ A Telegram bot for a shop selling used and new Apple devices (iPhone, iPad, Appl
 ## Project structure
 
 ```
-store/
-├── __main__.py            # Entry point — `python -m store` (webhook or polling)
-├── bot.py                 # Application setup, command/button/callback routing, deep links
-├── config.py              # Environment variables → Config
-├── startup.py             # Fail-fast checks (token, DB directory) before serving
-├── keyboards.py           # Reply & inline keyboards for customers
-├── data/
-│   └── products.py        # Product model, pricing helpers, optional seed catalog
-├── handlers/
-│   ├── catalog.py         # Catalog results & product cards
-│   ├── filters.py         # Category / subcategory / price wizard
-│   ├── cart.py            # Cart actions
-│   ├── checkout.py        # Checkout conversation
-│   ├── booking.py         # Reservation conversation (not linked from any button — see below)
-│   ├── info.py            # Contacts & location
-│   ├── admin_add.py       # /add wizard
-│   ├── admin_products.py  # /products, /hot: list, edit, delete
-│   └── admin_ui.py        # Admin texts & keyboards
-├── services/
-│   ├── catalog_filter.py  # Categories, subcategories, filtering, price ranges
-│   ├── grouping.py        # Model/variant grouping
-│   ├── cart.py            # Cart service (SQLite-backed)
-│   ├── images.py          # R2 image URLs, downloads, uploads
-│   ├── channel_sync.py    # Channel post create/edit/delete
-│   ├── hot_deals.py       # hot.json for the landing page
-│   └── site_catalog.py    # catalog.json for the /catalog page
-├── db/
-│   ├── connection.py      # SQLite pool (WAL)
-│   ├── schema.py          # Tables, indexes, column migrations
-│   ├── init_db.py         # Startup initialization
-│   ├── seed.py            # Seed/cleanup of the built-in catalog
-│   ├── products_repo.py   # Product queries
-│   ├── cart_repo.py       # Cart persistence
-│   └── orders_repo.py     # Orders and bookings
+store/                         # Telegram bot (Python package, `python -m store`)
+├── __main__.py                # Entry point (webhook or polling)
+├── bot.py                     # Application setup, command/button/callback routing, deep links
+├── config.py                  # Environment variables → Config
+├── startup.py                 # Fail-fast checks (token, DB directory) before serving
 ├── models/
-│   └── cart.py            # Cart / CartItem
+│   ├── product.py             # Product model, pricing helpers, optional seed catalog
+│   └── cart.py                # Cart / CartItem
+├── handlers/
+│   ├── keyboards.py           # Reply & inline keyboards for customers
+│   ├── catalog.py             # Catalog results & product cards
+│   ├── filters.py             # Category / subcategory / price wizard
+│   ├── cart.py                # Cart actions
+│   ├── checkout.py            # Checkout conversation
+│   ├── booking.py             # Reservation conversation (not linked from any button — see below)
+│   ├── info.py                # Contacts & location
+│   └── admin/
+│       ├── add.py             # /add wizard
+│       ├── products.py        # /products, /hot: list, edit, delete
+│       └── ui.py              # Admin texts & keyboards
+├── services/
+│   ├── catalog_filter.py      # Categories, subcategories, filtering, price ranges
+│   ├── grouping.py            # Model/variant grouping
+│   ├── cart.py                # Cart service (SQLite-backed)
+│   ├── images.py              # R2 image URLs, downloads, uploads
+│   ├── channel_sync.py        # Channel post create/edit/delete
+│   ├── hot_deals.py           # hot.json for the landing page
+│   └── site_catalog.py        # catalog.json for the /catalog page
+├── db/
+│   ├── connection.py          # SQLite pool (WAL)
+│   ├── schema.py              # Tables, indexes, column migrations
+│   ├── init_db.py             # Startup initialization
+│   ├── seed.py                # Seed/cleanup of the built-in catalog
+│   ├── products_repo.py       # Product queries
+│   ├── cart_repo.py           # Cart persistence
+│   └── orders_repo.py         # Orders and bookings
 └── utils/
-    ├── admin.py           # Admin check, admin/order notifications
-    ├── format.py          # Product card, cart and price formatting
-    ├── tg.py              # Edit-or-resend helpers (text ↔ photo messages)
-    └── throttle.py        # Per-user lock for callback handlers
+    ├── admin.py               # Admin check, admin/order notifications
+    ├── format.py              # Product card, cart and price formatting
+    ├── tg.py                  # Edit-or-resend helpers (text ↔ photo messages)
+    └── throttle.py            # Per-user lock for callback handlers
+site/                          # Website i-ios.store (Cloudflare Workers, deployed with wrangler)
+├── public/                    # Static assets: everything here is published as-is
+│   ├── index.html             # Landing page (reads hot.json from R2)
+│   ├── catalog.js             # Browser script for /catalog: tabs, filters, sorting, search
+│   ├── callback.js            # Browser script: floating phone button + callback form
+│   ├── _headers               # Security headers for static assets
+│   ├── .assetsignore          # Files in public/ that are not served
+│   └── favicons, og-image.jpg, robots.txt, sitemap.xml
+├── worker/
+│   ├── index.js               # Cloudflare Worker: renders /catalog from catalog.json in R2
+│   └── callback-api.js        # POST /api/callback: «Передзвоніть мені» → admins' Telegram
+└── images/                    # Landing page image sources (served from R2, not from the site)
 scripts/
-└── upload_images.py       # Bulk-upload a local folder of images to R2
-index.html                 # Landing page (reads hot.json from R2)
-worker/index.js            # Cloudflare Worker: renders /catalog from catalog.json in R2
-worker/callback-api.js     # POST /api/callback: «Передзвоніть мені» → admins' Telegram
-callback.js                # Browser script: floating phone button + callback form
-catalog.js                 # Browser script for /catalog: tabs, filters, sorting, search
-wrangler.jsonc             # Website deploy config (static assets + the /catalog Worker)
-.assetsignore, _headers    # Which files the site publishes; security headers
-images/                    # Landing page images
-Dockerfile, fly.toml       # Fly.io deployment
-.github/workflows/         # Auto-deploy to Fly.io on push to main
+├── upload_images.py           # Bulk-upload a local folder of images to R2
+└── setup.ps1                  # One-time Windows setup (venv, deps, .env)
+docs/
+└── DEPLOY.md                  # Full deployment guide (Fly.io, R2, website)
+wrangler.jsonc                 # Website deploy config (points at site/public and site/worker)
+Dockerfile, fly.toml           # Fly.io deployment of the bot
+.github/workflows/             # Auto-deploy the bot to Fly.io on push to main
 ```
 
 ## Local development
@@ -106,7 +114,7 @@ Dockerfile, fly.toml       # Fly.io deployment
 python -m venv .venv
 # macOS / Linux
 source .venv/bin/activate
-# Windows (PowerShell) — or run setup.ps1, which does all of this
+# Windows (PowerShell) — or run scripts/setup.ps1, which does all of this
 .venv\Scripts\Activate.ps1
 
 pip install -r requirements.txt
@@ -163,15 +171,15 @@ Setting both is the recommended setup: uploads and `hot.json` need the API crede
 To bulk-upload a folder of files named after product IDs:
 
 ```bash
-python -m scripts.upload_images           # uploads ./images
-python -m scripts.upload_images ./pics    # or a custom folder
+python -m scripts.upload_images               # uploads ./images
+python -m scripts.upload_images site/images   # or a custom folder (here: the landing page images)
 ```
 
 ## Database (SQLite)
 
 SQLite in WAL mode with a small connection pool. Tables: `products`, `cart_items`, `orders`, `order_items`, `bookings`, `schema_meta`.
 
-On startup the bot creates the pool (and the parent directory), applies the schema with additive column migrations, inserts any products from the built-in `PRODUCTS` list in `store/data/products.py` (currently empty), and deletes the IDs listed in `DISCONTINUED_PRODUCT_IDS` in `store/db/seed.py`.
+On startup the bot creates the pool (and the parent directory), applies the schema with additive column migrations, inserts any products from the built-in `PRODUCTS` list in `store/models/product.py` (currently empty), and deletes the IDs listed in `DISCONTINUED_PRODUCT_IDS` in `store/db/seed.py`.
 
 Carts, orders and bookings persist across restarts. On Fly.io the file lives on a volume mounted at `/data`.
 
@@ -181,13 +189,13 @@ Carts, orders and bookings persist across restarts. On Fly.io the file lives on 
 - **Catalog filter state** is per user in `context.user_data["filter"]`; the wizard step is `flt["ui"]`.
 - **Images** — `store/services/images.py`; R2 downloads and uploads run in a worker thread so they don't block the bot.
 - **Channel posts** — `store/services/channel_sync.py`; every failure is logged and never breaks the admin action.
-- **Landing page** — `index.html` is a static page. Admin changes to hot products regenerate `hot.json` in R2 (`store/services/hot_deals.py`), so the Fly machine never has to wake up for site visitors. The deals also rotate through the product card in the hero phone mockup (`heroDeals` in `index.html`; a single deal, or a visitor with reduced motion, gets a static card); with no deals the mockup shows a short sample chat and the deals section stays hidden.
-- **Website catalog** — the bot uploads in-stock products to `catalog.json` in R2 (`store/services/site_catalog.py`). `worker/index.js` renders `/catalog` from it and caches the page for 5 minutes; `catalog.js` only filters and reorders the cards already on the page, so the page works without JavaScript. The result count line appears only once a category, filter or search narrows the list.
+- **Landing page** — `site/public/index.html` is a static page. Admin changes to hot products regenerate `hot.json` in R2 (`store/services/hot_deals.py`), so the Fly machine never has to wake up for site visitors. The deals also rotate through the product card in the hero phone mockup (`heroDeals` in `site/public/index.html`; a single deal, or a visitor with reduced motion, gets a static card); with no deals the mockup shows a short sample chat and the deals section stays hidden.
+- **Website catalog** — the bot uploads in-stock products to `catalog.json` in R2 (`store/services/site_catalog.py`). `site/worker/index.js` renders `/catalog` from it and caches the page for 5 minutes; `site/public/catalog.js` only filters and reorders the cards already on the page, so the page works without JavaScript. The result count line appears only once a category, filter or search narrows the list.
 - **Bookings** — `store/handlers/booking.py` is still registered, but the «Забронювати» button was removed from product cards, so customers can't currently reach it.
 
 ## Deploy to Fly.io
 
-See **[DEPLOY.md](DEPLOY.md)** for the full guide (volume, secrets, R2, webhook, troubleshooting). In short:
+See **[docs/DEPLOY.md](docs/DEPLOY.md)** for the full guide (volume, secrets, R2, webhook, troubleshooting). In short:
 
 ```bash
 fly volumes create store_data --size 1 --region fra   # region = primary_region in fly.toml
@@ -206,7 +214,7 @@ npx wrangler dev --port 8787   # preview at http://localhost:8787 and /catalog
 npx wrangler deploy            # publish to i-ios.store
 ```
 
-Changes to `index.html`, `catalog.js`, `callback.js` or `worker/` go live only after `wrangler deploy`. See [DEPLOY.md](DEPLOY.md), Step 12b.
+Changes to anything in `site/` go live only after `wrangler deploy` (run from the repo root; `wrangler.jsonc` points at `site/`). See [DEPLOY.md](docs/DEPLOY.md), Step 12b.
 
 ## License
 

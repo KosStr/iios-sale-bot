@@ -6,7 +6,7 @@ import re
 import unicodedata
 from datetime import datetime
 
-from store.data.products import Product
+from store.models.product import Product
 from store.db.connection import db_connection
 
 _SELECT = """

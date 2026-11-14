@@ -10,7 +10,7 @@ import os
 from datetime import timedelta
 from html import escape
 
-from store.data.products import (
+from store.models.product import (
     Product,
     effective_price,
     effective_price_uah,

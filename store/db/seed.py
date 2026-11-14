@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 
-from store.data.products import PRODUCTS
+from store.models.product import PRODUCTS
 
 logger = logging.getLogger(__name__)
 
