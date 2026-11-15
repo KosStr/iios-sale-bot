@@ -228,6 +228,17 @@ def update(product_id: str, **fields: object) -> None:
         conn.execute(f"UPDATE products SET {columns} WHERE id = ?", values)
 
 
+def rewrite_channel_post_urls(old_prefix: str, new_prefix: str) -> int:
+    """Swap `old_prefix` for `new_prefix` in channel post URLs; return rows changed."""
+    with db_connection() as conn:
+        cursor = conn.execute(
+            "UPDATE products SET channel_post_url = ? || substr(channel_post_url, ?) "
+            "WHERE substr(channel_post_url, 1, ?) = ?",
+            (new_prefix, len(old_prefix) + 1, len(old_prefix), old_prefix),
+        )
+    return cursor.rowcount
+
+
 def delete(product_id: str) -> None:
     with db_connection() as conn:
         conn.execute("DELETE FROM products WHERE id = ?", (product_id,))

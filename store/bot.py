@@ -88,6 +88,9 @@ CATEGORY_DEEPLINKS = {
     "cat_watch": "watch",
     "cat_headphones": "headphones",
     "cat_laptop": "laptop",
+    "cat_notebook": "notebook",
+    "cat_android": "android",
+    "cat_other_tech": "other_tech",
     "cat_accessories": "accessories",
 }
 

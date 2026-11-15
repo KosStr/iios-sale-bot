@@ -16,6 +16,11 @@ Supported URL shapes (used internally when syncing existing posts)
 ------------------------------------------------------------------
 Public  channel:  https://t.me/<username>/<msg_id>
 Private channel:  https://t.me/c/<channel_id>/<msg_id>
+
+``t.me/c/...`` links open only for channel members — everyone else gets
+"you are not a member of this chat". So when ``CHANNEL_ID`` is numeric but the
+channel has a public @username, links are built with the username instead
+(``resolve_channel``), and old ``t.me/c/...`` links in the DB are rewritten.
 """
 
 from __future__ import annotations
@@ -66,13 +71,56 @@ def _parse_url(url: str) -> tuple[str, int] | None:
     return f"@{m.group('username')}", msg_id
 
 
-def _make_post_url(channel_id: str, message_id: int) -> str:
-    """Build a t.me link from a channel_id and message_id."""
-    if channel_id.startswith("-100"):
-        numeric = channel_id[4:]          # "-1001234567890" → "1234567890"
-        return f"https://t.me/c/{numeric}/{message_id}"
-    username = channel_id.lstrip("@")
-    return f"https://t.me/{username}/{message_id}"
+# Public @username per numeric channel id ("-100…" → "iios_cv"), filled by
+# resolve_channel(). Empty string = channel is private (no username).
+_usernames: dict[str, str] = {}
+
+
+async def _username_for(bot: Bot, channel_id: str) -> str:
+    """Public username of a numeric channel id ("" when private/unknown)."""
+    if not channel_id.startswith("-100"):
+        return channel_id.lstrip("@")
+    if channel_id not in _usernames:
+        try:
+            chat = await bot.get_chat(channel_id)
+        except TelegramError as err:
+            logger.warning("Could not look up channel %s: %s", channel_id, err)
+            return ""
+        _usernames[channel_id] = chat.username or ""
+        if not chat.username:
+            logger.warning(
+                "Channel %s has no public @username: post links (t.me/c/...) "
+                "open only for channel members",
+                channel_id,
+            )
+    return _usernames[channel_id]
+
+
+async def resolve_channel(bot: Bot, channel_id: str) -> None:
+    """Look up the channel's public username and fix stored member-only links.
+
+    Called once at startup. Rewrites ``t.me/c/<id>/<msg>`` URLs saved before
+    the username was known to ``t.me/<username>/<msg>``.
+    """
+    if not channel_id.startswith("-100"):
+        return
+    username = await _username_for(bot, channel_id)
+    if not username:
+        return
+    fixed = products_repo.rewrite_channel_post_urls(
+        f"https://t.me/c/{channel_id[4:]}/", f"https://t.me/{username}/"
+    )
+    if fixed:
+        logger.info("Rewrote %d channel post link(s) to public t.me/%s", fixed, username)
+
+
+async def _make_post_url(bot: Bot, channel_id: str, message_id: int) -> str:
+    """Build a t.me link anyone can open, falling back to a members-only one."""
+    username = await _username_for(bot, channel_id)
+    if username:
+        return f"https://t.me/{username}/{message_id}"
+    numeric = channel_id[4:]          # "-1001234567890" → "1234567890"
+    return f"https://t.me/c/{numeric}/{message_id}"
 
 
 def _price_line(product: Product) -> str:
@@ -243,7 +291,7 @@ async def post_product(bot: Bot, channel_id: str, product: Product) -> str:
     msg = await _send_post(bot, channel_id, product)
     if msg is None:
         return ""
-    url = _make_post_url(channel_id, msg.message_id)
+    url = await _make_post_url(bot, channel_id, msg.message_id)
     logger.info("Channel post created for product %s: %s", product.id, url)
     return url
 
@@ -300,7 +348,7 @@ async def _replace_post(bot: Bot, product: Product) -> None:
     if msg is None:
         return
     await delete_product_post(bot, product)
-    url = _make_post_url(chat_id, msg.message_id)
+    url = await _make_post_url(bot, chat_id, msg.message_id)
     products_repo.update(product.id, channel_post_url=url)
     logger.info("Channel post re-created for product %s: %s", product.id, url)
 

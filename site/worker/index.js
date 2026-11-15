@@ -25,6 +25,9 @@ const CATEGORIES = [
   ['laptop', 'MacBook'],
   ['watch', 'Apple Watch'],
   ['headphones', 'Навушники'],
+  ['notebook', 'Ноутбуки'],
+  ['android', 'Android'],
+  ['other_tech', 'Інша техніка'],
   ['accessories', 'Аксесуари'],
 ];
 
