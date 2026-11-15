@@ -431,7 +431,7 @@ function page(items, updatedAt) {
 
     <div class="wrap results">
       <p class="summary-text js-only"><span id="summary" aria-live="polite"></span><button type="button" class="reset" id="reset" hidden>Скинути</button></p>${sections}
-      <div class="more-wrap"><button type="button" class="more" id="more" hidden>Показати ще</button></div>
+      <nav class="pager" id="pager" aria-label="Сторінки каталогу" hidden></nav>
       <div class="empty" id="empty" hidden>
         <p class="empty-title">Нічого не знайдено</p>
         <p class="empty-text">Спробуйте інший запит або напишіть нам — підберемо під ваш бюджет.</p>
@@ -616,10 +616,14 @@ h1{font-size:clamp(30px,5vw,48px);line-height:1.05;letter-spacing:-.035em;font-w
 .card-call svg{width:14px;height:14px;color:var(--accent2)}
 .card-call:hover{color:var(--ink)}
 
-/* Show more, empty state, help band */
-.more-wrap{display:flex;justify-content:center}
-.more{margin-top:24px;height:48px;padding:0 28px;font-size:15px;font-weight:700;background:var(--bg2);border:1px solid var(--border-strong);border-radius:100px;transition:border-color .2s,background .2s}
-.more:hover{border-color:var(--accent);background:var(--bg3)}
+/* Pager, empty state, help band */
+.pager{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px;margin-top:28px}
+.pager[hidden]{display:none}
+.page{min-width:42px;height:42px;padding:0 8px;display:inline-flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;background:var(--bg2);border:1px solid var(--border-strong);border-radius:12px;transition:border-color .2s,background .2s,color .2s}
+.page:hover:not(:disabled):not(.is-current){border-color:var(--accent);background:var(--bg3)}
+.page.is-current{background:var(--ink);border-color:var(--ink);color:#fff;cursor:default}
+.page:disabled{opacity:.35;cursor:default}
+.page-gap{min-width:20px;text-align:center;color:var(--muted);font-weight:700}
 .btn{display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:#fff;font-weight:700;font-size:15px;padding:13px 22px 13px 18px;border-radius:100px;transition:background .2s,transform .15s}
 .btn svg{width:18px;height:18px}
 .btn:hover{background:var(--accent2)}
@@ -664,6 +668,9 @@ h1{font-size:clamp(30px,5vw,48px);line-height:1.05;letter-spacing:-.035em;font-w
   /* 16px keeps iOS from zooming the page when the select opens */
   .sort select{font-size:16px;font-weight:600}
   .group-title{font-size:19px;margin-bottom:10px}
+  .pager{gap:3px;margin-top:22px}
+  .page{min-width:34px;height:40px;padding:0 4px;font-size:14px;border-radius:10px}
+  .page-gap{min-width:12px}
   .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .card{border-radius:16px}
   .card:hover{transform:none}
