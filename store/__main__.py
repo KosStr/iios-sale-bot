@@ -12,6 +12,7 @@ from telegram.ext import Application
 from store.bot import create_application
 from store.config import Config, load_config
 from store.db import close_pool, init_database
+from store.services.channel_sync import resolve_channel
 from store.services.site_catalog import run_catalog_sync
 from store.startup import (
     fatal_startup,
@@ -41,6 +42,7 @@ async def _set_commands(app: Application) -> None:
 
 async def _post_init(app: Application) -> None:
     await _set_commands(app)
+    await resolve_channel(app.bot, app.bot_data.get("channel_id", ""))
     app.bot_data["catalog_sync_task"] = asyncio.create_task(run_catalog_sync())
 
 

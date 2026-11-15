@@ -20,6 +20,9 @@ CATEGORY_WATCH = "watch"
 CATEGORY_HEADPHONES = "headphones"
 CATEGORY_LAPTOP = "laptop"
 CATEGORY_IPAD = "ipad"
+CATEGORY_NOTEBOOK = "notebook"  # non-Apple laptops
+CATEGORY_ANDROID = "android"
+CATEGORY_OTHER_TECH = "other_tech"
 CATEGORY_ACCESSORIES = "accessories"
 
 # Subcategory keys and labels live in catalog_filter.SUBCATEGORIES.

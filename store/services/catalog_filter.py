@@ -24,6 +24,9 @@ CATEGORIES: list[tuple[str, str]] = [
     ("watch", "⌚ Годинники"),
     ("headphones", "🎧 Навушники"),
     ("laptop", "💻 MacBook"),
+    ("notebook", "🖥 Ноутбуки"),
+    ("android", "🤖 Android"),
+    ("other_tech", "📦 Інша техніка"),
     ("accessories", "🔌 Аксесуари"),
 ]
 CATEGORY_LABELS: dict[str, str] = dict(CATEGORIES)
