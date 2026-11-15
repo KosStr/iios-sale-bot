@@ -19,7 +19,8 @@ import time
 
 from store.models.product import Product, is_on_sale
 from store.db import products_repo
-from store.services.images import image_url, r2_write_enabled, upload_object
+from store.services.images import r2_write_enabled, upload_object
+from store.services.web_images import site_image_url
 from store.utils.format import join_specs
 
 logger = logging.getLogger(__name__)
@@ -33,10 +34,7 @@ def hot_deals_key() -> str:
 
 
 def _deal(product: Product, version: int) -> dict:
-    image = image_url(product)
-    if image:
-        # Photos are overwritten under the same key, so bust browser/CDN caches.
-        image = f"{image}{'&' if '?' in image else '?'}v={version}"
+    image = site_image_url(product, version)
     on_sale = is_on_sale(product)
     return {
         "id": product.id,
@@ -63,7 +61,7 @@ def build_payload(products: list[Product] | None = None) -> dict:
     }
 
 
-def _publish_sync() -> bool:
+def publish_hot_deals_sync() -> bool:
     payload = build_payload()
     body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     ok = upload_object(
@@ -80,7 +78,7 @@ async def publish_hot_deals() -> bool:
         logger.warning("Hot deals not published: R2 credentials not configured.")
         return False
     try:
-        return await asyncio.to_thread(_publish_sync)
+        return await asyncio.to_thread(publish_hot_deals_sync)
     except Exception:  # noqa: BLE001 - never break an admin action over the landing
         logger.exception("Failed to publish hot deals")
         return False
