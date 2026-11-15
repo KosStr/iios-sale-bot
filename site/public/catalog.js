@@ -1,12 +1,12 @@
-// Search, category tabs, model chips, filters, sorting and "show more" for
+// Search, category tabs, model chips, filters, sorting and pagination for
 // /catalog (page rendered by worker/index.js). The page works without this
 // script; it only filters and reorders the cards that are already there.
 (function () {
   const root = document.documentElement;
   root.classList.add('js');
 
-  // Cards revealed per step, so a 500-product catalog isn't one endless scroll.
-  const BATCH = 24;
+  // Cards per page, so a 500-product catalog isn't one endless scroll.
+  const PAGE_SIZE = 24;
   const COND_LABELS = { new: 'Нові', used: 'Вживані' };
 
   function plural(n, one, few, many) {
@@ -27,7 +27,7 @@
     const sortSelect = document.getElementById('sort');
     const summary = document.getElementById('summary');
     const resetBtn = document.getElementById('reset');
-    const moreBtn = document.getElementById('more');
+    const pager = document.getElementById('pager');
     const modelsBox = document.getElementById('models');
     const empty = document.getElementById('empty');
     const emptyCta = document.getElementById('empty-cta');
@@ -36,7 +36,7 @@
     let labels = {};
     try { labels = JSON.parse(document.body.dataset.labels || '{}'); } catch { /* defaults */ }
 
-    const state = { cat: 'all', sub: '', q: '', cond: new Set(), sale: false, sort: 'default', limit: BATCH };
+    const state = { cat: 'all', sub: '', q: '', cond: new Set(), sale: false, sort: 'default', page: 1 };
 
     // Broken or missing photos fall back to the IIOS placeholder behind them.
     document.querySelectorAll('.card-media img').forEach(img => {
@@ -71,15 +71,71 @@
       return parts.join(' · ');
     }
 
+    // Page numbers to offer: all of them when few, otherwise the first, the
+    // last and the neighbours of the current one (null marks a gap).
+    function pageList(current, pages) {
+      if (pages <= 7) return Array.from({ length: pages }, (_, i) => i + 1);
+      const from = Math.max(2, Math.min(current - 1, pages - 3));
+      const to = Math.min(pages - 1, Math.max(current + 1, 4));
+      const list = [1];
+      if (from > 2) list.push(null);
+      for (let p = from; p <= to; p++) list.push(p);
+      if (to < pages - 1) list.push(null);
+      list.push(pages);
+      return list;
+    }
+
+    function pageButton(text, page, label) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'page';
+      btn.textContent = text;
+      btn.dataset.page = page;
+      btn.setAttribute('aria-label', label);
+      return btn;
+    }
+
+    function renderPager(pages) {
+      if (!pager) return;
+      pager.hidden = pages <= 1;
+      pager.replaceChildren();
+      if (pages <= 1) return;
+      const prev = pageButton('‹', state.page - 1, 'Попередня сторінка');
+      prev.disabled = state.page === 1;
+      pager.append(prev);
+      pageList(state.page, pages).forEach(p => {
+        if (p === null) {
+          const gap = document.createElement('span');
+          gap.className = 'page-gap';
+          gap.textContent = '…';
+          gap.setAttribute('aria-hidden', 'true');
+          pager.append(gap);
+          return;
+        }
+        const btn = pageButton(String(p), p, `Сторінка ${p}`);
+        if (p === state.page) {
+          btn.classList.add('is-current');
+          btn.setAttribute('aria-current', 'page');
+        }
+        pager.append(btn);
+      });
+      const next = pageButton('›', state.page + 1, 'Наступна сторінка');
+      next.disabled = state.page === pages;
+      pager.append(next);
+    }
+
     function apply() {
-      let total = 0;
-      let shown = 0;
+      const matched = cards.filter(matches);
+      const total = matched.length;
+      const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+      state.page = Math.min(Math.max(1, state.page), pages);
+      const start = (state.page - 1) * PAGE_SIZE;
+      const onPage = new Set(matched.slice(start, start + PAGE_SIZE));
+      const isMatch = new Set(matched);
       cards.forEach(card => {
-        const ok = matches(card);
-        const capped = ok && total >= state.limit;
+        const ok = isMatch.has(card);
         card.hidden = !ok;
-        card.classList.toggle('is-capped', capped);
-        if (ok) { total++; if (!capped) shown++; }
+        card.classList.toggle('is-capped', ok && !onPage.has(card));
       });
       groups.forEach(group => {
         group.hidden = !group.querySelector('.card:not([hidden]):not(.is-capped)');
@@ -94,11 +150,7 @@
 
       if (summary) summary.textContent = describe(total);
       if (resetBtn) resetBtn.hidden = !filtered;
-      if (moreBtn) {
-        const left = total - shown;
-        moreBtn.hidden = left <= 0;
-        moreBtn.textContent = `Показати ще ${Math.min(BATCH, left)} з ${left}`;
-      }
+      renderPager(pages);
 
       empty.hidden = total > 0;
       if (!total) {
@@ -114,10 +166,18 @@
       }
     }
 
-    // Any change to what is listed starts again from the first batch.
+    // Any change to what is listed starts again from the first page.
     function refresh() {
-      state.limit = BATCH;
+      state.page = 1;
       apply();
+    }
+
+    // Top of the results, just below the pinned toolbar.
+    function scrollToResults() {
+      const pinned = toolbar ? toolbar.offsetHeight + parseInt(getComputedStyle(toolbar).top, 10) : 0;
+      const top = results.getBoundingClientRect().top + scrollY - pinned;
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      scrollTo({ top: Math.max(0, top), behavior: reduce ? 'auto' : 'smooth' });
     }
 
     // Model chips ("iPhone Pro", "iPhone Pro Max"…) for the open category,
@@ -222,9 +282,12 @@
       refresh();
     });
 
-    moreBtn?.addEventListener('click', () => {
-      state.limit += BATCH;
+    pager?.addEventListener('click', e => {
+      const btn = e.target.closest('.page');
+      if (!btn || btn.disabled || btn.classList.contains('is-current')) return;
+      state.page = Number(btn.dataset.page);
       apply();
+      scrollToResults();
     });
 
     resetBtn?.addEventListener('click', () => {
@@ -246,13 +309,16 @@
     }
 
     // /catalog#watch (e.g. from the landing's category cards) opens that tab;
-    // /catalog#p-<id> keeps every card visible so the browser can scroll to it.
+    // /catalog#p-<id> opens the page that holds that card and scrolls to it.
     function fromHash() {
       const key = decodeURIComponent(location.hash.slice(1));
       if (key && !key.startsWith('p-')) { setCategory(key, { scroll: false }); return; }
       renderModels();
-      state.limit = key ? Infinity : BATCH;
+      const target = key ? document.getElementById(key) : null;
+      const index = target ? cards.filter(matches).indexOf(target) : -1;
+      state.page = index >= 0 ? Math.floor(index / PAGE_SIZE) + 1 : 1;
       apply();
+      if (index >= 0) target.scrollIntoView({ block: 'center' });
     }
     window.addEventListener('hashchange', fromHash);
     fromHash();

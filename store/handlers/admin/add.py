@@ -36,10 +36,7 @@ from store.utils.tg import photo_file_id
 logger = logging.getLogger(__name__)
 
 # ── State constants (order = wizard step order) ──────────────────────────────
-CATEGORY, SUBCATEGORY, NAME, PRODUCT_ID, GROUP, DESCRIPTION, PRICE_USD, PRICE_UAH, WARRANTY, BRAND, STORAGE, COLOR, STOCK, CHANNEL, PHOTO, CONFIRM = range(16)
-
-# Existing models offered as buttons on the GROUP step.
-_GROUP_CHOICE_LIMIT = 8
+CATEGORY, SUBCATEGORY, NAME, PRODUCT_ID, DESCRIPTION, PRICE_USD, PRICE_UAH, WARRANTY, BRAND, STORAGE, COLOR, STOCK, CHANNEL, PHOTO, CONFIRM = range(15)
 
 _CANCEL = InlineKeyboardMarkup(
     [[InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")]]
@@ -122,24 +119,6 @@ def _subcategory_keyboard(category: str) -> InlineKeyboardMarkup:
     ]
     rows.append(
         [InlineKeyboardButton("📦 Без підкатегорії", callback_data="adm:sub_none")]
-    )
-    rows.append([InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")])
-    return InlineKeyboardMarkup(rows)
-
-
-def _group_keyboard(draft: dict) -> InlineKeyboardMarkup:
-    """Offer existing models to join, or a new one named after this product."""
-    rows = [
-        [InlineKeyboardButton(f"📦 {label}", callback_data=f"adm:grp:{index}")]
-        for index, label in enumerate(draft.get("group_choices", []))
-    ]
-    rows.append(
-        [
-            InlineKeyboardButton(
-                f"🆕 Окрема модель «{draft['name'][:24]}»",
-                callback_data="adm:grp_new",
-            )
-        ]
     )
     rows.append([InlineKeyboardButton("✖️ Скасувати", callback_data="adm:cancel")])
     return InlineKeyboardMarkup(rows)
@@ -288,7 +267,7 @@ async def skip_subcategory(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     return NAME
 
 
-# ── Step 4: name → model group ────────────────────────────────────────────────
+# ── Step 4: name → product ID ─────────────────────────────────────────────────
 
 async def collect_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     name = update.message.text.strip()
@@ -346,27 +325,19 @@ async def skip_product_id(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 
 async def _after_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Id is set: offer to join an existing model, else go to description."""
+    """Id is set: derive the model from the name, then go to description.
+
+    The model (group) is the product name, so same-named products collapse
+    into one catalog row and uniquely named ones stay separate. Admins can
+    still merge products by hand via the «Модель» field in /products.
+    """
     draft = _draft(context)
     name = draft["name"]
-
-    # Variants of one model share a group and are shown as a single catalog row.
-    choices = products_repo.distinct_groups(draft.get("category", ""))
-    if not choices:
-        draft["group"] = name if fits_group_key(name) else ""
-        return await _ask_description(update, context)
-
-    draft["group_choices"] = choices[:_GROUP_CHOICE_LIMIT]
-    text = (
-        "Це варіант існуючої *моделі*?\n"
-        "Варіанти однієї моделі покупець бачить одним рядком у каталозі."
-    )
-    keyboard = _group_keyboard(draft)
-    await _prompt(update, text, keyboard)
-    return GROUP
+    draft["group"] = name if fits_group_key(name) else ""
+    return await _ask_description(update, context)
 
 
-# ── Step 5: model group → description ─────────────────────────────────────────
+# ── Step 5: description ───────────────────────────────────────────────────────
 
 async def _ask_description(
     update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -381,39 +352,6 @@ async def _ask_description(
     )
     await _prompt(update, prompt, _DESCRIPTION_SKIP)
     return DESCRIPTION
-
-
-async def pick_group(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Join the model picked from the list of existing ones."""
-    await update.callback_query.answer()
-    draft = _draft(context)
-    choices = draft.get("group_choices", [])
-    index = int(update.callback_query.data.rsplit(":", 1)[1])
-    draft["group"] = choices[index] if 0 <= index < len(choices) else draft["name"]
-    return await _ask_description(update, context)
-
-
-async def new_group(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Start a new model named after this product."""
-    await update.callback_query.answer()
-    draft = _draft(context)
-    name = draft["name"]
-    draft["group"] = name if fits_group_key(name) else ""
-    return await _ask_description(update, context)
-
-
-async def collect_group(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Admin typed a model name instead of picking one from the list."""
-    name = update.message.text.strip()
-    if not fits_group_key(name):
-        await update.message.reply_text(
-            "Назва моделі занадто довга. Скоротіть її та надішліть ще раз.",
-            reply_markup=_group_keyboard(_draft(context)),
-        )
-        return GROUP
-
-    _draft(context)["group"] = name
-    return await _ask_description(update, context)
 
 
 # ── Step 6: description → price USD ───────────────────────────────────────────
@@ -831,11 +769,6 @@ def build_admin_add_handler() -> ConversationHandler:
             PRODUCT_ID: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, collect_product_id),
                 CallbackQueryHandler(skip_product_id, pattern=r"^adm:gen_id$"),
-            ],
-            GROUP: [
-                CallbackQueryHandler(pick_group, pattern=r"^adm:grp:\d+$"),
-                CallbackQueryHandler(new_group, pattern=r"^adm:grp_new$"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, collect_group),
             ],
             DESCRIPTION: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, collect_description),

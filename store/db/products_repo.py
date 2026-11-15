@@ -185,18 +185,6 @@ def fetch_by_ids(product_ids: list[str]) -> dict[str, Product]:
     return {row["id"]: _row_to_product(row) for row in rows}
 
 
-def distinct_groups(category: str = "") -> list[str]:
-    """Existing non-empty model groups, optionally limited to one category."""
-    sql = "SELECT DISTINCT product_group FROM products WHERE product_group != ''"
-    params: tuple[str, ...] = ()
-    if category:
-        sql += " AND category = ?"
-        params = (category,)
-    with db_connection() as conn:
-        rows = conn.execute(f"{sql} ORDER BY product_group", params).fetchall()
-    return [row[0] for row in rows]
-
-
 def update(product_id: str, **fields: object) -> None:
     allowed = {
         "name",
