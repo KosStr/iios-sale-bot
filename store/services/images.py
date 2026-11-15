@@ -25,7 +25,7 @@ from store.models.product import Product
 logger = logging.getLogger(__name__)
 
 
-def _public_base() -> str:
+def public_base() -> str:
     return os.getenv("R2_PUBLIC_BASE_URL", "").rstrip("/")
 
 
@@ -42,7 +42,7 @@ def _private_enabled() -> bool:
     return all(_private_config().values())
 
 
-def _object_key(product: Product) -> str:
+def object_key(product: Product) -> str:
     """R2 object key for a product. Defaults to '<id>.jpg' if not set."""
     return product.image or f"{product.id}.jpg"
 
@@ -51,9 +51,9 @@ def image_url(product: Product) -> str | None:
     """Return a public URL for the product image, or None."""
     if product.image and product.image.startswith(("http://", "https://")):
         return product.image
-    base = _public_base()
+    base = public_base()
     if base:
-        return f"{base}/{_object_key(product)}"
+        return f"{base}/{object_key(product)}"
     return None
 
 
@@ -75,7 +75,7 @@ def get_image_bytes(product: Product) -> bytes | None:
     """Fetch image bytes from a private R2 bucket, or None on any failure."""
     if not _private_enabled():
         return None
-    key = _object_key(product)
+    key = object_key(product)
     try:
         obj = _client().get_object(Bucket=_private_config()["bucket"], Key=key)
         return obj["Body"].read()
@@ -120,6 +120,37 @@ def upload_object(
     except Exception as err:  # noqa: BLE001
         logger.exception("R2 upload failed for %s: %s", key, err)
         return False
+
+
+def delete_object(key: str) -> bool:
+    """Delete an object from R2. Returns True on success."""
+    if not _private_enabled():
+        return False
+    try:
+        _client().delete_object(Bucket=_private_config()["bucket"], Key=key)
+        return True
+    except Exception as err:  # noqa: BLE001
+        logger.warning("R2 delete failed for %s: %s", key, err)
+        return False
+
+
+def list_objects(prefix: str) -> dict[str, int] | None:
+    """Keys under `prefix` mapped to their last-modified time (epoch seconds).
+
+    Returns None when the bucket can't be listed (no credentials, network).
+    """
+    if not _private_enabled():
+        return None
+    found: dict[str, int] = {}
+    try:
+        paginator = _client().get_paginator("list_objects_v2")
+        for page in paginator.paginate(Bucket=_private_config()["bucket"], Prefix=prefix):
+            for obj in page.get("Contents", []):
+                found[obj["Key"]] = int(obj["LastModified"].timestamp())
+    except Exception as err:  # noqa: BLE001
+        logger.warning("R2 list failed for %s: %s", prefix, err)
+        return None
+    return found
 
 
 def r2_write_enabled() -> bool:

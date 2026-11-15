@@ -29,7 +29,8 @@ from store.services.catalog_filter import (
 )
 from store.services.channel_sync import post_product
 from store.services.grouping import fits_group_key
-from store.services.images import r2_write_enabled, upload_image
+from store.services.images import r2_write_enabled
+from store.services.web_images import upload_product_photo
 from store.utils.admin import is_admin
 from store.utils.tg import photo_file_id
 
@@ -659,7 +660,7 @@ async def collect_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         )
         return PHOTO
 
-    if await asyncio.to_thread(upload_image, image_key, image_bytes):
+    if await asyncio.to_thread(upload_product_photo, image_key, image_bytes):
         draft["image"] = image_key
     else:
         await update.message.reply_text(

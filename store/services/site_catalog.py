@@ -23,7 +23,9 @@ import time
 from store.models.product import Product, is_on_sale
 from store.db import products_repo
 from store.services.catalog_filter import CATEGORY_LABELS, SUBCATEGORY_LABELS
+from store.services.hot_deals import publish_hot_deals_sync
 from store.services.images import image_url, r2_write_enabled, upload_object
+from store.services.web_images import ensure_web_copies, web_image_url
 from store.utils.format import present_values
 
 logger = logging.getLogger(__name__)
@@ -73,7 +75,8 @@ def _item(product: Product) -> dict:
         "price_usd": product.price or None,
         "sale_price_uah": (product.sale_price_uah or None) if on_sale else None,
         "sale_price_usd": (product.sale_price or None) if on_sale else None,
-        "image": image_url(product),
+        # The small web copy when there is one (it carries its own ?v=).
+        "image": web_image_url(product) or image_url(product),
     }
 
 
@@ -84,11 +87,14 @@ def build_items(products: list[Product] | None = None) -> list[dict]:
 
 
 def _with_image_versions(items: list[dict], version: int) -> list[dict]:
-    """Photos are overwritten under the same key, so bust browser caches per upload."""
+    """Originals are overwritten under the same key, so bust browser caches per upload.
+
+    Web copies already carry their own version and are left alone.
+    """
     versioned = []
     for item in items:
         image = item["image"]
-        if image:
+        if image and "?v=" not in image:
             image = f"{image}{'&' if '?' in image else '?'}v={version}"
         versioned.append({**item, "image": image})
     return versioned
@@ -97,7 +103,12 @@ def _with_image_versions(items: list[dict], version: int) -> list[dict]:
 def _sync_once() -> bool:
     """Upload catalog.json if the items changed since the last upload."""
     global _last_hash
-    items = build_items()
+    products = products_repo.fetch_all()
+    in_stock = [p for p in products if p.stock > 0]
+    if ensure_web_copies(in_stock) and any(p.is_hot for p in in_stock):
+        # hot.json was published with the heavy originals; switch it over too.
+        publish_hot_deals_sync()
+    items = build_items(products)
     digest = hashlib.sha256(
         json.dumps(items, ensure_ascii=False, sort_keys=True).encode("utf-8")
     ).hexdigest()

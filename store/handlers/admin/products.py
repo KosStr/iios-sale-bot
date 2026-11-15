@@ -46,7 +46,7 @@ from store.services.channel_sync import delete_product_post, sync_product_post
 from store.services.grouping import fits_group_key
 from store.services.hot_deals import publish_hot_deals, refresh_if_hot
 from store.services.site_catalog import request_catalog_refresh
-from store.services.images import upload_image
+from store.services.web_images import upload_product_photo
 from store.utils.admin import is_admin
 from store.utils.tg import photo_file_id
 
@@ -586,7 +586,7 @@ async def apply_edit_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             image_key = product.image or f"{product.id}.jpg"
             tg_file = await context.bot.get_file(file_id)
             image_bytes = bytes(await tg_file.download_as_bytearray())
-            if not await asyncio.to_thread(upload_image, image_key, image_bytes):
+            if not await asyncio.to_thread(upload_product_photo, image_key, image_bytes):
                 await update.message.reply_text(
                     "⚠️ Не вдалося завантажити фото в R2. Спробуйте ще раз або /cancel."
                 )
