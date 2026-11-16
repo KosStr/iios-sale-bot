@@ -169,6 +169,21 @@ function categoryLabel(key, item) {
   return known ? known[1] : (item && item.category_label) || 'Інше';
 }
 
+// Bing flags meta descriptions over 160 characters, so categories are
+// listed only while the whole sentence still fits.
+const DESCRIPTION_MAX = 160;
+
+function catalogDescription(count, labels) {
+  const head = `${count} ${plural(count, 'товар', 'товари', 'товарів')} в наявності в IIOS (Чернівці)`;
+  const tail = '. Нові та вживані, гарантія магазину, доставка по Україні.';
+  const shown = labels.slice();
+  const build = () => head
+    + (shown.length ? ': ' + shown.join(', ') + (shown.length < labels.length ? ' та інше' : '') : '')
+    + tail;
+  while (shown.length && build().length > DESCRIPTION_MAX) shown.pop();
+  return build();
+}
+
 // ── Structured data ───────────────────────────────────────────
 
 function jsonLd(items) {
@@ -315,7 +330,7 @@ function page(items, updatedAt) {
   const groups = groupByCategory(items);
   const title = 'Каталог iPhone, MacBook, AirPods у Чернівцях — ціни | IIOS';
   const description = items.length
-    ? `${items.length} ${plural(items.length, 'товар', 'товари', 'товарів')} Apple в наявності в IIOS (Чернівці): ${groups.map(([, g]) => g.label).join(', ')}. Нові та вживані, гарантія магазину, доставка Новою поштою по Україні.`
+    ? catalogDescription(items.length, groups.map(([, g]) => g.label))
     : 'Каталог нової та вживаної техніки Apple в магазині IIOS у Чернівцях: iPhone, MacBook, AirPods, Apple Watch. Гарантія магазину, доставка по Україні.';
 
   // Every category is listed for catalog.js, so /catalog#watch from the
