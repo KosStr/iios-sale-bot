@@ -8,6 +8,8 @@
 // Free-tier safety: the rendered page is cached for CACHE_SECONDS under one
 // fixed key (query strings ignored), so floods hit the edge cache, not R2.
 //
+// /feed.xml is the same catalog as a Google Merchant Center product feed.
+//
 // /api/callback (the site's "Передзвоніть мені" form) lives in callback-api.js.
 
 import { handleCallback } from './callback-api.js';
@@ -17,6 +19,7 @@ const PAGE_PATH = '/catalog';
 const CATALOG_KEY = 'catalog.json';
 const BOT_URL = 'https://t.me/iios_cv_bot';
 const CACHE_SECONDS = 300;
+const FEED_PATH = '/feed.xml';
 
 // Order and labels match the bot's categories (store/services/catalog_filter.py).
 const CATEGORIES = [
@@ -51,6 +54,9 @@ export default {
     if (url.pathname.startsWith('/api/')) {
       return new Response('Not Found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
     }
+    if (url.pathname === FEED_PATH) {
+      return serveCached(request, url, ctx, FEED_PATH, () => renderFeed(env));
+    }
     if (url.pathname !== PAGE_PATH) {
       // "/catalog/" and "/catalog/anything" → the one canonical page.
       if (url.pathname.startsWith(PAGE_PATH + '/')) {
@@ -58,36 +64,46 @@ export default {
       }
       return env.ASSETS.fetch(request);
     }
-    if (request.method !== 'GET' && request.method !== 'HEAD') {
-      return new Response('Method Not Allowed', { status: 405, headers: { Allow: 'GET, HEAD' } });
-    }
-
-    const cache = caches.default;
-    const cacheKey = new Request(url.origin + PAGE_PATH, { method: 'GET' });
-    let response = await cache.match(cacheKey);
-    if (!response) {
-      response = await render(env);
-      // The error page is cached too (for a minute), so a flood can't turn a
-      // missing catalog.json into an R2 read per request.
-      ctx.waitUntil(cache.put(cacheKey, response.clone()));
-    }
-
-    const headers = new Headers(response.headers);
-    if (url.hostname.endsWith('.workers.dev')) headers.set('X-Robots-Tag', 'noindex');
-    const body = request.method === 'HEAD' ? null : response.body;
-    return new Response(body, { status: response.status, headers });
+    return serveCached(request, url, ctx, PAGE_PATH, () => render(env));
   },
 };
 
-async function render(env) {
-  let catalog = null;
+// Serves a rendered response from the edge cache under one fixed key (query
+// strings ignored), rendering it on a miss. Error responses are cached too
+// (for a minute), so a flood can't turn a missing catalog.json into an R2
+// read per request.
+async function serveCached(request, url, ctx, path, renderFn) {
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    return new Response('Method Not Allowed', { status: 405, headers: { Allow: 'GET, HEAD' } });
+  }
+  const cache = caches.default;
+  const cacheKey = new Request(url.origin + path, { method: 'GET' });
+  let response = await cache.match(cacheKey);
+  if (!response) {
+    response = await renderFn();
+    ctx.waitUntil(cache.put(cacheKey, response.clone()));
+  }
+
+  const headers = new Headers(response.headers);
+  if (url.hostname.endsWith('.workers.dev')) headers.set('X-Robots-Tag', 'noindex');
+  const body = request.method === 'HEAD' ? null : response.body;
+  return new Response(body, { status: response.status, headers });
+}
+
+// catalog.json from R2, or null when it is missing or unreadable.
+async function loadCatalog(env) {
   try {
     const object = await env.CATALOG.get(CATALOG_KEY);
-    if (object) catalog = await object.json();
+    const catalog = object ? await object.json() : null;
+    return catalog && Array.isArray(catalog.items) ? catalog : null;
   } catch {
-    catalog = null;
+    return null;
   }
-  if (!catalog || !Array.isArray(catalog.items)) {
+}
+
+async function render(env) {
+  const catalog = await loadCatalog(env);
+  if (!catalog) {
     // Temporary: tell crawlers to come back later.
     return htmlResponse(page([], null), 503, { 'Retry-After': '600', 'Cache-Control': 'public, max-age=60' });
   }
@@ -231,6 +247,110 @@ function jsonLd(items) {
   return [list, breadcrumbs]
     .map(data => `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>`)
     .join('\n  ');
+}
+
+// ── Merchant Center feed ──────────────────────────────────────
+// RSS 2.0 with Google's g: attributes, fetched by Merchant Center on a
+// schedule. Prices and links match /catalog, so Google's landing-page checks
+// see the same price. Shipping and return policies are set in Merchant
+// Center itself, not here.
+
+// Categories whose products are always Apple.
+const APPLE_CATEGORIES = new Set(['phone', 'ipad', 'laptop', 'watch']);
+
+// Other brands the store carries; the first one named in the title wins.
+const KNOWN_BRANDS = [
+  'Apple', 'Samsung', 'Xiaomi', 'Redmi', 'Poco', 'Google', 'OnePlus', 'Motorola', 'Huawei',
+  'Honor', 'Realme', 'Oppo', 'Nokia', 'Sony', 'Lenovo', 'HP', 'Dell', 'Asus', 'Acer', 'MSI',
+  'Microsoft', 'JBL', 'Marshall', 'Remax', 'Baseus', 'Anker', 'Ugreen', 'Belkin', 'Spigen',
+];
+
+function feedBrand(item) {
+  if (APPLE_CATEGORIES.has(item.category)) return 'Apple';
+  const name = item.name.toLowerCase();
+  const brand = KNOWN_BRANDS.find(b => new RegExp(`(^|[^a-z])${b.toLowerCase()}([^a-z]|$)`).test(name));
+  if (brand) return brand;
+  return /^(iphone|ipad|macbook|airpods|apple watch|imac|mac )/i.test(item.name) ? 'Apple' : null;
+}
+
+// Characters XML 1.0 forbids (stray control codes in admin-typed text).
+function xmlText(value) {
+  return esc(String(value ?? '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g, ''));
+}
+
+function feedPrice(amount, currency) {
+  return `${Number(amount).toFixed(2)} ${currency}`;
+}
+
+function feedTitle(item) {
+  const parts = [item.name];
+  for (const extra of [item.storage, item.color]) {
+    if (extra && !item.name.toLowerCase().includes(extra.toLowerCase())) parts.push(extra);
+  }
+  return parts.join(' ').slice(0, 150);
+}
+
+function feedItem(item) {
+  const { currency, regular, sale } = prices(item);
+  const condition = conditionKind(item.condition);
+  const image = safeImage(item.image);
+  // Google needs a price, an image and a known condition (an item with no
+  // condition is treated as new, which a used phone must never be).
+  if (!regular || !image || !condition) return null;
+
+  const title = feedTitle(item);
+  const description = item.description || `${title}. ${item.condition}.`;
+  const brand = feedBrand(item);
+  const productType = [item.category_label, item.subcategory_label].filter(Boolean).join(' > ');
+  const fields = [
+    ['g:id', item.id],
+    ['g:title', title],
+    ['g:description', description.slice(0, 5000)],
+    ['g:link', productUrl(item)],
+    ['g:image_link', image],
+    ['g:availability', 'in_stock'],
+    ['g:price', feedPrice(regular, currency)],
+    sale ? ['g:sale_price', feedPrice(sale, currency)] : null,
+    ['g:condition', condition],
+    brand ? ['g:brand', brand] : null,
+    item.color ? ['g:color', item.color] : null,
+    productType ? ['g:product_type', productType] : null,
+  ].filter(Boolean);
+  return '    <item>\n'
+    + fields.map(([tag, value]) => `      <${tag}>${xmlText(value)}</${tag}>`).join('\n')
+    + '\n    </item>';
+}
+
+async function renderFeed(env) {
+  const catalog = await loadCatalog(env);
+  if (!catalog) {
+    return new Response('Catalog temporarily unavailable', {
+      status: 503,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Retry-After': '600', 'Cache-Control': 'public, max-age=60' },
+    });
+  }
+  const items = catalog.items
+    .filter(i => i && i.id && i.name)
+    .map(feedItem)
+    .filter(Boolean);
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
+  <channel>
+    <title>IIOS — техніка Apple у Чернівцях</title>
+    <link>${SITE}${PAGE_PATH}</link>
+    <description>Товари в наявності в магазині IIOS</description>
+${items.join('\n')}
+  </channel>
+</rss>
+`;
+  return new Response(xml, {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/xml; charset=utf-8',
+      'Cache-Control': `public, max-age=${CACHE_SECONDS}`,
+      'X-Content-Type-Options': 'nosniff',
+    },
+  });
 }
 
 // ── HTML ──────────────────────────────────────────────────────

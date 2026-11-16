@@ -407,6 +407,10 @@ npx wrangler deploy            # publish
   `catalog.js`, `callback.js`, icons, `robots.txt`, `sitemap.xml`, `og-image.jpg`), plus the
   Worker in `site/worker/` (`index.js`, `callback-api.js`). A new public file just goes into
   `site/public/`; anything there that must not be served goes into `site/public/.assetsignore`.
+- `https://i-ios.store/feed.xml` is the same catalog as a Google Merchant Center
+  product feed (add it in Merchant Center → Products → Add from a file → URL).
+  Items without a price, photo, or a condition the Worker recognises
+  ("Новий"/"Вживаний") are left out of the feed.
 - Check `https://i-ios.store/` and `https://i-ios.store/catalog` afterwards.
   `/catalog` is cached for 5 minutes, so allow that long if it still looks old.
 - Usual order: change on a branch → preview → `wrangler deploy` → open a pull
