@@ -615,7 +615,7 @@ What a flood of requests can cost, and how each part is capped:
 2. Same page: **Public Development URL** (`r2.dev`) → **Disallow**. Do this only after step 5, or the live landing loses its images.
 3. **Caching** → **Cache Rules** → create a rule: *Hostname equals `img.i-ios.store`* → **Eligible for cache**, Edge TTL **Use cache-control header if present**, else 1 hour. Photos and `hot.json` (`max-age=60`) are then served from the CDN, so repeated requests no longer reach R2.
 4. **Security** → **WAF** → **Rate limiting rules**: *Hostname equals `img.i-ios.store`* → 100 requests / 10 s per IP → **Block** for 10 s. The Free plan includes one rule.
-5. Replace the `pub-…r2.dev` host with `https://img.i-ios.store` in `site/public/index.html`, `site/public/_headers` (CSP) and the `R2_PUBLIC_BASE_URL` Fly secret, then redeploy both. The R2 CORS policy (Step 11) stays the same.
+5. Replace the `pub-…r2.dev` host with `https://img.i-ios.store` in `site/public/index.html`, `site/public/_headers` (CSP), `site/worker/index.js` (CSP for `/catalog`) and the `R2_PUBLIC_BASE_URL` Fly secret, then redeploy both. The R2 CORS policy (Step 11) stays the same.
 
 ### Spending alerts
 

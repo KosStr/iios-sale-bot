@@ -19,8 +19,8 @@
   <link rel="canonical" href="https://i-ios.store/" />
   <meta name="theme-color" content="#f6f4ef" />
   <!-- Images (no-CORS) and the hot.json fetch (CORS) use separate connections, so warm both. -->
-  <link rel="preconnect" href="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev" />
-  <link rel="preconnect" href="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev" crossorigin />
+  <link rel="preconnect" href="https://img.i-ios.store" />
+  <link rel="preconnect" href="https://img.i-ios.store" crossorigin />
   <!-- Scroll-reveal sections start at opacity 0; show them when JS doesn't run. -->
   <noscript><style>.reveal, .step { opacity: 1 !important; transform: none !important; }</style></noscript>
   <!-- Real files, not a data: URI: Google shows only crawlable favicons in search results. -->
@@ -1696,7 +1696,7 @@
               <div class="laptop-screen">
                 <div class="laptop-dots"><span></span><span></span><span></span></div>
                 <div class="laptop-card">
-                  <div class="laptop-card-img" id="cta-deal2-img"><picture><source srcset="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_mac.webp" type="image/webp"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_mac.jpg" alt="MacBook Air 13&quot; M3" width="960" height="1280" loading="lazy" decoding="async" onerror="this.onerror=null;var s=this.parentNode.querySelector('source');if(s)s.remove();"></picture></div>
+                  <div class="laptop-card-img" id="cta-deal2-img"><picture><source srcset="https://img.i-ios.store/landing_hot_mac.webp" type="image/webp"><img src="https://img.i-ios.store/landing_hot_mac.jpg" alt="MacBook Air 13&quot; M3" width="960" height="1280" loading="lazy" decoding="async" onerror="this.onerror=null;var s=this.parentNode.querySelector('source');if(s)s.remove();"></picture></div>
                   <div class="laptop-card-body">
                     <strong id="cta-deal2-name">MacBook Air 13" M3</strong>
                     <span class="laptop-card-price" id="cta-deal2-price">У каталозі</span>
@@ -1708,7 +1708,7 @@
             <div class="device device-phone">
               <div class="phone-frame-cta">
                 <div class="phone-notch-cta"></div>
-                <div class="phone-card-img-cta" id="cta-deal1-img"><picture><source srcset="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.webp" type="image/webp"><img src="https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/landing_hot_iphone.jpg" alt="iPhone 15 Pro 256GB" width="960" height="1280" loading="lazy" decoding="async" onerror="this.onerror=null;var s=this.parentNode.querySelector('source');if(s)s.remove();"></picture></div>
+                <div class="phone-card-img-cta" id="cta-deal1-img"><picture><source srcset="https://img.i-ios.store/landing_hot_iphone.webp" type="image/webp"><img src="https://img.i-ios.store/landing_hot_iphone.jpg" alt="iPhone 15 Pro 256GB" width="960" height="1280" loading="lazy" decoding="async" onerror="this.onerror=null;var s=this.parentNode.querySelector('source');if(s)s.remove();"></picture></div>
                 <div class="phone-card-name-cta" id="cta-deal1-name">iPhone 15 Pro</div>
                 <div class="phone-card-price-cta" id="cta-deal1-price">У каталозі</div>
                 <div class="phone-mini-btn-cta">Додати в кошик</div>
@@ -1890,7 +1890,7 @@
 
       // Live deals: admins mark products as hot in the bot, which publishes them
       // to R2 as hot.json. Without deals (or if the fetch fails) the section stays hidden.
-      const HOT_DEALS_URL = 'https://pub-357de5a9fe674c84a20c5f0419f76c39.r2.dev/hot.json';
+      const HOT_DEALS_URL = 'https://img.i-ios.store/hot.json';
       const BOT_URL = 'https://t.me/iios_cv_bot';
 
       function el(tag, className, text) {
