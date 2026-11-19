@@ -207,11 +207,14 @@ function prices(item) {
   return { currency: uah ? 'UAH' : 'USD', regular: regular || null, sale, fmt };
 }
 
-// "new" / "used" / "" from the admin's free-text condition.
-function conditionKind(condition) {
-  const text = (condition || '').toLowerCase();
+// "new" / "used" / "" from the admin's free-text condition. Accessories are
+// sold new, so one with no condition typed counts as new (and reaches the
+// Google feed); any other product without one stays unknown.
+function conditionKind(item) {
+  const text = (item.condition || '').toLowerCase();
   if (text.includes('нов')) return 'new';
   if (text.includes('вжив') || text.includes('б/у') || text.includes('б/в')) return 'used';
+  if (!text && item.category === 'accessories') return 'new';
   return '';
 }
 
@@ -317,7 +320,6 @@ function productLd(item) {
     image: safeImage(item.image) ? [item.image] : undefined,
     description: item.description || undefined,
     brand: brand ? { '@type': 'Brand', name: brand } : undefined,
-    category: item.category_label || undefined,
     color: item.color || undefined,
   };
   if (regular) {
@@ -334,7 +336,7 @@ function productLd(item) {
         priceCurrency: currency,
       } : undefined,
       availability: 'https://schema.org/InStock',
-      itemCondition: CONDITION_SCHEMA[conditionKind(item.condition)],
+      itemCondition: CONDITION_SCHEMA[conditionKind(item)],
       seller: { '@type': 'Organization', name: 'IIOS', url: `${SITE}/` },
     };
   }
@@ -389,14 +391,14 @@ function feedTitle(item) {
 
 function feedItem(item) {
   const { currency, regular, sale } = prices(item);
-  const condition = conditionKind(item.condition);
+  const condition = conditionKind(item);
   const image = safeImage(item.image);
   // Google needs a price in UAH, an image and a known condition (an item with
   // no condition is treated as new, which a used phone must never be).
   if (!regular || currency !== 'UAH' || !image || !condition) return null;
 
   const title = feedTitle(item);
-  const description = item.description || `${title}. ${item.condition}.`;
+  const description = item.description || `${title}. ${condition === 'new' ? 'Новий' : 'Вживаний'}.`;
   const brand = feedBrand(item);
   const productType = [item.category_label, item.subcategory_label].filter(Boolean).join(' > ');
   const fields = [
@@ -495,7 +497,7 @@ function firstLine(text) {
 function card(item, index, rate) {
   const { regular, sale, fmt } = prices(item);
   const image = safeImage(item.image);
-  const kind = conditionKind(item.condition);
+  const kind = conditionKind(item);
   // Short label on the photo (never truncated); the admin's full wording,
   // when longer ("Новий запечатаний"), leads the specs line instead.
   const condShort = kind === 'new' ? 'Новий' : kind === 'used' ? 'Вживаний' : (item.condition || '');
@@ -564,8 +566,8 @@ function page(items, updatedAt) {
     `<a class="tab is-active" href="#all" data-tab="all">Усі <span>${items.length}</span></a>`,
     ...groups.map(([key, g]) => `<a class="tab" href="#${esc(key)}" data-tab="${esc(key)}">${esc(g.label)} <span>${g.items.length}</span></a>`),
   ].join('');
-  const hasNew = items.some(i => conditionKind(i.condition) === 'new');
-  const hasUsed = items.some(i => conditionKind(i.condition) === 'used');
+  const hasNew = items.some(i => conditionKind(i) === 'new');
+  const hasUsed = items.some(i => conditionKind(i) === 'used');
   const hasSale = items.some(i => prices(i).sale);
   const filters = [
     hasNew && hasUsed ? '<button type="button" class="filter" data-filter="new" aria-pressed="false">Нові</button>' : '',
@@ -719,7 +721,7 @@ function clip(text, max) {
 
 function productPage(item, related, all) {
   const { regular, sale, fmt } = prices(item);
-  const kind = conditionKind(item.condition);
+  const kind = conditionKind(item);
   const name = feedTitle(item);
   const shown = sale || regular;
   const priceText = shown ? fmt(shown) : '';
@@ -751,7 +753,7 @@ function productPage(item, related, all) {
   }
 
   const facts = [
-    ['Стан', item.condition],
+    ['Стан', item.condition || condWord],
     ['Пам’ять', item.storage],
     ['Колір', item.color],
     ['Гарантія', item.warranty_days ? `${item.warranty_days} днів` : ''],
@@ -858,6 +860,7 @@ function siteFooter() {
         <div class="foot-label">Посилання</div>
         <nav class="foot-links" aria-label="Посилання">
           <a href="/">Головна</a>
+          <a href="/#returns">Повернення</a>
           <a href="https://t.me/IIOS_cv" target="_blank" rel="noopener">Telegram-канал</a>
           <a href="https://t.me/iios_cv_bot" target="_blank" rel="noopener">Telegram-бот</a>
           <a href="https://www.instagram.com/iios_cv" target="_blank" rel="noopener">Instagram</a>
