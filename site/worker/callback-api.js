@@ -180,6 +180,7 @@ function pageFromReferer(referer, origin) {
     const ref = new URL(referer);
     if (ref.origin !== origin) return '';
     if (ref.pathname === '/catalog') return 'каталог';
+    if (ref.pathname.startsWith('/catalog/')) return 'сторінка товару';
     if (ref.pathname === '/' || ref.pathname === '/index.html') return 'головна';
   } catch { /* no or bad Referer */ }
   return '';

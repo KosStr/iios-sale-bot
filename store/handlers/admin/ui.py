@@ -13,8 +13,19 @@ from store.services.catalog_filter import (
     format_price,
     subcategory_options,
 )
+from store.services.exchange_rate import get_rate, is_usd_only, to_uah
 
 PAGE_SIZE = 8
+
+
+def _uah_line(product: Product) -> str:
+    """The hryvnia price, or what the website shows by the /rate for $-only items."""
+    if product.price_uah:
+        return str(product.price_uah)
+    rate = get_rate() if is_usd_only(product) else None
+    if rate:
+        return f"— (на сайті ≈ {to_uah(product.price, rate)} за курсом)"
+    return "—"
 
 
 def product_detail_text(product: Product) -> str:
@@ -37,7 +48,7 @@ def product_detail_text(product: Product) -> str:
             f"ID: <code>{escape(product.id)}</code>",
             f"Модель: {escape(product.group or '—')}",
             f"Ціна: <b>{escape(format_price(product.price, 'USD'))}</b>",
-            f"Ціна, грн: <b>{product.price_uah or '—'}</b>",
+            f"Ціна, грн: <b>{_uah_line(product)}</b>",
             f"На складі: <b>{product.stock}</b>",
             f"Категорія: {escape(cat)}",
             f"Підкатегорія: {escape(sub)}",
