@@ -417,7 +417,7 @@ npx wrangler deploy            # publish
   Each item links to its product page. Items without a UAH price, photo, or a
   condition the Worker recognises ("Новий"/"Вживаний") are left out of the feed.
 - Dollar-only products get a UAH price on the site and in the feed by the rate an
-  admin sets in the bot with `/rate 41.5` (`/rate` alone shows it), rounded to
+  admin sets in the bot with `/rate 41.5` (or `/rate`, which shows the current rate, then the number as the next message within 10 minutes), rounded to
   10 грн. A UAH price typed for a product always wins. Until a rate is set those
   products show in $ on the site and are not in the feed. The bot keeps showing
   prices exactly as entered.
