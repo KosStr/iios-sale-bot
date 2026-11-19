@@ -1,5 +1,6 @@
 // Landing page (site/public/) on Cloudflare Workers static assets, plus the
-// /catalog page rendered by site/worker/index.js from catalog.json in R2.
+// /catalog page, /catalog/<id> product pages, /feed.xml and /sitemap.xml
+// rendered by site/worker/index.js from catalog.json in R2.
 // Deploy (from the repo root): npx wrangler deploy — every file in site/public/
 // is published except those listed in site/public/.assetsignore.
 // Hero images, hot.json and catalog.json live in the R2 bucket, not here.
@@ -17,7 +18,7 @@
     "binding": "ASSETS",
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "none",
-    "run_worker_first": ["/catalog", "/catalog/*", "/feed.xml", "/api/*"]
+    "run_worker_first": ["/catalog", "/catalog/*", "/feed.xml", "/sitemap.xml", "/api/*"]
   },
   "r2_buckets": [
     { "binding": "CATALOG", "bucket_name": "iios" }

@@ -5,10 +5,16 @@
 // The page is complete without JavaScript (crawlers see every product);
 // /catalog.js, a static asset, only adds search, tabs and filters on top.
 //
-// Free-tier safety: the rendered page is cached for CACHE_SECONDS under one
-// fixed key (query strings ignored), so floods hit the edge cache, not R2.
+// Every product also has its own page at /catalog/<id> (the landing page for
+// Google Shopping), /feed.xml is the same catalog as a Google Merchant Center
+// product feed, and /sitemap.xml lists the landing, /catalog and every
+// product page.
 //
-// /feed.xml is the same catalog as a Google Merchant Center product feed.
+// Free-tier safety: each rendered page is cached for CACHE_SECONDS under one
+// fixed key per path (query strings ignored), so floods hit the edge cache,
+// not R2; catalog.json itself is also kept in memory for CATALOG_MEMO_MS.
+// Product ids are slugs (store/db/products_repo.py), so any other
+// /catalog/... path is redirected without touching R2.
 //
 // /api/callback (the site's "Передзвоніть мені" form) lives in callback-api.js.
 
@@ -19,7 +25,10 @@ const PAGE_PATH = '/catalog';
 const CATALOG_KEY = 'catalog.json';
 const BOT_URL = 'https://t.me/iios_cv_bot';
 const CACHE_SECONDS = 300;
+const CATALOG_MEMO_MS = 60_000;
 const FEED_PATH = '/feed.xml';
+const SITEMAP_PATH = '/sitemap.xml';
+const PRODUCT_PATH_RE = /^\/catalog\/([a-z0-9][a-z0-9-]{0,63})\/?$/;
 
 // Order and labels match the bot's categories (store/services/catalog_filter.py).
 const CATEGORIES = [
@@ -57,11 +66,18 @@ export default {
     if (url.pathname === FEED_PATH) {
       return serveCached(request, url, ctx, FEED_PATH, () => renderFeed(env));
     }
+    if (url.pathname === SITEMAP_PATH) {
+      return serveCached(request, url, ctx, SITEMAP_PATH, () => renderSitemap(env));
+    }
+    if (url.pathname.startsWith(PAGE_PATH + '/')) {
+      const match = PRODUCT_PATH_RE.exec(url.pathname);
+      // "/catalog/" and anything that can't be a product id → the catalog.
+      if (!match) return Response.redirect(url.origin + PAGE_PATH, 301);
+      const path = `${PAGE_PATH}/${match[1]}`;
+      if (url.pathname !== path) return Response.redirect(url.origin + path, 301);
+      return serveCached(request, url, ctx, path, () => renderProduct(env, match[1]));
+    }
     if (url.pathname !== PAGE_PATH) {
-      // "/catalog/" and "/catalog/anything" → the one canonical page.
-      if (url.pathname.startsWith(PAGE_PATH + '/')) {
-        return Response.redirect(url.origin + PAGE_PATH, 301);
-      }
       return env.ASSETS.fetch(request);
     }
     return serveCached(request, url, ctx, PAGE_PATH, () => render(env));
@@ -90,26 +106,71 @@ async function serveCached(request, url, ctx, path, renderFn) {
   return new Response(body, { status: response.status, headers });
 }
 
-// catalog.json from R2, or null when it is missing or unreadable.
+// catalog.json from R2, or null when it is missing or unreadable. Kept in the
+// isolate's memory for a minute, so a burst of product pages (each its own
+// cache key) costs one R2 read, not one per page. Misses are kept too.
+let catalogMemo = null;
+
 async function loadCatalog(env) {
+  if (catalogMemo && Date.now() - catalogMemo.at < CATALOG_MEMO_MS) return catalogMemo.catalog;
+  let catalog = null;
   try {
     const object = await env.CATALOG.get(CATALOG_KEY);
-    const catalog = object ? await object.json() : null;
-    return catalog && Array.isArray(catalog.items) ? catalog : null;
+    catalog = object ? await object.json() : null;
+    if (!catalog || !Array.isArray(catalog.items)) catalog = null;
   } catch {
-    return null;
+    catalog = null;
   }
+  if (catalog) catalog.items = catalog.items.filter(i => i && i.id && i.name);
+  catalogMemo = { at: Date.now(), catalog };
+  return catalog;
 }
+
+// Temporary: tell crawlers to come back later.
+const UNAVAILABLE = { 'Retry-After': '600', 'Cache-Control': 'public, max-age=60' };
+const CACHED = { 'Cache-Control': `public, max-age=${CACHE_SECONDS}` };
 
 async function render(env) {
   const catalog = await loadCatalog(env);
-  if (!catalog) {
-    // Temporary: tell crawlers to come back later.
-    return htmlResponse(page([], null), 503, { 'Retry-After': '600', 'Cache-Control': 'public, max-age=60' });
-  }
-  const items = catalog.items.filter(i => i && i.id && i.name);
-  return htmlResponse(page(items, catalog.updated_at), 200, {
-    'Cache-Control': `public, max-age=${CACHE_SECONDS}`,
+  if (!catalog) return htmlResponse(page([], null), 503, UNAVAILABLE);
+  return htmlResponse(page(catalog.items, catalog.updated_at), 200, CACHED);
+}
+
+async function renderProduct(env, id) {
+  const catalog = await loadCatalog(env);
+  if (!catalog) return htmlResponse(missingPage(true), 503, UNAVAILABLE);
+  const item = catalog.items.find(i => i.id === id);
+  // Sold out (or never existed): a real 404, so Google drops the page.
+  if (!item) return htmlResponse(missingPage(false), 404, CACHED);
+  const related = catalog.items
+    .filter(i => i !== item && i.category === item.category)
+    .slice(0, 4);
+  return htmlResponse(productPage(item, related, catalog.items), 200, CACHED);
+}
+
+async function renderSitemap(env) {
+  const catalog = await loadCatalog(env);
+  const lastmod = catalog && catalog.updated_at
+    ? new Date(catalog.updated_at * 1000).toISOString().slice(0, 10)
+    : null;
+  const entry = (loc, mod) => `  <url>\n    <loc>${esc(loc)}</loc>${mod ? `\n    <lastmod>${mod}</lastmod>` : ''}\n  </url>`;
+  const urls = [
+    entry(`${SITE}/`),
+    entry(`${SITE}${PAGE_PATH}`, lastmod),
+    ...(catalog ? catalog.items.map(item => entry(productUrl(item), lastmod)) : []),
+  ];
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.join('\n')}
+</urlset>
+`;
+  return new Response(xml, {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/xml; charset=utf-8',
+      'X-Content-Type-Options': 'nosniff',
+      ...(catalog ? CACHED : { 'Cache-Control': 'public, max-age=60' }),
+    },
   });
 }
 
@@ -159,8 +220,16 @@ const CONDITION_SCHEMA = {
   used: 'https://schema.org/UsedCondition',
 };
 
+// Its own page; an id that isn't a slug (none should be) falls back to its
+// card on /catalog, since PRODUCT_PATH_RE would redirect it away.
+function productPath(item) {
+  return PRODUCT_PATH_RE.test(`${PAGE_PATH}/${item.id}`)
+    ? `${PAGE_PATH}/${item.id}`
+    : `${PAGE_PATH}#p-${encodeURIComponent(item.id)}`;
+}
+
 function productUrl(item) {
-  return `${SITE}${PAGE_PATH}#p-${encodeURIComponent(item.id)}`;
+  return SITE + productPath(item);
 }
 
 function botLink(item) {
@@ -202,58 +271,86 @@ function catalogDescription(count, labels) {
 
 // ── Structured data ───────────────────────────────────────────
 
+// "<" is escaped so product text can never close the script element.
+function ldScripts(blocks) {
+  return blocks
+    .map(data => `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>`)
+    .join('\n  ');
+}
+
+function breadcrumbsLd(trail) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: trail.map(([name, url], index) => ({
+      '@type': 'ListItem', position: index + 1, name, item: url,
+    })),
+  };
+}
+
+// The catalog is a summary page: it lists the product pages, and the full
+// Product markup lives on each of them (Google's product-carousel pattern).
 function jsonLd(items) {
   const list = {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
     name: 'Каталог IIOS — техніка Apple у Чернівцях',
     numberOfItems: items.length,
-    itemListElement: items.map((item, index) => {
-      const { currency, regular, sale } = prices(item);
-      const product = {
-        '@type': 'Product',
-        '@id': productUrl(item),
-        name: item.name,
-        url: productUrl(item),
-        brand: { '@type': 'Brand', name: 'Apple' },
-        category: item.category_label || undefined,
-        color: item.color || undefined,
-        description: item.description || undefined,
-        image: safeImage(item.image) || undefined,
-      };
-      if (regular) {
-        product.offers = {
-          '@type': 'Offer',
-          price: sale || regular,
-          priceCurrency: currency,
-          availability: 'https://schema.org/InStock',
-          itemCondition: CONDITION_SCHEMA[conditionKind(item.condition)],
-          url: botLink(item),
-          seller: { '@id': `${SITE}/#store` },
-        };
-      }
-      return { '@type': 'ListItem', position: index + 1, item: product };
-    }),
+    itemListElement: items.map((item, index) => ({
+      '@type': 'ListItem', position: index + 1, url: productUrl(item),
+    })),
   };
-  const breadcrumbs = {
+  return ldScripts([list, breadcrumbsLd([['IIOS', `${SITE}/`], ['Каталог', `${SITE}${PAGE_PATH}`]])]);
+}
+
+function productLd(item) {
+  const { currency, regular, sale } = prices(item);
+  const url = productUrl(item);
+  const brand = feedBrand(item);
+  const product = {
     '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'IIOS', item: `${SITE}/` },
-      { '@type': 'ListItem', position: 2, name: 'Каталог', item: `${SITE}${PAGE_PATH}` },
-    ],
+    '@type': 'Product',
+    '@id': `${url}#product`,
+    name: feedTitle(item),
+    url,
+    sku: item.id,
+    image: safeImage(item.image) ? [item.image] : undefined,
+    description: item.description || undefined,
+    brand: brand ? { '@type': 'Brand', name: brand } : undefined,
+    category: item.category_label || undefined,
+    color: item.color || undefined,
   };
-  // "<" is escaped so product text can never close the script element.
-  return [list, breadcrumbs]
-    .map(data => `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>`)
-    .join('\n  ');
+  if (regular) {
+    product.offers = {
+      '@type': 'Offer',
+      url,
+      price: sale || regular,
+      priceCurrency: currency,
+      // The struck-through price Google shows next to a sale price.
+      priceSpecification: sale ? {
+        '@type': 'UnitPriceSpecification',
+        priceType: 'https://schema.org/StrikethroughPrice',
+        price: regular,
+        priceCurrency: currency,
+      } : undefined,
+      availability: 'https://schema.org/InStock',
+      itemCondition: CONDITION_SCHEMA[conditionKind(item.condition)],
+      seller: { '@type': 'Organization', name: 'IIOS', url: `${SITE}/` },
+    };
+  }
+  // Category tabs are #fragments of /catalog, not pages, so they're left out.
+  const trail = [['IIOS', `${SITE}/`], ['Каталог', `${SITE}${PAGE_PATH}`], [item.name, url]];
+  return ldScripts([product, breadcrumbsLd(trail)]);
 }
 
 // ── Merchant Center feed ──────────────────────────────────────
 // RSS 2.0 with Google's g: attributes, fetched by Merchant Center on a
-// schedule. Prices and links match /catalog, so Google's landing-page checks
-// see the same price. Shipping and return policies are set in Merchant
-// Center itself, not here.
+// schedule. Each item links to its /catalog/<id> page, which shows the same
+// price, so Google's landing-page checks pass. Shipping and return policies
+// are set in Merchant Center itself, not here.
+//
+// Only UAH prices are listed (Google Shopping in Ukraine accepts nothing
+// else); the bot converts dollar-only products by the admin's /rate.
 
 // Categories whose products are always Apple.
 const APPLE_CATEGORIES = new Set(['phone', 'ipad', 'laptop', 'watch']);
@@ -294,9 +391,9 @@ function feedItem(item) {
   const { currency, regular, sale } = prices(item);
   const condition = conditionKind(item.condition);
   const image = safeImage(item.image);
-  // Google needs a price, an image and a known condition (an item with no
-  // condition is treated as new, which a used phone must never be).
-  if (!regular || !image || !condition) return null;
+  // Google needs a price in UAH, an image and a known condition (an item with
+  // no condition is treated as new, which a used phone must never be).
+  if (!regular || currency !== 'UAH' || !image || !condition) return null;
 
   const title = feedTitle(item);
   const description = item.description || `${title}. ${item.condition}.`;
@@ -313,6 +410,9 @@ function feedItem(item) {
     sale ? ['g:sale_price', feedPrice(sale, currency)] : null,
     ['g:condition', condition],
     brand ? ['g:brand', brand] : null,
+    // No GTIN/MPN is recorded for any product; saying so avoids
+    // "missing identifier" warnings in Merchant Center.
+    ['g:identifier_exists', 'no'],
     item.color ? ['g:color', item.color] : null,
     productType ? ['g:product_type', productType] : null,
   ].filter(Boolean);
@@ -405,6 +505,8 @@ function card(item, index, rate) {
   const search = [item.name, item.storage, item.color, item.condition, item.category_label, item.subcategory_label, item.description]
     .filter(Boolean).join(' ').toLowerCase();
   const order = sortPrice(item, rate);
+  // Photo and name open the product page; "Замовити" goes straight to the bot.
+  const pageHref = esc(productPath(item));
   const link = esc(botLink(item));
 
   let price = '<span class="price-ask">Ціна в боті</span>';
@@ -415,13 +517,13 @@ function card(item, index, rate) {
   const loading = index < 4 ? 'eager' : 'lazy';
   return `
         <article class="card" id="p-${esc(item.id)}" data-i="${index}" data-cat="${esc(item.category || 'other')}" data-sub="${esc(item.subcategory_label || '')}" data-cond="${kind}" data-sale="${sale ? 1 : 0}" data-price="${order ?? ''}" data-q="${esc(search)}">
-          <a class="card-media" href="${link}" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true">
+          <a class="card-media" href="${pageHref}" tabindex="-1" aria-hidden="true">
             ${image ? `<img src="${esc(image)}" alt="" width="480" height="480" loading="${loading}" decoding="async">` : ''}
             ${condShort ? `<span class="tag tag-cond tag-${kind || 'other'}">${esc(condShort)}</span>` : ''}
             ${sale ? `<span class="tag tag-sale">−${Math.round((1 - sale / regular) * 100)}%</span>` : ''}
           </a>
           <div class="card-body">
-            <h3 class="card-title"><a href="${link}" target="_blank" rel="noopener">${esc(item.name)}</a></h3>
+            <h3 class="card-title"><a href="${pageHref}">${esc(item.name)}</a></h3>
             ${specs ? `<p class="card-specs">${esc(specs)}</p>` : ''}
             ${note ? `<p class="card-note">${esc(note)}</p>` : ''}
             ${item.warranty_days ? `<p class="card-warranty">${ICON_SHIELD}Гарантія ${esc(item.warranty_days)} днів</p>` : ''}
@@ -484,42 +586,9 @@ function page(items, updatedAt) {
     ? `${items.length} ${plural(items.length, 'товар', 'товари', 'товарів')} в наявності${updatedAt ? ` · оновлено ${esc(formatDate(updatedAt))}` : ''}`
     : 'Каталог саме оновлюється';
 
-  return `<!DOCTYPE html>
-<html lang="uk">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>${esc(title)}</title>
-  <meta name="description" content="${esc(description)}">
-  <link rel="canonical" href="${SITE}${PAGE_PATH}">
-  <meta name="theme-color" content="#f6f4ef">
-  <link rel="icon" href="/favicon.ico" sizes="48x48">
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-  <meta property="og:type" content="website">
-  <meta property="og:locale" content="uk_UA">
-  <meta property="og:site_name" content="IIOS">
-  <meta property="og:title" content="${esc(title)}">
-  <meta property="og:description" content="${esc(description)}">
-  <meta property="og:image" content="${SITE}/og-image.jpg">
-  <meta property="og:url" content="${SITE}${PAGE_PATH}">
-  <meta name="twitter:card" content="summary_large_image">
-  ${jsonLd(items)}
-  <style>${STYLES}</style>
-  <script src="/catalog.js" defer></script>
-  <script src="/callback.js" defer></script>
-</head>
+  return `${documentHead({ title, description, canonical: `${SITE}${PAGE_PATH}`, ld: jsonLd(items) })}
 <body data-labels="${esc(JSON.stringify(labels))}" data-bot="${BOT_URL}">
-  <header class="top">
-    <div class="wrap top-inner">
-      <a class="logo" href="/" aria-label="IIOS — на головну">IIOS<span>.</span></a>
-      <nav class="top-links" aria-label="Розділи">
-        <a href="/">Головна</a>
-        <a href="/catalog" aria-current="page">Каталог</a>
-      </nav>
-      <a class="top-cta" href="${BOT_URL}" target="_blank" rel="noopener">${ICON_TG}<span>Обрати в Telegram</span></a>
-    </div>
-  </header>
+  ${siteHeader(true)}
 
   <main>
     <section class="intro wrap">
@@ -590,7 +659,187 @@ function page(items, updatedAt) {
     </div>`}
   </main>
 
-  <!-- Same structure and contacts as the landing footer (keep in sync). -->
+  ${siteFooter()}
+</body>
+</html>`;
+}
+
+// ── Shared page chrome ────────────────────────────────────────
+
+function documentHead({ title, description, canonical, ld = '', image = `${SITE}/og-image.jpg`, type = 'website', noindex = false }) {
+  return `<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>${esc(title)}</title>
+  <meta name="description" content="${esc(description)}">
+  ${noindex ? '<meta name="robots" content="noindex">' : `<link rel="canonical" href="${esc(canonical)}">`}
+  <meta name="theme-color" content="#f6f4ef">
+  <link rel="icon" href="/favicon.ico" sizes="48x48">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <meta property="og:type" content="${type}">
+  <meta property="og:locale" content="uk_UA">
+  <meta property="og:site_name" content="IIOS">
+  <meta property="og:title" content="${esc(title)}">
+  <meta property="og:description" content="${esc(description)}">
+  <meta property="og:image" content="${esc(image)}">
+  ${noindex ? '' : `<meta property="og:url" content="${esc(canonical)}">`}
+  <meta name="twitter:card" content="summary_large_image">
+  ${ld}
+  <style>${STYLES}</style>
+  <script src="/catalog.js" defer></script>
+  <script src="/callback.js" defer></script>
+</head>`;
+}
+
+function siteHeader(onCatalog) {
+  return `<header class="top">
+    <div class="wrap top-inner">
+      <a class="logo" href="/" aria-label="IIOS — на головну">IIOS<span>.</span></a>
+      <nav class="top-links" aria-label="Розділи">
+        <a href="/">Головна</a>
+        <a href="/catalog"${onCatalog ? ' aria-current="page"' : ''}>Каталог</a>
+      </nav>
+      <a class="top-cta" href="${BOT_URL}" target="_blank" rel="noopener">${ICON_TG}<span>Обрати в Telegram</span></a>
+    </div>
+  </header>`;
+}
+
+// Shortens to `max` characters at a word boundary.
+function clip(text, max) {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max - 1);
+  const space = cut.lastIndexOf(' ');
+  return (space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s,.;:—-]+$/, '') + '…';
+}
+
+// ── Product page ──────────────────────────────────────────────
+
+function productPage(item, related, all) {
+  const { regular, sale, fmt } = prices(item);
+  const kind = conditionKind(item.condition);
+  const name = feedTitle(item);
+  const shown = sale || regular;
+  const priceText = shown ? fmt(shown) : '';
+  const image = safeImage(item.image);
+  const bot = esc(botLink(item));
+  const categoryKey = item.category || 'other';
+  const category = categoryLabel(categoryKey, item);
+
+  // "б/у" is how people search for used phones; the page says "Вживаний".
+  const title = `${name}${kind === 'used' ? ' б/у' : ''} — купити в Чернівцях${priceText ? ` за ${priceText}` : ''} | IIOS`;
+  const condWord = kind === 'new' ? 'Новий' : kind === 'used' ? 'Вживаний' : '';
+  const description = clip(
+    `${condWord ? `${condWord} ` : ''}${name}${priceText ? ` за ${priceText}` : ''} у магазині IIOS, Чернівці. `
+      + 'Гарантія магазину, Trade-in, доставка Новою поштою. Замовлення в Telegram.',
+    DESCRIPTION_MAX,
+  );
+
+  // Memory and colour are already in the heading; only a longer condition
+  // ("Новий запечатаний") earns the line under it.
+  const condShort = condWord || item.condition || '';
+  const specs = item.condition && item.condition !== condShort ? item.condition : '';
+
+  let price = '<span class="price-ask">Ціну уточнюйте в боті</span>';
+  if (sale) {
+    price = `<span class="price">${esc(fmt(sale))}</span><span class="price-old">${esc(fmt(regular))}</span>`
+      + `<span class="pdp-save">−${Math.round((1 - sale / regular) * 100)}%</span>`;
+  } else if (regular) {
+    price = `<span class="price">${esc(fmt(regular))}</span>`;
+  }
+
+  const facts = [
+    ['Стан', item.condition],
+    ['Пам’ять', item.storage],
+    ['Колір', item.color],
+    ['Гарантія', item.warranty_days ? `${item.warranty_days} днів` : ''],
+    ['Категорія', [item.category_label || category, item.subcategory_label].filter(Boolean).join(' · ')],
+  ].filter(([, value]) => value);
+
+  const rate = uahPerUsd(all);
+  const relatedCards = related.map((other, i) => card(other, 10 + i, rate)).join('');
+  const categoryHref = `${PAGE_PATH}#${encodeURIComponent(categoryKey)}`;
+
+  return `${documentHead({
+    title, description, canonical: productUrl(item), ld: productLd(item),
+    image: image || undefined, type: 'product',
+  })}
+<body data-bot="${BOT_URL}">
+  ${siteHeader(false)}
+
+  <main class="wrap pdp">
+    <p class="crumbs"><a href="/">Головна</a><span aria-hidden="true">/</span><a href="${PAGE_PATH}">Каталог</a><span aria-hidden="true">/</span><a href="${esc(categoryHref)}">${esc(category)}</a></p>
+    <article class="pdp-main">
+      <div class="pdp-media">
+        ${image ? `<img src="${esc(image)}" alt="${esc(name)}" width="640" height="640" fetchpriority="high" decoding="async">` : ''}
+        ${condShort ? `<span class="tag tag-cond tag-${kind || 'other'}">${esc(condShort)}</span>` : ''}
+      </div>
+      <div class="pdp-info">
+        <h1>${esc(name)}</h1>
+        ${specs ? `<p class="pdp-specs">${esc(specs)}</p>` : ''}
+        <div class="pdp-price">${price}</div>
+        <p class="pdp-stock"><span class="dot" aria-hidden="true"></span>В наявності в Чернівцях</p>
+        <div class="pdp-actions">
+          <a class="btn" href="${bot}" target="_blank" rel="noopener">${ICON_TG}Замовити в Telegram</a>
+          <a class="btn btn-outline" href="tel:+380953407754" data-callback="${esc(item.id)}" data-callback-name="${esc(item.name)}">${ICON_PHONE}Передзвоніть мені</a>
+        </div>
+        <ul class="perks">
+          <li>${ICON_CHECK}Гарантія магазину</li>
+          <li>${ICON_CHECK}Доставка Новою поштою</li>
+          <li>${ICON_CHECK}Trade-in</li>
+          <li>${ICON_CHECK}Розтермінування</li>
+        </ul>
+        ${facts.length ? `<dl class="pdp-facts">${facts.map(([label, value]) => `
+          <div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}
+        </dl>` : ''}
+        ${item.description ? `
+        <section class="pdp-desc">
+          <h2>Опис</h2>
+          <p>${esc(item.description)}</p>
+        </section>` : ''}
+      </div>
+    </article>
+    ${relatedCards ? `
+    <section class="pdp-related">
+      <div class="pdp-related-head">
+        <h2>Схожі товари</h2>
+        <a class="more" href="${esc(categoryHref)}">Усі: ${esc(category)} →</a>
+      </div>
+      <div class="grid">${relatedCards}
+      </div>
+    </section>` : ''}
+  </main>
+
+  ${siteFooter()}
+</body>
+</html>`;
+}
+
+// A sold-out product (404) or a missing catalog.json (503).
+function missingPage(temporary) {
+  const heading = temporary ? 'Сторінка тимчасово недоступна' : 'Цей товар уже продано';
+  const text = temporary
+    ? 'Каталог саме оновлюється. Актуальна наявність і ціни — у нашому Telegram-боті.'
+    : 'Можливо, його вже купили. Подивіться, що є в наявності зараз, або напишіть нам — підберемо схожий.';
+  return `${documentHead({ title: `${heading} | IIOS`, description: text, noindex: true })}
+<body data-bot="${BOT_URL}">
+  ${siteHeader(false)}
+  <main class="wrap">
+    <div class="empty">
+      <p class="empty-title">${heading}</p>
+      <p class="empty-text">${text}</p>
+      <a class="btn" href="${PAGE_PATH}">Перейти до каталогу</a>
+    </div>
+  </main>
+  ${siteFooter()}
+</body>
+</html>`;
+}
+
+function siteFooter() {
+  return `<!-- Same structure and contacts as the landing footer (keep in sync). -->
   <footer class="foot">
     <div class="wrap foot-top">
       <div>
@@ -615,9 +864,7 @@ function page(items, updatedAt) {
         </nav>
       </div>
     </div>
-  </footer>
-</body>
-</html>`;
+  </footer>`;
 }
 
 // Tokens match index.html so the catalog reads as part of the same site.
@@ -770,6 +1017,43 @@ h1{font-size:clamp(30px,5vw,48px);line-height:1.05;letter-spacing:-.035em;font-w
 .help p{color:rgba(255,255,255,.72);max-width:520px}
 .btn-light{background:#fff;color:var(--ink);flex-shrink:0}
 .btn-light:hover{background:var(--bg3)}
+.btn-outline{background:var(--bg2);color:var(--ink);border:1px solid var(--border-strong)}
+.btn-outline svg{color:var(--accent2)}
+.btn-outline:hover{background:var(--bg3)}
+
+/* Product page */
+.pdp{padding-top:28px;padding-bottom:16px}
+.pdp-main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:44px;align-items:start;margin-top:6px}
+.pdp-media{position:sticky;top:calc(var(--top) + 20px);aspect-ratio:1/1;border-radius:28px;overflow:hidden;background:linear-gradient(160deg,#f1ede4,#e6e0d3);border:1px solid var(--border)}
+.pdp-media::before{content:'IIOS';position:absolute;inset:0;display:grid;place-items:center;font-size:40px;font-weight:800;letter-spacing:.04em;color:rgba(23,22,15,.13)}
+.pdp-media img{position:relative;width:100%;height:100%;object-fit:cover;display:block}
+.pdp-media .tag{top:16px;font-size:13px;padding:5px 12px}
+.pdp-media .tag-cond{left:16px}
+.pdp-info{min-width:0}
+.pdp-info h1{font-size:clamp(28px,4vw,42px);line-height:1.1}
+.pdp-specs{margin-top:10px;font-size:15px;font-weight:600;color:var(--muted)}
+.pdp-price{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 14px;margin-top:22px}
+.pdp-price .price{font-size:38px;letter-spacing:-.03em}
+.pdp-price .price-old{font-size:17px;margin:0}
+.pdp-price .price-ask{font-size:18px}
+.pdp-save{align-self:center;font-size:13px;font-weight:800;color:#fff;background:var(--danger);padding:3px 10px;border-radius:100px}
+.pdp-stock{display:flex;align-items:center;gap:9px;margin-top:10px;font-size:14px;font-weight:600;color:var(--ok-text)}
+.pdp-stock .dot{margin-top:0}
+.pdp-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+.pdp-actions .btn{height:52px;padding:0 24px 0 20px;font-size:16px}
+.pdp .perks{margin-top:18px}
+.pdp-facts{margin-top:28px;border-top:1px solid var(--border)}
+.pdp-facts div{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--border);font-size:15px}
+.pdp-facts dt{color:var(--muted)}
+.pdp-facts dd{font-weight:600;text-align:right;overflow-wrap:anywhere}
+.pdp-desc{margin-top:28px}
+.pdp-desc h2,.pdp-related h2{font-size:22px;letter-spacing:-.015em}
+.pdp-desc h2{margin-bottom:8px}
+.pdp-desc p{white-space:pre-line;overflow-wrap:anywhere}
+.pdp-related{margin-top:56px}
+.pdp-related-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:14px}
+.more{font-size:14px;font-weight:700;color:var(--accent2);white-space:nowrap}
+.more:hover{color:var(--ink)}
 
 /* Footer (mirrors the landing) */
 .foot{border-top:1px solid var(--border);margin-top:40px;padding:44px 0 calc(36px + env(safe-area-inset-bottom))}
@@ -821,6 +1105,15 @@ h1{font-size:clamp(30px,5vw,48px);line-height:1.05;letter-spacing:-.035em;font-w
   .card-call{align-self:center;font-size:12.5px;margin-top:2px}
   .help{flex-direction:column;align-items:flex-start;padding:26px 22px;margin-top:36px;border-radius:24px}
   .help h2{font-size:20px}
+  .pdp{padding-top:12px}
+  .pdp-main{grid-template-columns:1fr;gap:20px}
+  .pdp-media{position:relative;top:auto;border-radius:20px}
+  .pdp .perks{display:flex}
+  .pdp-price{margin-top:16px}
+  .pdp-price .price{font-size:32px}
+  .pdp-actions .btn{flex:1 1 100%;justify-content:center}
+  .pdp-related{margin-top:40px}
+  .pdp-desc h2,.pdp-related h2{font-size:19px}
   .foot-top{grid-template-columns:1fr;gap:26px;text-align:center;justify-items:center}
   .foot-tagline{margin-left:auto;margin-right:auto}
   .foot-contacts{align-items:center}
