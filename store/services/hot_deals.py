@@ -17,8 +17,9 @@ import logging
 import os
 import time
 
-from store.models.product import Product, is_on_sale
+from store.models.product import Product
 from store.db import products_repo
+from store.services.exchange_rate import get_rate, site_prices
 from store.services.images import r2_write_enabled, upload_object
 from store.services.web_images import site_image_url
 from store.utils.format import join_specs
@@ -33,20 +34,19 @@ def hot_deals_key() -> str:
     return os.getenv("HOT_DEALS_KEY", "hot.json")
 
 
-def _deal(product: Product, version: int) -> dict:
+def _deal(product: Product, version: int, rate: float | None) -> dict:
     image = site_image_url(product, version)
-    on_sale = is_on_sale(product)
+    prices = site_prices(product, rate)
+    prices.pop("price_uah_converted")
     return {
         "id": product.id,
         "name": product.name,
         # Small grey line under the name in the hero phone mockup (e.g. the colour).
         "subtitle": join_specs(product.color) or None,
-        # Regular prices; the landing shows UAH when set, otherwise USD.
-        "price_uah": product.price_uah or None,
-        "price_usd": product.price or None,
-        # Sale prices in the same currencies (struck-through regular price + badge).
-        "sale_price_uah": (product.sale_price_uah or None) if on_sale else None,
-        "sale_price_usd": (product.sale_price or None) if on_sale else None,
+        # Regular and sale prices (struck-through regular price + badge); the
+        # landing shows UAH when set, otherwise USD. Same numbers as
+        # catalog.json, so dollar-only products show UAH by the admin's /rate.
+        **prices,
         "image": image,
     }
 
@@ -55,9 +55,10 @@ def build_payload(products: list[Product] | None = None) -> dict:
     version = int(time.time())
     if products is None:
         products = products_repo.fetch_hot()
+    rate = get_rate()
     return {
         "updated_at": version,
-        "deals": [_deal(p, version) for p in products if p.is_hot and p.stock > 0],
+        "deals": [_deal(p, version, rate) for p in products if p.is_hot and p.stock > 0],
     }
 
 

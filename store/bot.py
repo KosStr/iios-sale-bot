@@ -19,6 +19,7 @@ from telegram.ext import (
 
 from store.config import Config
 from store.handlers.admin.add import build_admin_add_handler
+from store.handlers.admin.rate import build_admin_rate_handlers
 from store.handlers.admin.products import (
     build_admin_edit_handler,
     build_admin_product_handlers,
@@ -122,7 +123,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = HELP
     if is_admin(update, context):
-        text += "\n\n*Адмін:*\n/add — додати товар\n/products — список, редагування, видалення\n/hot — гарячі пропозиції на сайті"
+        text += "\n\n*Адмін:*\n/add — додати товар\n/products — список, редагування, видалення\n/hot — гарячі пропозиції на сайті\n/rate — курс долара для цін на сайті"
     await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
 
@@ -153,6 +154,8 @@ def create_application(config: Config) -> Application:
     app.add_handler(build_admin_add_handler())
     app.add_handler(build_admin_edit_handler())
     for handler in build_admin_product_handlers():
+        app.add_handler(handler)
+    for handler in build_admin_rate_handlers():
         app.add_handler(handler)
     app.add_handler(build_booking_handler())
     app.add_handler(build_checkout_handler())

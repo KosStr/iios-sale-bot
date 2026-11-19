@@ -20,9 +20,10 @@ import logging
 import os
 import time
 
-from store.models.product import Product, is_on_sale
+from store.models.product import Product
 from store.db import products_repo
 from store.services.catalog_filter import CATEGORY_LABELS, SUBCATEGORY_LABELS
+from store.services.exchange_rate import get_rate, site_prices
 from store.services.hot_deals import publish_hot_deals_sync
 from store.services.images import image_url, r2_write_enabled, upload_object
 from store.services.web_images import ensure_web_copies, web_image_url
@@ -54,8 +55,7 @@ def _label(text: str) -> str:
     return rest if rest and not head.isalnum() else text
 
 
-def _item(product: Product) -> dict:
-    on_sale = is_on_sale(product)
+def _item(product: Product, rate: float | None) -> dict:
     category_label = CATEGORY_LABELS.get(product.category, product.category)
     subcategory_label = SUBCATEGORY_LABELS.get(product.category, {}).get(product.subcategory, "")
     return {
@@ -71,10 +71,8 @@ def _item(product: Product) -> dict:
         "description": (product.description or "").strip() or None,
         "warranty_days": product.warranty_days or None,
         # Same price fields as hot.json: UAH is shown when set, otherwise USD.
-        "price_uah": product.price_uah or None,
-        "price_usd": product.price or None,
-        "sale_price_uah": (product.sale_price_uah or None) if on_sale else None,
-        "sale_price_usd": (product.sale_price or None) if on_sale else None,
+        # Dollar-only products get UAH by the admin's /rate (Google needs UAH).
+        **site_prices(product, rate),
         # The small web copy when there is one (it carries its own ?v=).
         "image": web_image_url(product) or image_url(product),
     }
@@ -83,7 +81,8 @@ def _item(product: Product) -> dict:
 def build_items(products: list[Product] | None = None) -> list[dict]:
     if products is None:
         products = products_repo.fetch_all()
-    return [_item(p) for p in products if p.stock > 0]
+    rate = get_rate()
+    return [_item(p, rate) for p in products if p.stock > 0]
 
 
 def _with_image_versions(items: list[dict], version: int) -> list[dict]:

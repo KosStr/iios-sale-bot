@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 
 _TABLES = """
 CREATE TABLE IF NOT EXISTS schema_meta (
@@ -68,6 +68,12 @@ CREATE TABLE IF NOT EXISTS bookings (
     phone TEXT NOT NULL,
     created_at TEXT NOT NULL,
     FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+-- Store-wide settings typed by admins in the bot (e.g. usd_uah_rate).
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
 );
 """
 
