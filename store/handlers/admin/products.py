@@ -28,8 +28,10 @@ from store.models.product import (
 )
 from store.db import cart_repo, products_repo
 from store.handlers.admin.ui import (
+    LIST_FILTERS,
     PAGE_SIZE,
     delete_confirm_keyboard,
+    filter_products,
     edit_category_keyboard,
     edit_menu_keyboard,
     edit_subcategory_keyboard,
@@ -149,20 +151,35 @@ async def cmd_products(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await _send_product_list(update, context, page=0)
 
 
+# The admin's chosen list filter (LIST_FILTERS key); kept so paging,
+# "Оновити" and "До списку" stay on the same filter.
+_LIST_FILTER_KEY = "admin_list_filter"
+
+
 async def _send_product_list(
     update: Update, context: ContextTypes.DEFAULT_TYPE, page: int
 ) -> None:
-    products = get_all_products()
-    total = len(products)
-    if total == 0:
+    all_products = get_all_products()
+    if not all_products:
         text = "📋 *Товари*\n\nКаталог порожній. Додайте товар командою /add."
         keyboard = product_list_keyboard([], 0)
     else:
+        filter_key = context.user_data.get(_LIST_FILTER_KEY, "all")
+        if filter_key not in LIST_FILTERS:
+            filter_key = "all"
+        products = filter_products(all_products, filter_key)
+        counts = {key: len(filter_products(all_products, key)) for key in LIST_FILTERS}
+        total = len(products)
         pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
         page = min(page, pages - 1)
-        text = f"📋 *Товари* ({total})\n\nСторінка {page + 1}/{pages}\nОберіть товар:"
-        sold_count = sum(1 for p in products if p.stock <= 0)
-        keyboard = product_list_keyboard(products, page, sold_count)
+        heading = "📋 *Товари*"
+        if filter_key != "all":
+            heading += f" — {LIST_FILTERS[filter_key][0]}"
+        body = "Оберіть товар:" if total else "У цьому фільтрі товарів немає."
+        text = f"{heading} ({total})\n\nСторінка {page + 1}/{pages}\n{body}"
+        # "Видалити продані" removes every sold product, so count them all.
+        sold_count = sum(1 for p in all_products if p.stock <= 0)
+        keyboard = product_list_keyboard(products, page, sold_count, filter_key, counts)
 
     if update.callback_query:
         await update.callback_query.edit_message_text(
@@ -179,6 +196,13 @@ async def list_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.callback_query.answer()
     page = int(update.callback_query.data.rsplit(":", 1)[1])
     await _send_product_list(update, context, page)
+
+
+@admin_only
+async def set_list_filter(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.callback_query.answer()
+    context.user_data[_LIST_FILTER_KEY] = update.callback_query.data.rsplit(":", 1)[1]
+    await _send_product_list(update, context, 0)
 
 
 @admin_only
@@ -720,6 +744,7 @@ def build_admin_product_handlers() -> list:
         CallbackQueryHandler(toggle_hot, pattern=r"^adm:hot:"),
         CallbackQueryHandler(republish_hot, pattern=r"^adm:hotpub$"),
         CallbackQueryHandler(list_page, pattern=r"^adm:page:\d+$"),
+        CallbackQueryHandler(set_list_filter, pattern=r"^adm:flt:(all|tech|acc)$"),
         CallbackQueryHandler(view_product, pattern=r"^adm:view:"),
         CallbackQueryHandler(open_edit_menu, pattern=r"^adm:edit:"),
         CallbackQueryHandler(ask_delete, pattern=r"^adm:del:[^:]+$"),

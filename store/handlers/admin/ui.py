@@ -71,17 +71,56 @@ def product_detail_keyboard(product_id: str) -> InlineKeyboardMarkup:
     )
 
 
+# Admin list filters: key -> (button label, predicate). "Техніка" is every
+# device category, i.e. everything that isn't an accessory.
+LIST_FILTERS: dict[str, tuple[str, object]] = {
+    "all": ("Усі", lambda p: True),
+    # No emoji: three buttons share one row and must fit a phone screen.
+    "tech": ("Техніка", lambda p: p.category != "accessories"),
+    "acc": ("Аксесуари", lambda p: p.category == "accessories"),
+}
+
+
+def filter_products(products: list[Product], filter_key: str) -> list[Product]:
+    _, keep = LIST_FILTERS.get(filter_key, LIST_FILTERS["all"])
+    return [p for p in products if keep(p)]
+
+
+def _list_price(product: Product) -> str:
+    """Dollar price when set, else the hryvnia one ("$0" said nothing)."""
+    if product.price:
+        return format_price(product.price, "USD")
+    if product.price_uah:
+        return f"{product.price_uah} грн"
+    return "без ціни"
+
+
 def product_list_keyboard(
-    products: list[Product], page: int, sold_count: int = 0
+    products: list[Product],
+    page: int,
+    sold_count: int = 0,
+    filter_key: str = "all",
+    counts: dict[str, int] | None = None,
 ) -> InlineKeyboardMarkup:
     start = page * PAGE_SIZE
     chunk = products[start : start + PAGE_SIZE]
+    rows: list[list[InlineKeyboardButton]] = []
+    if counts is not None:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    f"{'✓ ' if key == filter_key else ''}{label} ({counts.get(key, 0)})",
+                    callback_data=f"adm:flt:{key}",
+                )
+                for key, (label, _) in LIST_FILTERS.items()
+            ]
+        )
     # Show the id next to the (truncated) name so admins can identify a
     # product at a glance without opening its detail screen.
-    rows = [
+    rows += [
         [
             InlineKeyboardButton(
-                f"{'🔥 ' if p.is_hot else ''}{p.name[:22]} · {p.id} — {format_price(p.price, 'USD')}",
+                f"{'🔥 ' if p.is_hot else ''}{p.name[:22]} · {p.id} — {_list_price(p)}",
                 callback_data=f"adm:view:{p.id}",
             )
         ]
