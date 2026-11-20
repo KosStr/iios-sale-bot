@@ -1204,7 +1204,7 @@ function siteFooter() {
     <div class="wrap foot-top">
       <div>
         <div class="foot-logo">IIOS<span>.</span></div>
-        <p class="foot-tagline">Нова та вживана техніка Apple у Чернівцях. Замовлення в Telegram, доставка по Україні.</p>
+        <p class="foot-tagline">Нова та вживана техніка Apple, Android і ноутбуки у Чернівцях. Замовлення в Telegram, доставка по Україні.</p>
       </div>
       <div>
         <div class="foot-label">Контакти</div>

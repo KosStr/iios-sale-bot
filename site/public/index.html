@@ -15,7 +15,7 @@
     });
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Нові та вживані iPhone, MacBook, AirPods, Apple Watch у Чернівцях. Гарантія 90 днів, Trade-in, розтермінування, доставка Новою поштою. Замовлення в Telegram." />
+  <meta name="description" content="Нові та вживані iPhone, iPad, MacBook, AirPods, Apple Watch, Android і ноутбуки у Чернівцях. Гарантія 90 днів, Trade-in, розтермінування, доставка Новою поштою." />
   <link rel="canonical" href="https://i-ios.store/" />
   <meta name="theme-color" content="#f6f4ef" />
   <!-- Images (no-CORS) and the hot.json fetch (CORS) use separate connections, so warm both. -->
@@ -33,7 +33,7 @@
   <meta property="og:locale" content="uk_UA" />
   <meta property="og:site_name" content="IIOS" />
   <meta property="og:title" content="IIOS — iPhone, MacBook та Apple техніка у Чернівцях" />
-  <meta property="og:description" content="Нові та вживані iPhone, MacBook, AirPods. Замовляй у Telegram — ми зателефонуємо та домовимось про доставку." />
+  <meta property="og:description" content="Нові та вживані iPhone, MacBook, AirPods, Android і ноутбуки. Замовляй у Telegram — ми зателефонуємо та домовимось про доставку." />
   <meta property="og:image" content="https://i-ios.store/og-image.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
@@ -586,8 +586,8 @@
     .cats-more a:hover { color: var(--ink); }
     .cats {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 12px;
+      grid-template-columns: repeat(9, 1fr);
+      gap: 10px;
     }
     .cat {
       position: relative;
@@ -1161,12 +1161,12 @@
     .reveal.visible { opacity: 1; transform: none; }
 
     /* ── RESPONSIVE ─────────────────────────────────────────── */
+    /* Nine categories: one row while the tiles stay readable, then 3 × 3 */
+    @media (max-width: 1100px) {
+      .cats { grid-template-columns: repeat(3, 1fr); max-width: 640px; margin: 0 auto; }
+    }
     @media (max-width: 900px) {
       .hero-grid { grid-template-columns: 1fr; gap: 48px; }
-      /* 3 + 2 layout: no orphan card stretched across the row */
-      .cats { grid-template-columns: repeat(6, 1fr); }
-      .cat { grid-column: span 2; }
-      .cat:nth-child(n+4) { grid-column: span 3; }
     }
     @media (max-width: 600px) {
       .nav-right { gap: 10px; }
@@ -1241,7 +1241,7 @@
     "@id": "https://i-ios.store/#store",
     "name": "IIOS",
     "alternateName": "IIOS Store",
-    "description": "Магазин нової та вживаної техніки Apple у Чернівцях: iPhone, MacBook, AirPods, Apple Watch, аксесуари. Гарантія 90 днів на техніку, Trade-in, розтермінування, доставка Новою поштою по Україні.",
+    "description": "Магазин нової та вживаної техніки у Чернівцях: iPhone, iPad, MacBook, Apple Watch, AirPods, Android-смартфони, ноутбуки, аксесуари. Гарантія 90 днів на техніку, Trade-in, розтермінування, доставка Новою поштою по Україні.",
     "url": "https://i-ios.store/",
     "image": "https://i-ios.store/og-image.jpg",
     "telephone": "+380953407754",
@@ -1361,7 +1361,7 @@
           <span class="live-text">Магазин у Чернівцях — працює щодня</span>
         </div>
         <h1>Apple техніка<br />у <em>Telegram</em>.<span class="h1-extra"><br />Просто й швидко.</span></h1>
-        <p class="hero-sub">Нові та вживані iPhone, MacBook, AirPods, Apple Watch та аксесуари у Чернівцях — обирайте й замовляйте прямо в чаті.</p>
+        <p class="hero-sub">Нові та вживані iPhone, iPad, MacBook, AirPods, Apple Watch, а також Android-смартфони, ноутбуки й аксесуари у Чернівцях — обирайте й замовляйте прямо в чаті.</p>
         <div class="hero-actions" id="hero-actions">
           <a href="https://t.me/iios_cv_bot" class="btn-primary hero-cta" target="_blank" rel="noopener" data-cta="hero">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.93 7.003-1.67 7.87c-.125.558-.455.695-.92.432l-2.54-1.872-1.225 1.178c-.135.135-.25.25-.512.25l.182-2.594 4.705-4.25c.204-.182-.044-.283-.317-.1l-5.812 3.66-2.502-.782c-.543-.17-.554-.543.114-.803l9.76-3.762c.452-.164.849.11.738.773z"/></svg>
@@ -1453,12 +1453,21 @@
       <div class="section-head reveal">
         <div class="tag">Каталог</div>
         <h2>Все що потрібно — в одному боті</h2>
-        <p>П'ять категорій з фільтрами по ціні, бренду та кольору. Знайдіть свій пристрій за секунди.</p>
+        <p>Техніка Apple, Android-смартфони, ноутбуки та аксесуари — з фільтрами за моделлю, станом і ціною. Знайдіть свій пристрій за секунди.</p>
       </div>
+      <!-- Same categories, order and page slugs as the bot and /catalog (CATEGORY_PAGES in site/worker/index.js). -->
       <div class="cats reveal">
         <a href="/catalog/iphone" class="cat" data-cta="category">
           <div class="cat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2.5"/><line x1="10.5" y1="5" x2="13.5" y2="5"/></svg></div>
           <div class="cat-name">iPhone</div>
+        </a>
+        <a href="/catalog/ipad" class="cat" data-cta="category">
+          <div class="cat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2.5"/><line x1="11" y1="18.5" x2="13" y2="18.5"/></svg></div>
+          <div class="cat-name">iPad</div>
+        </a>
+        <a href="/catalog/macbook" class="cat" data-cta="category">
+          <div class="cat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="11" rx="2"/><path d="M2 19h20"/></svg></div>
+          <div class="cat-name">MacBook</div>
         </a>
         <a href="/catalog/apple-watch" class="cat" data-cta="category">
           <div class="cat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><polyline points="12 9 12 12 13.5 13.5"/><path d="M16.51 17.35l-.35 3.83a2 2 0 0 1-2 1.82H9.83a2 2 0 0 1-2-1.82l-.35-3.83m.01-10.7l.35-3.83A2 2 0 0 1 9.83 1h4.35a2 2 0 0 1 2 1.82l.35 3.83"/></svg></div>
@@ -1468,9 +1477,17 @@
           <div class="cat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg></div>
           <div class="cat-name">Навушники</div>
         </a>
-        <a href="/catalog/macbook" class="cat" data-cta="category">
-          <div class="cat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="11" rx="2"/><path d="M2 19h20"/></svg></div>
-          <div class="cat-name">MacBook</div>
+        <a href="/catalog/noutbuky" class="cat" data-cta="category">
+          <div class="cat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M1 20h22"/><path d="M7 8h10M7 11.5h6"/></svg></div>
+          <div class="cat-name">Ноутбуки</div>
+        </a>
+        <a href="/catalog/android" class="cat" data-cta="category">
+          <div class="cat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17a7 7 0 0 1 14 0z"/><path d="M7.6 11.2 5.8 8.5M16.4 11.2l1.8-2.7"/><circle cx="9.5" cy="14" r=".7" fill="currentColor"/><circle cx="14.5" cy="14" r=".7" fill="currentColor"/></svg></div>
+          <div class="cat-name">Android</div>
+        </a>
+        <a href="/catalog/insha-tekhnika" class="cat" data-cta="category">
+          <div class="cat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg></div>
+          <div class="cat-name">Інша техніка</div>
         </a>
         <a href="/catalog/aksesuary" class="cat" data-cta="category">
           <div class="cat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 2v6M15 2v6"/><path d="M6 8h12v3a6 6 0 0 1-12 0z"/><path d="M12 17v5"/></svg></div>
@@ -1575,7 +1592,7 @@
             </span>
             <span class="step-title">Оберіть модель</span>
           </div>
-          <p>Фільтруйте за ціною, кольором і категорією — знайдете модель за секунди.</p>
+          <p>Категорія, модель, ціна — і потрібний пристрій уже перед вами.</p>
         </li>
         <li class="step">
           <div class="step-summary">
@@ -1672,7 +1689,7 @@
         <div class="cta-hero-text">
           <div class="tag">Починайте прямо зараз</div>
           <h2>iPhone і <em>MacBook</em><br />вже чекають у каталозі</h2>
-          <p>Телефони, ноутбуки, годинники та аксесуари Apple — обирайте в Telegram і оформлюйте замовлення за кілька натискань.</p>
+          <p>iPhone, MacBook, iPad, Apple Watch, Android-смартфони, ноутбуки та аксесуари — обирайте в Telegram і оформлюйте замовлення за кілька натискань.</p>
           <div class="cta-actions">
             <a href="https://t.me/iios_cv_bot" class="btn-primary" target="_blank" rel="noopener" data-cta="cta_band">
               <svg viewBox="0 0 24 24" fill="currentColor" style="width:20px;height:20px;"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.93 7.003-1.67 7.87c-.125.558-.455.695-.92.432l-2.54-1.872-1.225 1.178c-.135.135-.25.25-.512.25l.182-2.594 4.705-4.25c.204-.182-.044-.283-.317-.1l-5.812 3.66-2.502-.782c-.543-.17-.554-.543.114-.803l9.76-3.762c.452-.164.849.11.738.773z"/></svg>
@@ -1686,7 +1703,7 @@
           <div class="cta-features">
             <div class="cta-feature">
               <span class="cta-feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span>
-              <div><strong>Весь модельний ряд</strong><span>iPhone, Mac, Watch</span></div>
+              <div><strong>Широкий вибір</strong><span>Apple, Android, ноутбуки</span></div>
             </div>
             <div class="cta-feature">
               <span class="cta-feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 12 15 16 10"/></svg></span>
@@ -1761,7 +1778,7 @@
       <div class="footer-top">
         <div>
           <div class="footer-logo">IIOS<span>.</span></div>
-          <p class="footer-tagline">Нова та вживана техніка Apple у Чернівцях. Замовлення в Telegram, доставка по Україні.</p>
+          <p class="footer-tagline">Нова та вживана техніка Apple, Android і ноутбуки у Чернівцях. Замовлення в Telegram, доставка по Україні.</p>
         </div>
         <div>
           <div class="footer-label">Контакти</div>
