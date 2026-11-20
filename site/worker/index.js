@@ -317,9 +317,9 @@ function categoryLabel(key, item) {
 // listed only while the whole sentence still fits.
 const DESCRIPTION_MAX = 160;
 
-function catalogDescription(count, labels) {
+function catalogDescription(count, labels, warranty) {
   const head = `${count} ${plural(count, 'товар', 'товари', 'товарів')} в наявності в IIOS (Чернівці)`;
-  const tail = '. Нові та вживані, гарантія магазину, доставка по Україні.';
+  const tail = `. Нові та вживані, ${warranty ? `гарантія ${warrantyText(warranty)}` : 'гарантія магазину'}, доставка по Україні.`;
   const shown = labels.slice();
   const build = () => head
     + (shown.length ? ': ' + shown.join(', ') + (shown.length < labels.length ? ' та інше' : '') : '')
@@ -378,6 +378,16 @@ function productLd(item, all) {
     brand: brand ? { '@type': 'Brand', name: brand } : undefined,
     color: item.color || undefined,
   };
+  const d = deviceDetails(item);
+  const properties = [
+    d.grade ? ['Стан', d.grade.label] : null,
+    batteryText(d) ? ['Акумулятор', batteryText(d)] : null,
+    d.sim ? ['SIM', d.sim] : null,
+    d.kit.length ? ['Комплект', kitText(d)] : null,
+  ].filter(Boolean);
+  if (properties.length) {
+    product.additionalProperty = properties.map(([name, value]) => ({ '@type': 'PropertyValue', name, value }));
+  }
   if (regular) {
     product.offers = {
       '@type': 'Offer',
@@ -394,6 +404,10 @@ function productLd(item, all) {
       availability: 'https://schema.org/InStock',
       itemCondition: CONDITION_SCHEMA[conditionKind(item)],
       seller: { '@type': 'Organization', name: 'IIOS', url: `${SITE}/` },
+      warranty: item.warranty_days ? {
+        '@type': 'WarrantyPromise',
+        durationOfWarranty: { '@type': 'QuantitativeValue', value: item.warranty_days, unitCode: 'DAY' },
+      } : undefined,
     };
   }
   // A category with its own page is a crumb; a #tab of /catalog is not a page.
@@ -460,6 +474,14 @@ function feedItem(item) {
   const description = item.description || `${title}. ${condition === 'new' ? 'Новий' : 'Вживаний'}.`;
   const brand = feedBrand(item);
   const productType = [item.category_label, item.subcategory_label].filter(Boolean).join(' > ');
+  // Short selling points Google may show under the listing.
+  const d = deviceDetails(item);
+  const highlights = [
+    item.warranty_days ? `Гарантія ${warrantyText(item.warranty_days)} від магазину` : '',
+    d.grade ? `Стан: ${d.grade.label.toLowerCase()}` : '',
+    d.battery !== null ? `Ємність акумулятора ${d.battery}%` : '',
+    d.sim ? `SIM: ${d.sim}` : '',
+  ].filter(Boolean);
   const fields = [
     ['g:id', item.id],
     ['g:title', title],
@@ -476,6 +498,8 @@ function feedItem(item) {
     ['g:identifier_exists', 'no'],
     item.color ? ['g:color', item.color] : null,
     productType ? ['g:product_type', productType] : null,
+    // Google's spec asks for 2–100 highlights, so a lone one is left out.
+    ...(highlights.length >= 2 ? highlights.map(h => ['g:product_highlight', h]) : []),
   ].filter(Boolean);
   return '    <item>\n'
     + fields.map(([tag, value]) => `      <${tag}>${xmlText(value)}</${tag}>`).join('\n')
@@ -524,6 +548,8 @@ const ICON_CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
 const ICON_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
 const ICON_PHONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.14 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.05 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 17z"/></svg>';
 const ICON_CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+const ICON_BATTERY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="17" height="10" rx="2.5"/><path d="M22 11v2"/><path d="M6 10.5v3M9.5 10.5v3M13 10.5v3"/></svg>';
+const ICON_SPARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg>';
 const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
 
 // Rough UAH→USD rate, used ONLY to order products by price when some are
@@ -553,17 +579,159 @@ function firstLine(text) {
   return line.length > 90 ? line.slice(0, 89).trimEnd() + '…' : line;
 }
 
+// ── Device details ────────────────────────────────────────────
+// Admins type a device's details as lines of its description, in the format
+// the bot's /add prompt suggests (store/handlers/admin/add.py):
+//   Фізична SIM + E-Sim
+//   Стан: Відмінний
+//   АКБ 100% (53 цикли)
+//   Комплект: гарантія | кабель | коробка
+//   Замінено задню кришку
+// They are read back here, so cards show them as badges and catalog.js can
+// filter on them, without new database fields. Lines that match nothing stay
+// free notes. Channel posts and the bot keep showing the description as typed.
+
+// Cosmetic grades as admins write them. The tier drives the "Ідеальний стан"
+// filter and the badge colour; an unknown wording is shown as typed.
+const GRADES = [
+  [/ідеальн/i, 'Ідеальний', 'top'],
+  [/як\s*нов/i, 'Як новий', 'top'],
+  [/відмінн/i, 'Відмінний', 'great'],
+  [/хорош/i, 'Хороший', 'good'],
+  [/задовільн/i, 'Задовільний', 'fair'],
+];
+
+// Shown on the product page under «Що означає стан». Keep it to what the
+// store actually promises for each grade.
+const GRADE_NOTES = [
+  ['Ідеальний / Як новий', 'Без помітних слідів використання.'],
+  ['Відмінний', 'Мінімальні сліди використання, помітні лише при уважному огляді.'],
+  ['Хороший', 'Є помітні потертості або дрібні подряпини на корпусі.'],
+];
+
+const BATTERY_RE = /^(?:акб|акумулятор|батаре[яїю])(?![а-яіїєґ'’])\s*[:\-–—]?\s*(.*)$/i;
+const GRADE_RE = /^стан\s*[:\-–—]\s*(.+)$/i;
+const KIT_RE = /^комплект(?:ація)?\s*[:\-–—]\s*(.+)$/i;
+const REPAIR_RE = /замін|ремонт/i;
+
+function capitalize(text) {
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : text;
+}
+
+function gradeOf(text) {
+  const clean = text.replace(/[!.\s]+$/, '').trim();
+  const known = GRADES.find(([re]) => re.test(clean));
+  return known ? { label: known[1], tier: known[2] } : { label: capitalize(clean), tier: '' };
+}
+
+// "Фізична SIM + E-Sim" → "SIM + eSIM"; "E-Sim" alone → "Лише eSIM" (worth
+// spelling out: such an iPhone takes no physical card).
+function simOf(line) {
+  const esim = /e-?\s?sim/i.test(line);
+  const physical = /sim|фіз/i.test(line.replace(/e-?\s?sim/gi, ''));
+  if (esim && physical) return 'SIM + eSIM';
+  if (esim) return 'Лише eSIM';
+  if (physical) return capitalize(line.replace(/\s+/g, ' '));
+  return '';
+}
+
+const detailsMemo = new WeakMap();
+
+function deviceDetails(item) {
+  if (detailsMemo.has(item)) return detailsMemo.get(item);
+  const out = { grade: null, battery: null, batteryNew: false, cycles: null, sim: '', kit: [], repairs: [], notes: [] };
+  // Accessories carry specs ("Type-C", "30W"), never device details.
+  const lines = String(item.description || '').split('\n').map(s => s.trim()).filter(Boolean);
+  for (const line of lines) {
+    let m;
+    if (item.category === 'accessories') { out.notes.push(line); continue; }
+    if (!out.grade && (m = GRADE_RE.exec(line))) { out.grade = gradeOf(m[1]); continue; }
+    if ((m = BATTERY_RE.exec(line))) {
+      const pct = /(\d{1,3})\s*%/.exec(m[1]);
+      const cycles = /(\d+)\s*цикл/i.exec(m[1]);
+      if (pct && Number(pct[1]) <= 100) out.battery = Number(pct[1]);
+      if (cycles) out.cycles = Number(cycles[1]);
+      if (/нов/i.test(m[1])) out.batteryNew = true;
+      if (out.battery !== null || out.cycles !== null || out.batteryNew) continue;
+    }
+    if (!out.kit.length && (m = KIT_RE.exec(line))) {
+      out.kit = m[1].split(/[|,;]/).map(s => s.trim()).filter(Boolean);
+      continue;
+    }
+    if (!out.sim && line.length <= 40 && /sim/i.test(line)) {
+      out.sim = simOf(line);
+      if (out.sim) continue;
+    }
+    if (REPAIR_RE.test(line)) { out.repairs.push(capitalize(line)); continue; }
+    out.notes.push(line);
+  }
+  detailsMemo.set(item, out);
+  return out;
+}
+
+function hasDetails(d) {
+  return Boolean(d.grade || d.battery !== null || d.cycles !== null || d.batteryNew || d.sim || d.kit.length || d.repairs.length);
+}
+
+// "100%", "100% · 53 цикли", "96 циклів", "Нова".
+function batteryText(d) {
+  const parts = [];
+  if (d.battery !== null) parts.push(`${d.battery}%`);
+  else if (d.batteryNew) parts.push('Нова');
+  if (d.cycles !== null) parts.push(`${d.cycles} ${plural(d.cycles, 'цикл', 'цикли', 'циклів')}`);
+  return parts.join(' · ');
+}
+
+// Short form for the card badge.
+function batteryBadge(d) {
+  if (d.battery !== null) return `АКБ ${d.battery}%`;
+  if (d.batteryNew) return 'АКБ нова';
+  if (d.cycles !== null) return `АКБ: ${d.cycles} ${plural(d.cycles, 'цикл', 'цикли', 'циклів')}`;
+  return '';
+}
+
+function batteryGood(d) {
+  return d.batteryNew || (d.battery !== null && d.battery >= 90);
+}
+
+function kitText(d) {
+  return capitalize(d.kit.join(', ').toLowerCase());
+}
+
+function warrantyText(days) {
+  return `${days} ${plural(days, 'день', 'дні', 'днів')}`;
+}
+
+// The warranty most devices carry (accessories aside), for site-wide copy:
+// "Гарантія 90 днів". Null when no device has one.
+function storeWarranty(items) {
+  const counts = new Map();
+  for (const item of items) {
+    if (item.category === 'accessories' || !item.warranty_days) continue;
+    counts.set(item.warranty_days, (counts.get(item.warranty_days) || 0) + 1);
+  }
+  let best = null;
+  for (const [days, n] of counts) if (!best || n > best[1]) best = [days, n];
+  return best ? best[0] : null;
+}
+
 function card(item, index, rate) {
   const { regular, sale, fmt } = prices(item);
   const image = safeImage(item.image);
   const kind = conditionKind(item);
+  const d = deviceDetails(item);
   // Short label on the photo (never truncated); the admin's full wording,
   // when longer ("Новий запечатаний"), leads the specs line instead.
   const condShort = kind === 'new' ? 'Новий' : kind === 'used' ? 'Вживаний' : (item.condition || '');
   const condFull = item.condition && item.condition !== condShort ? item.condition : '';
-  const specs = [condFull, item.storage, item.color].filter(Boolean).join(' · ');
-  const note = firstLine(item.description);
-  const search = [item.name, item.storage, item.color, item.condition, item.category_label, item.subcategory_label, item.description]
+  const specs = [condFull, item.storage, item.color, d.sim].filter(Boolean).join(' · ');
+  // Grade and battery are what a used-phone buyer looks at first.
+  const badges = [
+    d.grade ? `<span class="badge badge-grade badge-${d.grade.tier || 'other'}">${ICON_SPARK}${esc(d.grade.label)}</span>` : '',
+    batteryBadge(d) ? `<span class="badge badge-bat${batteryGood(d) ? ' is-good' : ''}">${ICON_BATTERY}${esc(batteryBadge(d))}</span>` : '',
+  ].join('');
+  const note = badges ? '' : firstLine(d.notes.join('\n') || item.description);
+  const search = [item.name, item.storage, item.color, item.condition, item.category_label, item.subcategory_label, item.description, d.grade && d.grade.label, d.sim]
     .filter(Boolean).join(' ').toLowerCase();
   const order = sortPrice(item, rate);
   // Photo and name open the product page; "Замовити" goes straight to the bot.
@@ -577,17 +745,18 @@ function card(item, index, rate) {
   // The first row loads eagerly so the page doesn't open on empty frames.
   const loading = index < 4 ? 'eager' : 'lazy';
   return `
-        <article class="card" id="p-${esc(item.id)}" data-i="${index}" data-cat="${esc(item.category || 'other')}" data-sub="${esc(item.subcategory_label || '')}" data-cond="${kind}" data-sale="${sale ? 1 : 0}" data-price="${order ?? ''}" data-q="${esc(search)}">
+        <article class="card" id="p-${esc(item.id)}" data-i="${index}" data-cat="${esc(item.category || 'other')}" data-sub="${esc(item.subcategory_label || '')}" data-cond="${kind}" data-sale="${sale ? 1 : 0}" data-price="${order ?? ''}" data-bat="${batteryGood(d) ? 1 : 0}" data-grade="${esc(d.grade ? d.grade.tier : '')}" data-q="${esc(search)}">
           <a class="card-media" href="${pageHref}" tabindex="-1" aria-hidden="true">
             ${image ? `<img src="${esc(image)}" alt="" width="480" height="480" loading="${loading}" decoding="async">` : ''}
             ${condShort ? `<span class="tag tag-cond tag-${kind || 'other'}">${esc(condShort)}</span>` : ''}
             ${sale ? `<span class="tag tag-sale">−${Math.round((1 - sale / regular) * 100)}%</span>` : ''}
+            ${item.warranty_days ? `<span class="tag tag-warranty">${ICON_SHIELD}Гарантія ${esc(warrantyText(item.warranty_days))}</span>` : ''}
           </a>
           <div class="card-body">
             <h3 class="card-title"><a href="${pageHref}">${esc(item.name)}</a></h3>
             ${specs ? `<p class="card-specs">${esc(specs)}</p>` : ''}
+            ${badges ? `<p class="badges">${badges}</p>` : ''}
             ${note ? `<p class="card-note">${esc(note)}</p>` : ''}
-            ${item.warranty_days ? `<p class="card-warranty">${ICON_SHIELD}Гарантія ${esc(item.warranty_days)} днів</p>` : ''}
             <div class="card-foot">
               <div class="card-price">${price}</div>
               <a class="card-cta" href="${link}" target="_blank" rel="noopener" aria-label="Замовити ${esc(item.name)} у Telegram">${ICON_TG}<span>Замовити</span></a>
@@ -638,14 +807,15 @@ function categoryCopy(key, items) {
   const cond = hasNew && hasUsed ? 'Нові та вживані' : hasUsed ? 'Вживані' : hasNew ? 'Нові' : '';
   const lead = cond ? `${cond} ${meta.noun}` : meta.noun.charAt(0).toUpperCase() + meta.noun.slice(1);
   const count = `${items.length} ${plural(items.length, 'товар', 'товари', 'товарів')} в наявності`;
+  const days = storeWarranty(items);
   const description = clip(
     `${lead} ${inAfter(lead)} магазині IIOS, Чернівці: ${count}${from ? `, від ${from}` : ''}. `
-      + 'Гарантія магазину, доставка Новою поштою, замовлення в Telegram.',
+      + `${days ? `Гарантія ${warrantyText(days)}` : 'Гарантія магазину'}, доставка Новою поштою, замовлення в Telegram.`,
     DESCRIPTION_MAX,
   );
   const intro = [
-    `${lead} з гарантією магазину IIOS. Забрати можна в магазині в Чернівцях або замовити доставку Новою поштою по Україні.`,
-    hasUsed ? 'Стан кожного вживаного пристрою чесно вказаний у його картці, а перевірити його можна в магазині або у відділенні Нової пошти до оплати.' : '',
+    `${lead} з гарантією ${days ? `${warrantyText(days)} від магазину IIOS` : 'магазину IIOS'}. Забрати можна в магазині в Чернівцях або замовити доставку Новою поштою по Україні.`,
+    hasUsed ? 'Стан, акумулятор і комплект вживаних пристроїв вказані в їхніх картках, а перевірити пристрій можна в магазині або у відділенні Нової пошти до оплати.' : '',
   ].filter(Boolean).join(' ');
   return { title, description, h1: meta.h1, intro, label: categoryLabel(key, items[0]) };
 }
@@ -658,9 +828,10 @@ function page(allItems, updatedAt, scope = null) {
   const allGroups = groupByCategory(allItems);
   const groups = scope ? allGroups.filter(([key]) => key === scope) : allGroups;
   const copy = scope ? categoryCopy(scope, items) : null;
+  const warranty = storeWarranty(items);
   const title = copy ? copy.title : 'Каталог iPhone, MacBook, AirPods у Чернівцях — ціни | IIOS';
   const description = copy ? copy.description : items.length
-    ? catalogDescription(items.length, groups.map(([, g]) => g.label))
+    ? catalogDescription(items.length, groups.map(([, g]) => g.label), warranty)
     : 'Каталог нової та вживаної техніки Apple в магазині IIOS у Чернівцях: iPhone, MacBook, AirPods, Apple Watch. Гарантія магазину, доставка по Україні.';
   const canonical = SITE + (scope ? categoryPath(scope, allItems) : PAGE_PATH);
   const trail = [['IIOS', `${SITE}/`], ['Каталог', `${SITE}${PAGE_PATH}`]];
@@ -690,10 +861,18 @@ function page(allItems, updatedAt, scope = null) {
   const hasNew = items.some(i => conditionKind(i) === 'new');
   const hasUsed = items.some(i => conditionKind(i) === 'used');
   const hasSale = items.some(i => prices(i).sale);
+  // Condition filters appear only when they would actually split the list.
+  const details = items.map(deviceDetails);
+  const batteries = details.filter(d => d.battery !== null || d.batteryNew);
+  const hasBattery = batteries.some(batteryGood) && batteries.some(d => !batteryGood(d));
+  const tiers = details.filter(d => d.grade && d.grade.tier).map(d => d.grade.tier);
+  const hasTop = tiers.includes('top') && tiers.some(t => t !== 'top');
   const filters = [
     hasNew && hasUsed ? '<button type="button" class="filter" data-filter="new" aria-pressed="false">Нові</button>' : '',
     hasNew && hasUsed ? '<button type="button" class="filter" data-filter="used" aria-pressed="false">Вживані</button>' : '',
     hasSale ? '<button type="button" class="filter filter-sale" data-filter="sale" aria-pressed="false">Знижки</button>' : '',
+    hasTop ? '<button type="button" class="filter" data-filter="top" aria-pressed="false">Ідеальний стан</button>' : '',
+    hasBattery ? '<button type="button" class="filter" data-filter="bat" aria-pressed="false">АКБ 90%+</button>' : '',
   ].join('');
 
   let index = 0;
@@ -726,7 +905,9 @@ function page(allItems, updatedAt, scope = null) {
       ${items.length ? `<p class="lead"><span class="dot" aria-hidden="true"></span><span>${lead}</span></p>` : ''}
       ${copy ? `<p class="intro-text">${esc(copy.intro)}</p>` : ''}
       <ul class="perks">
-        <li>${ICON_CHECK}Гарантія магазину</li>
+        ${warranty
+          ? `<li class="perk-warranty">${ICON_SHIELD}Гарантія ${esc(warrantyText(warranty))} на техніку</li>`
+          : `<li>${ICON_CHECK}Гарантія магазину</li>`}
         <li>${ICON_CHECK}Доставка Новою поштою</li>
         <li>${ICON_CHECK}Trade-in</li>
         <li>${ICON_CHECK}Розтермінування</li>
@@ -857,13 +1038,20 @@ function productPage(item, related, all) {
   const bot = esc(botLink(item));
   const categoryKey = item.category || 'other';
   const category = categoryLabel(categoryKey, item);
+  const d = deviceDetails(item);
+  const warranty = item.warranty_days ? warrantyText(item.warranty_days) : '';
 
   // "б/у" is how people search for used phones; the page says "Вживаний".
   const title = `${name}${kind === 'used' ? ' б/у' : ''} — купити в Чернівцях${priceText ? ` за ${priceText}` : ''} | IIOS`;
   const condWord = kind === 'new' ? 'Новий' : kind === 'used' ? 'Вживаний' : '';
+  // Grade and battery up front: they are what a used-phone search is about.
+  const highlights = [
+    d.grade ? `стан ${d.grade.label.toLowerCase()}` : '',
+    d.battery !== null ? `АКБ ${d.battery}%` : '',
+  ].filter(Boolean).join(', ');
   const description = clip(
-    `${condWord ? `${condWord} ` : ''}${name}${priceText ? ` за ${priceText}` : ''} у магазині IIOS, Чернівці. `
-      + 'Гарантія магазину, Trade-in, доставка Новою поштою. Замовлення в Telegram.',
+    `${condWord ? `${condWord} ` : ''}${name}${priceText ? ` за ${priceText}` : ''}${highlights ? `: ${highlights}` : ''}. `
+      + `${warranty ? `Гарантія ${warranty}` : 'Гарантія магазину'}, Trade-in, доставка Новою поштою. IIOS, Чернівці.`,
     DESCRIPTION_MAX,
   );
 
@@ -880,13 +1068,32 @@ function productPage(item, related, all) {
     price = `<span class="price">${esc(fmt(regular))}</span>`;
   }
 
+  const condition = item.condition || condWord;
   const facts = [
-    ['Стан', item.condition || condWord],
+    ['Стан', [condition, d.grade && d.grade.label.toLowerCase()].filter(Boolean).join(', ')],
+    ['Акумулятор', batteryText(d)],
     ['Пам’ять', item.storage],
     ['Колір', item.color],
-    ['Гарантія', item.warranty_days ? `${item.warranty_days} днів` : ''],
+    ['SIM', d.sim],
+    ['Комплект', kitText(d)],
+    ['Ремонт', d.repairs.join('; ')],
+    ['Гарантія', warranty ? `${warranty} від магазину` : ''],
     ['Категорія', [item.category_label || category, item.subcategory_label].filter(Boolean).join(' · ')],
   ].filter(([, value]) => value);
+
+  // Three tiles under the heading: the facts that sell a used device.
+  const tiles = [
+    d.grade ? ['Стан', d.grade.label, ''] : null,
+    // The tile keeps it short ("100%"); cycles stay in the facts below.
+    batteryText(d) ? ['Акумулятор', d.battery !== null ? `${d.battery}%` : batteryText(d), batteryGood(d) ? ' is-good' : ''] : null,
+    warranty ? ['Гарантія', warranty, ' is-warranty'] : null,
+  ].filter(Boolean);
+
+  // Parsed lines already show as facts; only what is left reads as a note.
+  // A description with nothing recognisable keeps its old "Опис" block.
+  const parsed = hasDetails(d);
+  const notes = parsed ? d.notes.join('\n') : (item.description || '');
+  const showLegend = Boolean(d.grade && d.grade.tier);
 
   const rate = uahPerUsd(all);
   const relatedCards = related.map((other, i) => card(other, 10 + i, rate)).join('');
@@ -909,26 +1116,49 @@ function productPage(item, related, all) {
       <div class="pdp-info">
         <h1>${esc(name)}</h1>
         ${specs ? `<p class="pdp-specs">${esc(specs)}</p>` : ''}
+        ${tiles.length ? `<dl class="pdp-tiles">${tiles.map(([label, value, mod]) => `
+          <div class="tile${mod}"><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}
+        </dl>` : ''}
         <div class="pdp-price">${price}</div>
         <p class="pdp-stock"><span class="dot" aria-hidden="true"></span>В наявності в Чернівцях</p>
         <div class="pdp-actions">
           <a class="btn" href="${bot}" target="_blank" rel="noopener">${ICON_TG}Замовити в Telegram</a>
           <a class="btn btn-outline" href="tel:+380953407754" data-callback="${esc(item.id)}" data-callback-name="${esc(item.name)}">${ICON_PHONE}Передзвоніть мені</a>
         </div>
+        ${warranty ? `
+        <aside class="pdp-warranty">
+          <span class="pdp-warranty-icon">${ICON_SHIELD}</span>
+          <div>
+            <p class="pdp-warranty-title">${esc(warranty)} гарантії від IIOS</p>
+            <p>Якщо протягом гарантії виявиться дефект — відремонтуємо або замінимо пристрій. Оглянути його можна до оплати: у магазині або у відділенні Нової пошти.</p>
+            <a href="/#returns">Умови гарантії та повернення →</a>
+          </div>
+        </aside>` : ''}
         <ul class="perks">
-          <li>${ICON_CHECK}Гарантія магазину</li>
+          ${warranty ? '' : `<li>${ICON_CHECK}Гарантія магазину</li>`}
           <li>${ICON_CHECK}Доставка Новою поштою</li>
           <li>${ICON_CHECK}Trade-in</li>
           <li>${ICON_CHECK}Розтермінування</li>
         </ul>
-        ${facts.length ? `<dl class="pdp-facts">${facts.map(([label, value]) => `
-          <div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}
-        </dl>` : ''}
-        ${item.description ? `
-        <section class="pdp-desc">
-          <h2>Опис</h2>
-          <p>${esc(item.description)}</p>
+        ${facts.length ? `
+        <section class="pdp-specs-block">
+          <h2>Характеристики</h2>
+          <dl class="pdp-facts">${facts.map(([label, value]) => `
+            <div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}
+          </dl>
         </section>` : ''}
+        ${notes ? `
+        <section class="pdp-desc">
+          <h2>${parsed ? 'Додатково' : 'Опис'}</h2>
+          <p>${esc(notes)}</p>
+        </section>` : ''}
+        ${showLegend ? `
+        <details class="pdp-legend">
+          <summary>Що означає стан «${esc(d.grade.label)}»?${ICON_CHEVRON}</summary>
+          <dl>${GRADE_NOTES.map(([label, text]) => `
+            <div><dt>${esc(label)}</dt><dd>${esc(text)}</dd></div>`).join('')}
+          </dl>
+        </details>` : ''}
       </div>
     </article>
     ${relatedCards ? `
@@ -1040,6 +1270,8 @@ h1{font-size:clamp(30px,5vw,48px);line-height:1.05;letter-spacing:-.035em;font-w
 .perks{list-style:none;display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
 .perks li{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;background:var(--bg2);border:1px solid var(--border);padding:6px 12px 6px 9px;border-radius:100px}
 .perks svg{width:14px;height:14px;color:var(--ok-text)}
+.perks .perk-warranty{background:var(--ink);border-color:var(--ink);color:#fff}
+.perks .perk-warranty svg{color:#e3c48f}
 .search{align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border-strong);border-radius:16px;padding:0 14px;height:48px;max-width:560px;margin-top:20px;transition:border-color .2s,box-shadow .2s}
 .search:focus-within{border-color:var(--accent2);box-shadow:0 0 0 4px rgba(163,129,79,.16)}
 .search svg{width:19px;height:19px;color:var(--muted)}
@@ -1112,9 +1344,19 @@ h1{font-size:clamp(30px,5vw,48px);line-height:1.05;letter-spacing:-.035em;font-w
 .card-title a:hover{color:var(--accent2)}
 .card-specs{font-size:13px;color:var(--muted)}
 .card-note{font-size:13px;line-height:1.4;color:var(--text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.card-warranty{display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:var(--accent2);margin-top:2px}
-.card-warranty svg{width:13px;height:13px}
-.card-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:auto;padding-top:12px}
+/* Warranty rides on the photo, so it is seen before anything else in the card */
+.tag-warranty{top:auto;bottom:10px;left:10px;display:flex;align-items:center;gap:5px;background:rgba(18,17,9,.82);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#fff;padding:4px 10px 4px 8px}
+.tag-warranty svg{width:13px;height:13px;color:#e3c48f}
+/* Grade and battery: what a used-device buyer checks first */
+.badges{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;line-height:1;padding:5px 8px 5px 6px;border-radius:8px;background:var(--bg3);color:var(--ink);white-space:nowrap}
+.badge svg{width:13px;height:13px;color:var(--muted)}
+.badge-top{background:#e6f3ea;color:var(--ok-text)}
+.badge-top svg{color:var(--ok)}
+.badge-bat.is-good{background:#e6f3ea;color:var(--ok-text)}
+.badge-bat.is-good svg{color:var(--ok)}
+/* Wraps the button under the price when a narrow card can't fit both */
+.card-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-top:auto;padding-top:12px}
 .card-price{display:flex;flex-direction:column;line-height:1.15;min-width:0}
 .price{font-size:21px;font-weight:800;letter-spacing:-.02em;color:var(--ink);white-space:nowrap}
 .price-old{font-size:13px;color:var(--muted);text-decoration:line-through;margin-top:2px}
@@ -1174,7 +1416,32 @@ h1{font-size:clamp(30px,5vw,48px);line-height:1.05;letter-spacing:-.035em;font-w
 .pdp-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
 .pdp-actions .btn{height:52px;padding:0 24px 0 20px;font-size:16px}
 .pdp .perks{margin-top:18px}
-.pdp-facts{margin-top:28px;border-top:1px solid var(--border)}
+.pdp-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-top:18px}
+.tile{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:10px 14px}
+.tile dt{font-size:12px;font-weight:600;color:var(--muted)}
+.tile dd{font-size:17px;font-weight:800;letter-spacing:-.01em;margin-top:2px}
+.tile.is-good dd{color:var(--ok-text)}
+.tile.is-warranty{background:var(--ink);border-color:var(--ink);color:#fff}
+.tile.is-warranty dt{color:rgba(255,255,255,.65)}
+.pdp-warranty{display:flex;gap:14px;align-items:flex-start;margin-top:22px;padding:18px 20px;border-radius:18px;background:linear-gradient(135deg,#fbf6ec,#f3ead8);border:1px solid rgba(163,129,79,.35)}
+.pdp-warranty-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:var(--ink);flex-shrink:0}
+.pdp-warranty-icon svg{width:22px;height:22px;color:#e3c48f}
+.pdp-warranty-title{font-size:17px;font-weight:800;letter-spacing:-.01em;margin-bottom:4px}
+.pdp-warranty p:not(.pdp-warranty-title){font-size:14px;line-height:1.55;color:var(--text)}
+.pdp-warranty a{display:inline-block;margin-top:8px;font-size:14px;font-weight:700;color:var(--accent2)}
+.pdp-warranty a:hover{color:var(--ink)}
+.pdp-specs-block{margin-top:28px}
+.pdp-specs-block h2{font-size:22px;letter-spacing:-.015em;margin-bottom:6px}
+.pdp-legend{margin-top:20px;background:var(--bg2);border:1px solid var(--border);border-radius:16px}
+.pdp-legend summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;font-size:15px;font-weight:700;cursor:pointer;list-style:none}
+.pdp-legend summary::-webkit-details-marker{display:none}
+.pdp-legend summary svg{width:18px;height:18px;color:var(--muted);transition:transform .2s}
+.pdp-legend[open] summary svg{transform:rotate(180deg)}
+.pdp-legend dl{padding:0 18px 14px}
+.pdp-legend div{padding:8px 0;border-top:1px solid var(--border);font-size:14px}
+.pdp-legend dt{font-weight:700}
+.pdp-legend dd{color:var(--muted)}
+.pdp-facts{margin-top:0;border-top:1px solid var(--border)}
 .pdp-facts div{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--border);font-size:15px}
 .pdp-facts dt{color:var(--muted)}
 .pdp-facts dd{font-weight:600;text-align:right;overflow-wrap:anywhere}
@@ -1208,7 +1475,9 @@ h1{font-size:clamp(30px,5vw,48px);line-height:1.05;letter-spacing:-.035em;font-w
   .top{position:static;height:58px}
   .top-links{display:none}
   .intro{padding-top:14px;padding-bottom:12px}
-  .perks{display:none}
+  /* Phones keep only the warranty perk: the one that sells */
+  .intro .perks li:not(.perk-warranty){display:none}
+  .intro .perks{margin-top:12px}
   .search{height:46px;max-width:none;border-radius:14px;margin-top:16px}
   .toolbar-inner{--gutter:16px;padding-top:2px;padding-bottom:8px;gap:8px}
   .tabs{gap:22px}
@@ -1229,6 +1498,14 @@ h1{font-size:clamp(30px,5vw,48px);line-height:1.05;letter-spacing:-.035em;font-w
   .tag{top:8px;font-size:11.5px;padding:3px 8px}
   .tag-cond{left:8px;max-width:calc(100% - 64px)}
   .tag-sale{right:8px}
+  .tag-warranty{bottom:8px;left:8px;top:auto;padding:3px 8px 3px 6px}
+  .tag-warranty svg{width:12px;height:12px}
+  .badge{font-size:11.5px;padding:4px 6px 4px 5px}
+  .badge svg{width:12px;height:12px}
+  .pdp-tiles{grid-template-columns:repeat(auto-fit,minmax(90px,1fr))}
+  .tile{padding:9px 11px}
+  .tile dd{font-size:15px}
+  .pdp-warranty{padding:16px}
   .card-body{padding:10px 11px 12px}
   .card-title{font-size:14.5px}
   .card-specs,.card-note{font-size:12.5px}
