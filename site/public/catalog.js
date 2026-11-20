@@ -1,6 +1,10 @@
 // Search, category tabs, model chips, filters, sorting and pagination for
-// /catalog (page rendered by worker/index.js). The page works without this
-// script; it only filters and reorders the cards that are already there.
+// /catalog and the category pages /catalog/<slug> (rendered by
+// worker/index.js). The page works without this script; it only filters and
+// reorders the cards that are already there.
+//
+// A category page (body[data-scope]) holds one category only: its tabs are
+// plain links to the other pages, and search stays inside the category.
 (function () {
   const root = document.documentElement;
   root.classList.add('js');
@@ -21,7 +25,8 @@
     if (!results) return;
     const groups = [...document.querySelectorAll('.group')];
     let cards = [...document.querySelectorAll('.card')];
-    const tabs = [...document.querySelectorAll('.tab')];
+    // Only /catalog's tabs filter in place; a category page's tabs navigate.
+    const tabs = [...document.querySelectorAll('.tab[data-tab]')];
     const filters = [...document.querySelectorAll('.filter')];
     const input = document.getElementById('q');
     const sortSelect = document.getElementById('sort');
@@ -33,10 +38,12 @@
     const emptyCta = document.getElementById('empty-cta');
     const toolbar = document.querySelector('.toolbar');
     const bot = document.body.dataset.bot;
+    const scope = document.body.dataset.scope || '';
+    const home = scope || 'all';
     let labels = {};
     try { labels = JSON.parse(document.body.dataset.labels || '{}'); } catch { /* defaults */ }
 
-    const state = { cat: 'all', sub: '', q: '', cond: new Set(), sale: false, sort: 'default', page: 1 };
+    const state = { cat: home, sub: '', q: '', cond: new Set(), sale: false, sort: 'default', page: 1 };
 
     // Broken or missing photos fall back to the IIOS placeholder behind them.
     document.querySelectorAll('.card-media img').forEach(img => {
@@ -58,12 +65,12 @@
     }
 
     function isFiltered() {
-      return state.cat !== 'all' || Boolean(state.sub) || Boolean(state.q) || state.cond.size > 0 || state.sale;
+      return state.cat !== home || Boolean(state.sub) || Boolean(state.q) || state.cond.size > 0 || state.sale;
     }
 
     function describe(total) {
       const parts = [`${total} ${plural(total, 'товар', 'товари', 'товарів')}`];
-      if (state.cat !== 'all' && labels[state.cat]) parts.push(labels[state.cat]);
+      if (state.cat !== home && labels[state.cat]) parts.push(labels[state.cat]);
       if (state.sub) parts.push(state.sub);
       state.cond.forEach(c => parts.push(COND_LABELS[c] || c));
       if (state.sale) parts.push('зі знижкою');
@@ -217,12 +224,14 @@
     }
 
     function setCategory(cat, { scroll } = {}) {
-      state.cat = cat === 'all' || labels[cat] ? cat : 'all';
+      state.cat = scope || (cat === 'all' || labels[cat] ? cat : 'all');
       state.sub = '';
       renderModels();
       refresh();
-      const hash = state.cat === 'all' ? location.pathname : '#' + state.cat;
-      history.replaceState(null, '', hash);
+      if (!scope) {
+        const hash = state.cat === 'all' ? location.pathname : '#' + state.cat;
+        history.replaceState(null, '', hash);
+      }
       if (scroll && toolbar) {
         const top = toolbar.getBoundingClientRect().top + scrollY - parseInt(getComputedStyle(toolbar).top, 10);
         if (scrollY > top) scrollTo({ top, behavior: 'smooth' });
@@ -250,7 +259,7 @@
     // open category, so "iphone 15" typed on the iPad tab still finds it.
     function setQuery(value) {
       state.q = value.trim().toLowerCase();
-      if (state.q && state.cat !== 'all') setCategory('all');
+      if (state.q && state.cat !== home) setCategory('all');
       else refresh();
     }
     input?.addEventListener('input', () => setQuery(input.value));

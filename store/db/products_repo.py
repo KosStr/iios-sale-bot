@@ -25,6 +25,19 @@ INSERT INTO products (
 """
 
 
+# Paths the website uses for category pages (/catalog/<slug>), so no product
+# may take them as its id. Keep in sync with CATEGORY_PAGES in
+# site/worker/index.js.
+RESERVED_IDS = frozenset({
+    "iphone", "ipad", "macbook", "apple-watch", "navushnyky", "noutbuky",
+    "android", "insha-tekhnika", "aksesuary",
+})
+
+
+def is_reserved(product_id: str) -> bool:
+    return product_id in RESERVED_IDS
+
+
 def _slug_base(text: str) -> str:
     """Core slug transform: ASCII-fold, lowercase, hyphenate, cap at 48 chars.
 
@@ -53,7 +66,7 @@ def make_unique_id(name: str) -> str:
     base = _slugify(name)
     candidate = base
     suffix = 2
-    while exists(candidate):
+    while is_reserved(candidate) or exists(candidate):
         candidate = f"{base}-{suffix}"
         suffix += 1
     return candidate

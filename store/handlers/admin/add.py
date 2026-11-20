@@ -305,6 +305,13 @@ async def collect_product_id(update: Update, context: ContextTypes.DEFAULT_TYPE)
             reply_markup=_ID_SKIP,
         )
         return PRODUCT_ID
+    if products_repo.is_reserved(product_id):
+        await update.message.reply_text(
+            f"ID `{product_id}` зайнятий адресою категорії на сайті. Введіть інший або натисніть «Згенерувати автоматично».",
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=_ID_SKIP,
+        )
+        return PRODUCT_ID
     if products_repo.exists(product_id):
         await update.message.reply_text(
             f"ID `{product_id}` вже зайнятий. Введіть інший або натисніть «Згенерувати автоматично».",

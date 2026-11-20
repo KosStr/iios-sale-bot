@@ -43,6 +43,28 @@ const CATEGORIES = [
   ['accessories', 'Аксесуари'],
 ];
 
+// Categories with at least MIN_CATEGORY_ITEMS products also get their own
+// page at /catalog/<slug> (e.g. /catalog/iphone), so a search like "iPhone б/у
+// Чернівці" lands on a page about exactly that. Thinner categories would make
+// thin pages, so their slug redirects to the /catalog tab until they grow.
+// The slugs are reserved for product ids (RESERVED_IDS in
+// store/db/products_repo.py); keep both lists in sync.
+const MIN_CATEGORY_ITEMS = 4;
+const CATEGORY_PAGES = {
+  phone: { slug: 'iphone', buy: 'iPhone', h1: 'iPhone у Чернівцях', noun: 'iPhone' },
+  ipad: { slug: 'ipad', buy: 'iPad', h1: 'iPad у Чернівцях', noun: 'iPad' },
+  laptop: { slug: 'macbook', buy: 'MacBook', h1: 'MacBook у Чернівцях', noun: 'MacBook' },
+  watch: { slug: 'apple-watch', buy: 'Apple Watch', h1: 'Apple Watch у Чернівцях', noun: 'Apple Watch' },
+  headphones: { slug: 'navushnyky', buy: 'навушники', h1: 'Навушники у Чернівцях', noun: 'навушники' },
+  notebook: { slug: 'noutbuky', buy: 'ноутбук', h1: 'Ноутбуки у Чернівцях', noun: 'ноутбуки' },
+  android: { slug: 'android', buy: 'смартфон Android', h1: 'Смартфони Android у Чернівцях', noun: 'смартфони Android' },
+  other_tech: { slug: 'insha-tekhnika', buy: 'техніку', h1: 'Інша техніка в Чернівцях', noun: 'пристрої' },
+  accessories: { slug: 'aksesuary', buy: 'аксесуари', h1: 'Аксесуари в Чернівцях', noun: 'аксесуари' },
+};
+const CATEGORY_BY_SLUG = Object.fromEntries(
+  Object.entries(CATEGORY_PAGES).map(([key, page]) => [page.slug, key]),
+);
+
 // Same policy as _headers (which only covers static assets). Scripts are
 // limited to our own /catalog.js; JSON-LD blocks are data, not executed.
 const SECURITY_HEADERS = {
@@ -75,6 +97,8 @@ export default {
       if (!match) return Response.redirect(url.origin + PAGE_PATH, 301);
       const path = `${PAGE_PATH}/${match[1]}`;
       if (url.pathname !== path) return Response.redirect(url.origin + path, 301);
+      const category = CATEGORY_BY_SLUG[match[1]];
+      if (category) return serveCached(request, url, ctx, path, () => renderCategory(env, category));
       return serveCached(request, url, ctx, path, () => renderProduct(env, match[1]));
     }
     if (url.pathname !== PAGE_PATH) {
@@ -136,6 +160,34 @@ async function render(env) {
   return htmlResponse(page(catalog.items, catalog.updated_at), 200, CACHED);
 }
 
+async function renderCategory(env, key) {
+  const catalog = await loadCatalog(env);
+  if (!catalog) return htmlResponse(missingPage(true), 503, UNAVAILABLE);
+  if (!hasCategoryPage(key, catalog.items)) {
+    // Temporary (302): the page comes back once the category fills up again.
+    return new Response(null, {
+      status: 302,
+      headers: { Location: `${SITE}${PAGE_PATH}#${key}`, 'Cache-Control': 'public, max-age=60' },
+    });
+  }
+  return htmlResponse(page(catalog.items, catalog.updated_at, key), 200, CACHED);
+}
+
+function categoryCount(key, items) {
+  return items.reduce((n, item) => n + ((item.category || 'other') === key ? 1 : 0), 0);
+}
+
+function hasCategoryPage(key, items) {
+  return Boolean(CATEGORY_PAGES[key]) && categoryCount(key, items) >= MIN_CATEGORY_ITEMS;
+}
+
+// A category's own page when it has one, else its tab on /catalog.
+function categoryPath(key, items) {
+  return hasCategoryPage(key, items)
+    ? `${PAGE_PATH}/${CATEGORY_PAGES[key].slug}`
+    : `${PAGE_PATH}#${encodeURIComponent(key)}`;
+}
+
 async function renderProduct(env, id) {
   const catalog = await loadCatalog(env);
   if (!catalog) return htmlResponse(missingPage(true), 503, UNAVAILABLE);
@@ -154,10 +206,13 @@ async function renderSitemap(env) {
     ? new Date(catalog.updated_at * 1000).toISOString().slice(0, 10)
     : null;
   const entry = (loc, mod) => `  <url>\n    <loc>${esc(loc)}</loc>${mod ? `\n    <lastmod>${mod}</lastmod>` : ''}\n  </url>`;
+  const items = catalog ? catalog.items : [];
+  const categories = Object.keys(CATEGORY_PAGES).filter(key => hasCategoryPage(key, items));
   const urls = [
     entry(`${SITE}/`),
     entry(`${SITE}${PAGE_PATH}`, lastmod),
-    ...(catalog ? catalog.items.map(item => entry(productUrl(item), lastmod)) : []),
+    ...categories.map(key => entry(SITE + categoryPath(key, items), lastmod)),
+    ...items.map(item => entry(productUrl(item), lastmod)),
   ];
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -223,10 +278,11 @@ const CONDITION_SCHEMA = {
   used: 'https://schema.org/UsedCondition',
 };
 
-// Its own page; an id that isn't a slug (none should be) falls back to its
-// card on /catalog, since PRODUCT_PATH_RE would redirect it away.
+// Its own page; an id that isn't a slug (none should be) or that a category
+// page owns falls back to its card on /catalog, since PRODUCT_PATH_RE would
+// redirect it away and a category slug would show the category instead.
 function productPath(item) {
-  return PRODUCT_PATH_RE.test(`${PAGE_PATH}/${item.id}`)
+  return PRODUCT_PATH_RE.test(`${PAGE_PATH}/${item.id}`) && !CATEGORY_BY_SLUG[item.id]
     ? `${PAGE_PATH}/${item.id}`
     : `${PAGE_PATH}#p-${encodeURIComponent(item.id)}`;
 }
@@ -293,20 +349,20 @@ function breadcrumbsLd(trail) {
 
 // The catalog is a summary page: it lists the product pages, and the full
 // Product markup lives on each of them (Google's product-carousel pattern).
-function jsonLd(items) {
+function jsonLd(items, name, trail) {
   const list = {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
-    name: 'Каталог IIOS — техніка Apple у Чернівцях',
+    name,
     numberOfItems: items.length,
     itemListElement: items.map((item, index) => ({
       '@type': 'ListItem', position: index + 1, url: productUrl(item),
     })),
   };
-  return ldScripts([list, breadcrumbsLd([['IIOS', `${SITE}/`], ['Каталог', `${SITE}${PAGE_PATH}`]])]);
+  return ldScripts([list, breadcrumbsLd(trail)]);
 }
 
-function productLd(item) {
+function productLd(item, all) {
   const { currency, regular, sale } = prices(item);
   const url = productUrl(item);
   const brand = feedBrand(item);
@@ -340,8 +396,11 @@ function productLd(item) {
       seller: { '@type': 'Organization', name: 'IIOS', url: `${SITE}/` },
     };
   }
-  // Category tabs are #fragments of /catalog, not pages, so they're left out.
-  const trail = [['IIOS', `${SITE}/`], ['Каталог', `${SITE}${PAGE_PATH}`], [item.name, url]];
+  // A category with its own page is a crumb; a #tab of /catalog is not a page.
+  const key = item.category || 'other';
+  const trail = [['IIOS', `${SITE}/`], ['Каталог', `${SITE}${PAGE_PATH}`]];
+  if (hasCategoryPage(key, all)) trail.push([categoryLabel(key, item), SITE + categoryPath(key, all)]);
+  trail.push([item.name, url]);
   return ldScripts([product, breadcrumbsLd(trail)]);
 }
 
@@ -550,22 +609,84 @@ function groupByCategory(items) {
   return [...groups.entries()].sort((a, b) => rank(a[0]) - rank(b[0]));
 }
 
-function page(items, updatedAt) {
-  const groups = groupByCategory(items);
-  const title = 'Каталог iPhone, MacBook, AirPods у Чернівцях — ціни | IIOS';
-  const description = items.length
+// The lowest shown UAH price among items, formatted ("9 500 ₴"), or ''.
+function minPriceText(items) {
+  let min = null;
+  for (const item of items) {
+    const { currency, regular, sale, fmt } = prices(item);
+    const shown = sale || regular;
+    if (currency === 'UAH' && shown && (min === null || shown < min.value)) min = { value: shown, fmt };
+  }
+  return min ? min.fmt(min.value) : '';
+}
+
+// Title, description, heading and intro of a category page, from what is in
+// stock right now: the condition words and the "від" price follow the items.
+// "б/у" (how people search) appears only in the title; the page says "вживані".
+// "у Чернівцях" after a consonant, "в Чернівцях" after a vowel (милозвучність).
+function inAfter(word) {
+  return /[аеєиіїоуюя]$/i.test(word) ? 'в' : 'у';
+}
+
+function categoryCopy(key, items) {
+  const meta = CATEGORY_PAGES[key];
+  const hasNew = items.some(i => conditionKind(i) === 'new');
+  const hasUsed = items.some(i => conditionKind(i) === 'used');
+  const from = minPriceText(items);
+  const titleCond = hasUsed ? (hasNew ? 'нові та б/у' : 'б/у') : '';
+  const title = `Купити ${meta.buy} ${inAfter(meta.buy)} Чернівцях — ${[titleCond, from ? `ціни від ${from}` : 'ціни'].filter(Boolean).join(', ')} | IIOS`;
+  const cond = hasNew && hasUsed ? 'Нові та вживані' : hasUsed ? 'Вживані' : hasNew ? 'Нові' : '';
+  const lead = cond ? `${cond} ${meta.noun}` : meta.noun.charAt(0).toUpperCase() + meta.noun.slice(1);
+  const count = `${items.length} ${plural(items.length, 'товар', 'товари', 'товарів')} в наявності`;
+  const description = clip(
+    `${lead} ${inAfter(lead)} магазині IIOS, Чернівці: ${count}${from ? `, від ${from}` : ''}. `
+      + 'Гарантія магазину, доставка Новою поштою, замовлення в Telegram.',
+    DESCRIPTION_MAX,
+  );
+  const intro = [
+    `${lead} з гарантією магазину IIOS. Забрати можна в магазині в Чернівцях або замовити доставку Новою поштою по Україні.`,
+    hasUsed ? 'Стан кожного вживаного пристрою чесно вказаний у його картці, а перевірити його можна в магазині або у відділенні Нової пошти до оплати.' : '',
+  ].filter(Boolean).join(' ');
+  return { title, description, h1: meta.h1, intro, label: categoryLabel(key, items[0]) };
+}
+
+// The whole catalog, or with `scope` one category's own page: the same
+// layout, holding only that category's cards, with its own title and heading.
+// The tabs stay, as links to the other categories' pages.
+function page(allItems, updatedAt, scope = null) {
+  const items = scope ? allItems.filter(i => (i.category || 'other') === scope) : allItems;
+  const allGroups = groupByCategory(allItems);
+  const groups = scope ? allGroups.filter(([key]) => key === scope) : allGroups;
+  const copy = scope ? categoryCopy(scope, items) : null;
+  const title = copy ? copy.title : 'Каталог iPhone, MacBook, AirPods у Чернівцях — ціни | IIOS';
+  const description = copy ? copy.description : items.length
     ? catalogDescription(items.length, groups.map(([, g]) => g.label))
     : 'Каталог нової та вживаної техніки Apple в магазині IIOS у Чернівцях: iPhone, MacBook, AirPods, Apple Watch. Гарантія магазину, доставка по Україні.';
+  const canonical = SITE + (scope ? categoryPath(scope, allItems) : PAGE_PATH);
+  const trail = [['IIOS', `${SITE}/`], ['Каталог', `${SITE}${PAGE_PATH}`]];
+  if (copy) trail.push([copy.label, canonical]);
+  const ld = jsonLd(items, copy ? copy.h1 : 'Каталог IIOS — техніка Apple у Чернівцях', trail);
 
   // Every category is listed for catalog.js, so /catalog#watch from the
   // landing can say "nothing in stock right now" instead of showing nothing.
   const labels = Object.fromEntries(CATEGORIES);
-  for (const [key, g] of groups) labels[key] = g.label;
+  for (const [key, g] of allGroups) labels[key] = g.label;
 
-  const tabs = [
-    `<a class="tab is-active" href="#all" data-tab="all">Усі <span>${items.length}</span></a>`,
-    ...groups.map(([key, g]) => `<a class="tab" href="#${esc(key)}" data-tab="${esc(key)}">${esc(g.label)} <span>${g.items.length}</span></a>`),
-  ].join('');
+  // On /catalog the tabs filter in place (catalog.js), but their hrefs are the
+  // category pages, so crawlers follow them. On a category page they are plain
+  // links (no data-tab), with the open category marked as the current page.
+  const tabs = scope
+    ? [
+      `<a class="tab" href="${PAGE_PATH}">Усі <span>${allItems.length}</span></a>`,
+      ...allGroups.map(([key, g]) => {
+        const current = key === scope ? ' is-active" aria-current="page' : '';
+        return `<a class="tab${current}" href="${esc(categoryPath(key, allItems))}">${esc(g.label)} <span>${g.items.length}</span></a>`;
+      }),
+    ].join('')
+    : [
+      `<a class="tab is-active" href="#all" data-tab="all">Усі <span>${items.length}</span></a>`,
+      ...groups.map(([key, g]) => `<a class="tab" href="${esc(categoryPath(key, allItems))}" data-tab="${esc(key)}">${esc(g.label)} <span>${g.items.length}</span></a>`),
+    ].join('');
   const hasNew = items.some(i => conditionKind(i) === 'new');
   const hasUsed = items.some(i => conditionKind(i) === 'used');
   const hasSale = items.some(i => prices(i).sale);
@@ -578,8 +699,9 @@ function page(items, updatedAt) {
   let index = 0;
   const rate = uahPerUsd(items);
   const sections = groups.map(([key, g]) => `
-      <section class="group" id="${esc(key)}" data-group="${esc(key)}">
-        <h2 class="group-title">${esc(g.label)} <span>${g.items.length}</span></h2>
+      <section class="group" id="${esc(key)}" data-group="${esc(key)}">${scope ? `
+        <h2 class="sr">${esc(g.label)}: товари в наявності</h2>` : `
+        <h2 class="group-title">${esc(g.label)} <span>${g.items.length}</span></h2>`}
         <div class="grid">${g.items.map(item => card(item, index++, rate)).join('')}
         </div>
       </section>`).join('');
@@ -588,15 +710,21 @@ function page(items, updatedAt) {
     ? `${items.length} ${plural(items.length, 'товар', 'товари', 'товарів')} в наявності${updatedAt ? ` · оновлено ${esc(formatDate(updatedAt))}` : ''}`
     : 'Каталог саме оновлюється';
 
-  return `${documentHead({ title, description, canonical: `${SITE}${PAGE_PATH}`, ld: jsonLd(items) })}
-<body data-labels="${esc(JSON.stringify(labels))}" data-bot="${BOT_URL}">
-  ${siteHeader(true)}
+  const crumbs = scope
+    ? `<a href="/">Головна</a><span aria-hidden="true">/</span><a href="${PAGE_PATH}">Каталог</a><span aria-hidden="true">/</span><span aria-current="page">${esc(copy.label)}</span>`
+    : '<a href="/">Головна</a><span aria-hidden="true">/</span>Каталог';
+  const searchHint = scope ? 'Пошук: модель, пам’ять, колір…' : 'Пошук: iPhone 15, 256GB, колір…';
+
+  return `${documentHead({ title, description, canonical, ld })}
+<body data-labels="${esc(JSON.stringify(labels))}" data-bot="${BOT_URL}"${scope ? ` data-scope="${esc(scope)}"` : ''}>
+  ${siteHeader(!scope)}
 
   <main>
     <section class="intro wrap">
-      <p class="crumbs"><a href="/">Головна</a><span aria-hidden="true">/</span>Каталог</p>
-      <h1>Каталог техніки Apple</h1>
+      <nav class="crumbs" aria-label="Навігаційний ланцюжок">${crumbs}</nav>
+      <h1>${esc(copy ? copy.h1 : 'Каталог техніки Apple')}</h1>
       ${items.length ? `<p class="lead"><span class="dot" aria-hidden="true"></span><span>${lead}</span></p>` : ''}
+      ${copy ? `<p class="intro-text">${esc(copy.intro)}</p>` : ''}
       <ul class="perks">
         <li>${ICON_CHECK}Гарантія магазину</li>
         <li>${ICON_CHECK}Доставка Новою поштою</li>
@@ -606,7 +734,7 @@ function page(items, updatedAt) {
       ${items.length ? `
       <label class="search js-only">
         ${ICON_SEARCH}
-        <input type="search" id="q" placeholder="Пошук: iPhone 15, 256GB, колір…" autocomplete="off" enterkeyhint="search" aria-label="Пошук у всьому каталозі">
+        <input type="search" id="q" placeholder="${esc(searchHint)}" autocomplete="off" enterkeyhint="search" aria-label="${scope ? `Пошук: ${esc(copy.label)}` : 'Пошук у всьому каталозі'}">
       </label>` : ''}
     </section>
 
@@ -762,10 +890,10 @@ function productPage(item, related, all) {
 
   const rate = uahPerUsd(all);
   const relatedCards = related.map((other, i) => card(other, 10 + i, rate)).join('');
-  const categoryHref = `${PAGE_PATH}#${encodeURIComponent(categoryKey)}`;
+  const categoryHref = categoryPath(categoryKey, all);
 
   return `${documentHead({
-    title, description, canonical: productUrl(item), ld: productLd(item),
+    title, description, canonical: productUrl(item), ld: productLd(item, all),
     image: image || undefined, type: 'product',
   })}
 <body data-bot="${BOT_URL}">
@@ -906,6 +1034,7 @@ h1,h2{text-wrap:balance}
 .crumbs a{padding:6px 0}
 .crumbs a:hover{color:var(--ink)}
 h1{font-size:clamp(30px,5vw,48px);line-height:1.05;letter-spacing:-.035em;font-weight:800}
+.intro-text{max-width:720px;margin-top:12px;font-size:15.5px;line-height:1.6;color:var(--text)}
 .lead{display:flex;align-items:flex-start;gap:9px;margin-top:12px;color:var(--muted);font-weight:600;font-size:15px}
 .dot{width:8px;height:8px;margin-top:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 4px rgba(47,158,92,.15);flex-shrink:0}
 .perks{list-style:none;display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
@@ -1087,6 +1216,7 @@ h1{font-size:clamp(30px,5vw,48px);line-height:1.05;letter-spacing:-.035em;font-w
   .controls{gap:10px}
   .sort-label{display:none}
   .summary-text{font-size:13px;padding-top:8px}
+  .intro-text{font-size:14.5px;margin-top:10px}
   /* 16px keeps iOS from zooming the page when the select opens */
   .sort select{font-size:16px;font-weight:600}
   .group-title{font-size:19px;margin-bottom:10px}
