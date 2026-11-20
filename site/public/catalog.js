@@ -12,6 +12,12 @@
   // Cards per page, so a 500-product catalog isn't one endless scroll.
   const PAGE_SIZE = 24;
   const COND_LABELS = { new: 'Нові', used: 'Вживані' };
+  // Condition toggles read from the card (data-grade, data-bat), which the
+  // worker parses out of each product's description.
+  const FLAGS = {
+    top: { label: 'ідеальний стан', test: d => d.grade === 'top' },
+    bat: { label: 'АКБ 90%+', test: d => d.bat === '1' },
+  };
 
   function plural(n, one, few, many) {
     const mod10 = n % 10, mod100 = n % 100;
@@ -43,7 +49,7 @@
     let labels = {};
     try { labels = JSON.parse(document.body.dataset.labels || '{}'); } catch { /* defaults */ }
 
-    const state = { cat: home, sub: '', q: '', cond: new Set(), sale: false, sort: 'default', page: 1 };
+    const state = { cat: home, sub: '', q: '', cond: new Set(), flags: new Set(), sale: false, sort: 'default', page: 1 };
 
     // Broken or missing photos fall back to the IIOS placeholder behind them.
     document.querySelectorAll('.card-media img').forEach(img => {
@@ -58,6 +64,7 @@
       if (state.sub && d.sub !== state.sub) return false;
       if (state.cond.size && !state.cond.has(d.cond)) return false;
       if (state.sale && d.sale !== '1') return false;
+      for (const flag of state.flags) if (!FLAGS[flag].test(d)) return false;
       if (state.q) {
         return state.q.split(/\s+/).every(word => d.q.includes(word));
       }
@@ -65,7 +72,7 @@
     }
 
     function isFiltered() {
-      return state.cat !== home || Boolean(state.sub) || Boolean(state.q) || state.cond.size > 0 || state.sale;
+      return state.cat !== home || Boolean(state.sub) || Boolean(state.q) || state.cond.size > 0 || state.flags.size > 0 || state.sale;
     }
 
     function describe(total) {
@@ -74,6 +81,7 @@
       if (state.sub) parts.push(state.sub);
       state.cond.forEach(c => parts.push(COND_LABELS[c] || c));
       if (state.sale) parts.push('зі знижкою');
+      state.flags.forEach(f => parts.push(FLAGS[f].label));
       if (state.q) parts.push(`«${state.q}»`);
       return parts.join(' · ');
     }
@@ -162,7 +170,7 @@
       empty.hidden = total > 0;
       if (!total) {
         const known = state.cat !== 'all' && labels[state.cat];
-        const onlyCategory = known && !state.sub && !state.q && !state.cond.size && !state.sale;
+        const onlyCategory = known && !state.sub && !state.q && !state.cond.size && !state.flags.size && !state.sale;
         empty.querySelector('.empty-title').textContent = onlyCategory
           ? `${labels[state.cat]}: зараз немає на сайті`
           : 'Нічого не знайдено';
@@ -250,6 +258,7 @@
       const on = btn.getAttribute('aria-pressed') !== 'true';
       btn.setAttribute('aria-pressed', String(on));
       if (key === 'sale') state.sale = on;
+      else if (FLAGS[key]) state.flags[on ? 'add' : 'delete'](key);
       else if (on) state.cond.add(key);
       else state.cond.delete(key);
       refresh();
@@ -303,6 +312,7 @@
       state.q = '';
       state.sale = false;
       state.cond.clear();
+      state.flags.clear();
       if (input) input.value = '';
       filters.forEach(btn => btn.setAttribute('aria-pressed', 'false'));
       setCategory('all');
